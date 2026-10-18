@@ -37,6 +37,18 @@ class ValueRepository
         return $grid;
     }
 
+    /** Most recent period_start with any value for these units, or null if they have none. */
+    public function latestPeriod(array $unitIds): ?string
+    {
+        if (!$unitIds) {
+            return null;
+        }
+        $in = implode(',', array_fill(0, count($unitIds), '?'));
+        $stmt = $this->db->prepare("SELECT MAX(period_start) FROM kpi_values WHERE unit_id IN ({$in})");
+        $stmt->execute(array_values($unitIds));
+        return $stmt->fetchColumn() ?: null;
+    }
+
     /** Stored values for one unit at the given periods, keyed "kpiId|periodStart". */
     public function forUnit(int $unitId, array $periodStarts): array
     {

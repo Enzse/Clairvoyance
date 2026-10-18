@@ -32,12 +32,14 @@ class ReportService
     }
 
     /**
-     * Every active KPI for a unit at the period containing $date. Each KPI is shown at
-     * $grain, or at its own frequency if that is coarser (or if no grain is given).
+     * Every active KPI for a unit at the period containing $date (default: the latest period
+     * with data). Each KPI is shown at $grain, or at its own frequency if that is coarser
+     * (or if no grain is given).
      */
-    public function scorecard(int $unitId, string $date, ?string $grain, int $history = 12): array
+    public function scorecard(int $unitId, ?string $date, ?string $grain, int $history = 12): array
     {
         $unit = $this->access->requireView($unitId);
+        $date ??= $this->latestDate($unitId);
         $this->checkDate($date);
         if ($grain !== null && !Period::isValidFrequency($grain)) {
             throw HttpException::badRequest('grain must be one of: ' . implode(', ', Period::FREQUENCIES));
@@ -67,25 +69,31 @@ class ReportService
         return ['unit' => $unit, 'date' => $date, 'kpis' => $rows];
     }
 
-    /** One KPI for a unit over a date range, one entry per $grain period. */
-    public function kpiSeries(int $kpiId, int $unitId, string $grain, string $from, string $to): array
+    /**
+     * One KPI for a unit over a date range, one entry per $grain period. Defaults: $to is
+     * the latest period with data, $from is 11 periods before it (12 in total).
+     */
+    public function kpiSeries(int $kpiId, int $unitId, string $grain, ?string $from, ?string $to): array
     {
         $unit = $this->access->requireView($unitId);
         $kpi = $this->kpi($kpiId);
         $this->checkGrain($kpi, $grain);
-        $this->checkDate($from);
+        $to ??= $this->latestDate($unitId);
         $this->checkDate($to);
+        $from ??= Period::shift(Period::align($to, $grain), $grain, -11);
+        $this->checkDate($from);
         $starts = $this->range(Period::align($from, $grain), Period::align($to, $grain), $grain);
 
         return ['kpi' => $kpi, 'unit' => $unit, 'grain' => $grain, 'periods' => $this->series($kpi, $unitId, $starts, $grain)];
     }
 
-    /** One KPI at one period for each unit directly under $unitId. */
-    public function breakdown(int $kpiId, int $unitId, string $date, string $grain): array
+    /** One KPI at one period (default: the latest with data) for each unit directly under $unitId. */
+    public function breakdown(int $kpiId, int $unitId, ?string $date, string $grain): array
     {
         $unit = $this->access->requireView($unitId);
         $kpi = $this->kpi($kpiId);
         $this->checkGrain($kpi, $grain);
+        $date ??= $this->latestDate($unitId);
         $this->checkDate($date);
         $tree = $this->access->tree();
         if ($tree->isLeaf($unitId)) {
@@ -205,6 +213,13 @@ class ReportService
         if (!Period::isAtLeast($grain, $kpi['frequency'])) {
             throw HttpException::badRequest("{$kpi['name']} is reported {$kpi['frequency']}, so it can't be shown {$grain}");
         }
+    }
+
+    /** The latest period with any value under the unit, or today if there is none. */
+    private function latestDate(int $unitId): string
+    {
+        $leaves = $this->access->tree()->activeLeafIds($unitId);
+        return $this->values->latestPeriod($leaves) ?? gmdate('Y-m-d');
     }
 
     private function checkDate(string $date): void

@@ -138,6 +138,20 @@ class DepedImportTest extends ApiTestCase
         $this->assertNear($total, array_sum(array_column($data['periods'], 'value')));
     }
 
+    public function test6bDatesDefaultToLatestPeriodWithData(): void
+    {
+        $this->actingAs(self::$adminId);
+        $card = $this->ok('GET', '/scorecard', ['unit' => (string)$this->rootId()]);
+        $this->assertSame('2025-12-01', $card['date']);
+        $this->assertSame('Dec 2025', $card['kpis'][0]['period_label']);
+
+        $kpi = self::$kpis['total_students']['id'];
+        $series = $this->ok('GET', "/kpis/{$kpi}/series", ['unit' => (string)$this->rootId(), 'grain' => 'monthly']);
+        $this->assertSame(12, count($series['periods']));
+        $this->assertSame('Jan 2025', $series['periods'][0]['period_label']);
+        $this->assertSame('Dec 2025', $series['periods'][11]['period_label']);
+    }
+
     public function test7ReimportIsIdempotent(): void
     {
         $this->actingAs(self::$adminId);

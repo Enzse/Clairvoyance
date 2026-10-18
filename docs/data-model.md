@@ -1,7 +1,6 @@
 # Clairvoyance data model (v3 rebuild)
 
-Status: **backend implemented** (step 1 of the build order). The frontend (step 2) has not
-been rebuilt yet, so the current web app does not work against this API.
+Status: **steps 1 and 2 implemented**: the backend and the web app. Step 3 is future work.
 
 ## What the product is
 
@@ -253,9 +252,12 @@ as coarse as the KPI's frequency.
 | POST | `/imports/preview` | Multipart `file` + `mapping` JSON; per-row results, nothing written |
 | POST | `/imports` | Same, committed in one transaction; `skip_invalid=1` writes only the valid values |
 | GET | `/imports` | Admin: recent imports |
-| GET | `/scorecard?unit=&date=[&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
-| GET | `/kpis/{id}/series?unit=&grain=&from=&to=` | Value, target, status and coverage per period |
-| GET | `/kpis/{id}/breakdown?unit=&date=&grain=` | The unit's direct children, each with value, target, status, coverage |
+| GET | `/scorecard?unit=[&date=][&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
+| GET | `/kpis/{id}/series?unit=&grain=[&from=][&to=]` | Value, target, status and coverage per period; defaults to the 12 periods ending at the latest data |
+| GET | `/kpis/{id}/breakdown?unit=&grain=[&date=]` | The unit's direct children, each with value, target, status, coverage |
+
+On the report endpoints a missing `date` (or `to`) means the latest period with data for that
+unit, so a view never opens on an empty period.
 
 ## CSV import
 
@@ -295,8 +297,8 @@ the frontend wizard).
    as plain PHP classes unit-tested without a database; units/KPIs/targets/values, import
    and scorecard/series/breakdown endpoints. `tests/Integration/DepedImportTest.php` imports
    `deped.csv` through the API and reproduces the worked-example numbers.
-2. **Frontend:** scorecard home with unit picker and period/grain selector; KPI detail
-   (series chart + breakdown table); data-entry form (pick unit + period, fill all its KPIs);
-   import wizard; admin screens for units, KPIs, targets, users and memberships.
+2. **Frontend — done.** Scorecard home with unit picker and period/grain selector; KPI detail
+   (series chart + breakdown); data-entry form (one unit and month, all its KPIs); import
+   wizard; admin screens for units, KPIs, targets, people and access. See `web/README.md`.
 3. **Later:** saved dashboards, print-friendly report page, value change history,
    calculated KPIs (ratio of two KPIs), fiscal-year start month, late-submission reminders.

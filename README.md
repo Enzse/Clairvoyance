@@ -6,10 +6,12 @@ or worse, and which units are behind or haven't reported?
 
 - **Design:** [docs/data-model.md](docs/data-model.md): concepts, aggregation rules, schema, API
 - **Backend:** [api/](api/README.md): PHP 8.2 + MariaDB on XAMPP
-- **Frontend:** [web/](web/): SvelteKit + Tailwind
+- **Frontend:** [web/](web/README.md): SvelteKit + Tailwind
 
-## Status
+## Getting started
 
-The backend has been rebuilt around the new data model and is covered by tests. The
-frontend still targets the old API and is the next thing to rebuild, so the web app does not
-work yet.
+1. Start Apache and MySQL in XAMPP.
+2. `cd api`, then `php scripts/migrate.php`.
+3. `cd web`, then `npm install` and `npm run dev`, and open http://localhost:5173.
+4. Create an account: the first one becomes the administrator.
+5. Optional sample data: `php api/scripts/seed_demo.php <your-email>`.
