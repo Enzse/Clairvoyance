@@ -1,0 +1,61 @@
+Report_ID,Region,Division,School_Name,Month,Report_Date,Total_Students,Attendance_Rate,Average_Grade,Teachers,Teacher_Absences,Budget_Utilization,Remarks
+DEPED-2025-001,NCR,Quezon City,Doña Carmen High School,January,2025-01-31,1785,95.3,84.2,62,4,91.5,On track
+DEPED-2025-002,NCR,Manila,Manila Science High School,January,2025-01-31,1240,97.1,89.4,58,1,94.8,Excellent performance
+DEPED-2025-003,Region IV-A,Cavite,Bacoor National High School,January,2025-01-31,2032,93.8,80.5,74,6,88.2,Needs improvement in attendance
+DEPED-2025-004,Region VII,Cebu,Cebu City Science High School,January,2025-01-31,1105,96.7,90.1,49,2,92.3,Consistent excellence
+DEPED-2025-005,Region XI,Davao,Davao City National High School,January,2025-01-31,2124,94.6,83.7,80,3,89.7,Good academic standing
+DEPED-2025-006,NCR,Quezon City,Doña Carmen High School,February,2025-02-28,1791,96.1,85.0,62,3,92.2,Improved attendance
+DEPED-2025-007,NCR,Manila,Manila Science High School,February,2025-02-28,1242,97.4,90.2,58,1,95.5,Stable high performance
+DEPED-2025-008,Region IV-A,Cavite,Bacoor National High School,February,2025-02-28,2035,94.5,81.6,74,4,89.1,Improving academics
+DEPED-2025-009,Region VII,Cebu,Cebu City Science High School,February,2025-02-28,1110,96.8,90.6,49,1,93.0,On track
+DEPED-2025-010,Region XI,Davao,Davao City National High School,February,2025-02-28,2130,94.9,84.3,80,3,90.4,Consistent
+DEPED-2025-011,NCR,Quezon City,Doña Carmen High School,March,2025-03-31,1802,95.8,85.5,62,2,93.4,Stable trend
+DEPED-2025-012,NCR,Manila,Manila Science High School,March,2025-03-31,1245,97.6,91.1,58,0,96.1,Outstanding
+DEPED-2025-013,Region IV-A,Cavite,Bacoor National High School,March,2025-03-31,2040,95.2,82.3,74,5,89.7,Positive trend
+DEPED-2025-014,Region VII,Cebu,Cebu City Science High School,March,2025-03-31,1112,96.9,90.8,49,1,93.8,Maintaining high standards
+DEPED-2025-015,Region XI,Davao,Davao City National High School,March,2025-03-31,2138,95.0,84.9,80,2,91.2,Good progress
+DEPED-2025-016,NCR,Quezon City,Doña Carmen High School,April,2025-04-30,1810,95.9,86.0,62,2,93.9,Improved grades
+DEPED-2025-017,NCR,Manila,Manila Science High School,April,2025-04-30,1247,97.5,91.3,58,0,96.7,Consistent excellence
+DEPED-2025-018,Region IV-A,Cavite,Bacoor National High School,April,2025-04-30,2045,94.9,82.8,74,3,90.1,Gradual improvement
+DEPED-2025-019,Region VII,Cebu,Cebu City Science High School,April,2025-04-30,1115,96.6,91.0,49,1,94.2,Stable
+DEPED-2025-020,Region XI,Davao,Davao City National High School,April,2025-04-30,2140,94.7,85.2,80,3,91.8,Good standing
+DEPED-2025-021,NCR,Quezon City,Doña Carmen High School,May,2025-05-31,1812,95.2,85.7,62,3,93.5,Minor dip in attendance
+DEPED-2025-022,NCR,Manila,Manila Science High School,May,2025-05-31,1250,97.0,91.0,58,0,96.4,Excellent
+DEPED-2025-023,Region IV-A,Cavite,Bacoor National High School,May,2025-05-31,2049,94.3,82.5,74,4,89.9,Steady
+DEPED-2025-024,Region VII,Cebu,Cebu City Science High School,May,2025-05-31,1118,96.2,90.5,49,1,93.7,Consistent
+DEPED-2025-025,Region XI,Davao,Davao City National High School,May,2025-05-31,2143,94.2,84.8,80,2,91.1,Stable
+DEPED-2025-026,NCR,Quezon City,Doña Carmen High School,June,2025-06-30,1815,94.9,85.1,62,3,92.8,End of semester
+DEPED-2025-027,NCR,Manila,Manila Science High School,June,2025-06-30,1252,96.6,90.8,58,1,95.8,Steady
+DEPED-2025-028,Region IV-A,Cavite,Bacoor National High School,June,2025-06-30,2052,93.9,81.9,74,4,89.1,Lower attendance
+DEPED-2025-029,Region VII,Cebu,Cebu City Science High School,June,2025-06-30,1120,95.9,90.0,49,2,92.9,Slight dip
+DEPED-2025-030,Region XI,Davao,Davao City National High School,June,2025-06-30,2145,93.8,84.2,80,3,90.2,Monitor attendance
+DEPED-2025-031,NCR,Quezon City,Doña Carmen High School,July,2025-07-31,1818,96.2,85.9,62,2,93.1,Start of new term
+DEPED-2025-032,NCR,Manila,Manila Science High School,July,2025-07-31,1255,97.8,91.4,58,0,96.9,Excellent
+DEPED-2025-033,Region IV-A,Cavite,Bacoor National High School,July,2025-07-31,2055,94.8,82.4,74,3,90.5,Improving
+DEPED-2025-034,Region VII,Cebu,Cebu City Science High School,July,2025-07-31,1122,96.7,90.7,49,1,93.4,High consistency
+DEPED-2025-035,Region XI,Davao,Davao City National High School,July,2025-07-31,2148,95.1,85.3,80,2,91.6,Positive trend
+DEPED-2025-036,NCR,Quezon City,Doña Carmen High School,August,2025-08-31,1820,96.0,86.1,62,2,93.8,Good standing
+DEPED-2025-037,NCR,Manila,Manila Science High School,August,2025-08-31,1257,97.6,91.6,58,0,97.0,Maintaining excellence
+DEPED-2025-038,Region IV-A,Cavite,Bacoor National High School,August,2025-08-31,2058,94.6,82.7,74,3,90.8,Gradual progress
+DEPED-2025-039,Region VII,Cebu,Cebu City Science High School,August,2025-08-31,1125,96.8,91.0,49,1,93.9,Stable
+DEPED-2025-040,Region XI,Davao,Davao City National High School,August,2025-08-31,2150,94.9,85.0,80,2,91.7,Consistent
+DEPED-2025-041,NCR,Quezon City,Doña Carmen High School,September,2025-09-30,1823,95.7,86.3,62,3,94.2,Improved performance
+DEPED-2025-042,NCR,Manila,Manila Science High School,September,2025-09-30,1260,97.4,91.8,58,0,97.1,Outstanding
+DEPED-2025-043,Region IV-A,Cavite,Bacoor National High School,September,2025-09-30,2060,94.2,83.0,74,4,90.2,Stable trend
+DEPED-2025-044,Region VII,Cebu,Cebu City Science High School,September,2025-09-30,1127,96.5,90.9,49,1,94.0,Excellent consistency
+DEPED-2025-045,Region XI,Davao,Davao City National High School,September,2025-09-30,2152,94.5,85.5,80,3,91.3,Good progress
+DEPED-2025-046,NCR,Quezon City,Doña Carmen High School,October,2025-10-31,1825,95.4,86.2,62,3,93.6,Consistent
+DEPED-2025-047,NCR,Manila,Manila Science High School,October,2025-10-31,1262,97.2,91.9,58,0,97.3,Exemplary
+DEPED-2025-048,Region IV-A,Cavite,Bacoor National High School,October,2025-10-31,2062,94.1,83.1,74,3,90.4,Stable
+DEPED-2025-049,Region VII,Cebu,Cebu City Science High School,October,2025-10-31,1130,96.4,91.1,49,1,94.3,Maintaining standards
+DEPED-2025-050,Region XI,Davao,Davao City National High School,October,2025-10-31,2155,94.3,85.6,80,3,91.2,Consistent
+DEPED-2025-051,NCR,Quezon City,Doña Carmen High School,November,2025-11-30,1827,95.6,86.5,62,2,93.9,Good month
+DEPED-2025-052,NCR,Manila,Manila Science High School,November,2025-11-30,1265,97.5,92.1,58,0,97.5,Excellent
+DEPED-2025-053,Region IV-A,Cavite,Bacoor National High School,November,2025-11-30,2065,94.3,83.2,74,4,90.6,Gradual improvement
+DEPED-2025-054,Region VII,Cebu,Cebu City Science High School,November,2025-11-30,1132,96.6,91.0,49,1,94.1,On track
+DEPED-2025-055,Region XI,Davao,Davao City National High School,November,2025-11-30,2157,94.8,85.7,80,3,91.5,Stable
+DEPED-2025-056,NCR,Quezon City,Doña Carmen High School,December,2025-12-31,1829,95.9,86.8,62,2,94.1,Strong finish
+DEPED-2025-057,NCR,Manila,Manila Science High School,December,2025-12-31,1268,97.7,92.3,58,0,97.8,Outstanding
+DEPED-2025-058,Region IV-A,Cavite,Bacoor National High School,December,2025-12-31,2068,94.6,83.5,74,3,91.0,Improved grades
+DEPED-2025-059,Region VII,Cebu,Cebu City Science High School,December,2025-12-31,1135,96.8,91.3,49,1,94.4,Excellent performance
+DEPED-2025-060,Region XI,Davao,Davao City National High School,December,2025-12-31,2160,95.0,85.9,80,2,91.9,Good finish

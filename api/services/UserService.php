@@ -2,124 +2,178 @@
 
 namespace Services;
 
-use Models\User;
+use Core\Auth;
+use Core\HttpException;
+use Core\Validator;
+use PDO;
+use Repositories\MembershipRepository;
+use Repositories\UserRepository;
 
 class UserService
 {
-    private User $userModel;
+    private const MIN_PASSWORD = 8;
 
-    public function __construct(User $userModel)
+    private PDO $db;
+    private Auth $auth;
+    private AccessService $access;
+    private UserRepository $users;
+    private MembershipRepository $memberships;
+
+    public function __construct(PDO $db, Auth $auth, AccessService $access, UserRepository $users, MembershipRepository $memberships)
     {
-        $this->userModel = $userModel;
+        $this->db = $db;
+        $this->auth = $auth;
+        $this->access = $access;
+        $this->users = $users;
+        $this->memberships = $memberships;
     }
 
-    public function createUser(array $data): array
+    /**
+     * Public sign-up. The first account on a fresh install becomes the admin; everyone
+     * else is a member who sees nothing until an admin grants access to units.
+     */
+    public function register(array $input): array
     {
-        // Validate required fields
-        if (!isset($data['email'], $data['password'], $data['role'])) {
-            return ['success' => false, 'error' => 'Email, password, and role are required'];
-        }
+        [$email, $password, $name] = $this->credentials($input);
+        $role = $this->users->count() === 0 ? 'admin' : 'member';
+        return $this->users->find($this->users->create($email, $password, $role, $name));
+    }
 
-        // Validate email format
-        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            return ['success' => false, 'error' => 'Invalid email format'];
-        }
+    public function login(array $input): array
+    {
+        $v = new Validator($input);
+        $email = $v->string('email', true);
+        $password = $v->secret('password', true);
+        $v->check();
 
-        if (!is_string($data['password']) || strlen($data['password']) < 8) {
-            return ['success' => false, 'error' => 'Password must be at least 8 characters'];
+        $user = $this->users->verifyCredentials($email, $password);
+        if (!$user) {
+            throw new HttpException(401, 'Wrong email or password');
         }
+        $this->auth->login($user);
+        return $this->me();
+    }
 
-        // Check if user already exists
-        if ($this->userModel->findByEmail($data['email'])) {
-            return ['success' => false, 'error' => 'User with this email already exists'];
+    /** The current user with their memberships. */
+    public function me(): array
+    {
+        $user = $this->auth->requireUser();
+        $user['memberships'] = $this->memberships->forUser($user['id']);
+        return $user;
+    }
+
+    public function list(): array
+    {
+        return array_map(function ($user) {
+            $user['memberships'] = $this->memberships->forUser($user['id']);
+            return $user;
+        }, $this->users->all());
+    }
+
+    public function create(array $input): array
+    {
+        [$email, $password, $name] = $this->credentials($input);
+        $v = new Validator($input);
+        $role = $v->enum('role', ['admin', 'member']) ?? 'member';
+        $v->check();
+        return $this->users->find($this->users->create($email, $password, $role, $name));
+    }
+
+    public function update(int $id, array $input): array
+    {
+        $user = $this->users->find($id) ?? throw HttpException::notFound('User not found');
+        $v = new Validator($input);
+        $fields = [
+            'name' => $v->string('name', false, 255),
+            'role' => $v->enum('role', ['admin', 'member'], $v->has('role')),
+            'password' => $v->secret('password', $v->has('password')),
+        ];
+        if ($fields['password'] !== null && strlen($fields['password']) < self::MIN_PASSWORD) {
+            $v->addError('password', 'must be at least ' . self::MIN_PASSWORD . ' characters');
         }
-
-        // Validate role
-        if (!in_array($data['role'], ['editor', 'admin'])) {
-            return ['success' => false, 'error' => 'Invalid role specified'];
+        if ($fields['role'] === 'member' && $user['role'] === 'admin' && $this->users->countAdmins() === 1) {
+            $v->addError('role', 'this is the last admin');
         }
+        $v->check();
 
+        $this->users->update($id, array_filter($fields, fn($key) => $v->has($key), ARRAY_FILTER_USE_KEY));
+        return $this->users->find($id);
+    }
+
+    public function delete(int $id): void
+    {
+        $user = $this->users->find($id) ?? throw HttpException::notFound('User not found');
+        if ($id === $this->auth->requireUser()['id']) {
+            throw HttpException::conflict('You cannot delete your own account');
+        }
+        if ($user['role'] === 'admin' && $this->users->countAdmins() === 1) {
+            throw HttpException::conflict('This is the last admin');
+        }
+        $this->users->delete($id);
+    }
+
+    public function memberships(int $userId): array
+    {
+        $this->users->find($userId) ?? throw HttpException::notFound('User not found');
+        return $this->memberships->forUser($userId);
+    }
+
+    /** Replace a user's memberships with [{unit_id, role}]. */
+    public function replaceMemberships(int $userId, array $input): array
+    {
+        $this->users->find($userId) ?? throw HttpException::notFound('User not found');
+        $v = new Validator($input);
+        $rows = $v->array('memberships', true) ?? [];
+        $v->check();
+
+        $clean = [];
+        foreach (array_values($rows) as $i => $row) {
+            $rv = new Validator(is_array($row) ? $row : []);
+            $unitId = $rv->int('unit_id', true, 1);
+            $role = $rv->enum('role', ['viewer', 'contributor'], true);
+            if ($unitId !== null && !$this->access->tree()->get($unitId)) {
+                $rv->addError('unit_id', 'unit not found');
+            }
+            if ($unitId !== null && isset($clean[$unitId])) {
+                $rv->addError('unit_id', 'is listed twice');
+            }
+            try {
+                $rv->check();
+                $clean[$unitId] = ['unit_id' => $unitId, 'role' => $role];
+            } catch (HttpException $e) {
+                $v->addError("memberships.{$i}", implode('; ', array_map(fn($f, $m) => "{$f} {$m}", array_keys($e->getDetails()), $e->getDetails())));
+            }
+        }
+        $v->check('Some memberships are invalid');
+
+        $this->db->beginTransaction();
         try {
-            $result = $this->userModel->create($data['email'], $data['password'], $data['role']);
-            
-            if ($result['success']) {
-                $newUser = $this->userModel->findById($result['id']);
-                return ['success' => true, 'user' => $newUser];
-            }
-            
-            return ['success' => false, 'error' => $result['error']];
-        } catch (\Exception $e) {
-            return ['success' => false, 'error' => 'An error occurred: ' . $e->getMessage()];
+            $this->memberships->replace($userId, array_values($clean));
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
         }
+        return $this->memberships->forUser($userId);
     }
 
-    public function updateUserRole(int $userId, string $role): array
+    /** @return array{0: string, 1: string, 2: ?string} */
+    private function credentials(array $input): array
     {
-        // Validate role
-        if (!in_array($role, ['editor', 'admin'])) {
-            return ['success' => false, 'error' => 'Invalid role specified'];
+        $v = new Validator($input);
+        $email = $v->string('email', true);
+        $password = $v->secret('password', true);
+        $name = $v->string('name', false, 255);
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $v->addError('email', 'is not a valid email address');
         }
-
-        // Check if this would remove the last admin
-        if ($this->isLastAdmin($userId, $role)) {
-            return ['success' => false, 'error' => 'Cannot remove the last admin'];
+        if ($password !== null && strlen($password) < self::MIN_PASSWORD) {
+            $v->addError('password', 'must be at least ' . self::MIN_PASSWORD . ' characters');
         }
-
-        return $this->userModel->updateRole($userId, $role);
-    }
-
-    public function deleteUser(int $userId): array
-    {
-        // Check if this would delete the last admin
-        if ($this->isLastAdmin($userId)) {
-            return ['success' => false, 'error' => 'Cannot delete the last admin'];
+        if ($email !== null && $this->users->findByEmail($email)) {
+            $v->addError('email', 'already has an account');
         }
-
-        return $this->userModel->delete($userId);
-    }
-
-    public function listAllUsers(): array
-    {
-        try {
-            return $this->userModel->listAll();
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
-
-    public function getUserById(int $userId): ?array
-    {
-        return $this->userModel->findById($userId);
-    }
-
-    private function isLastAdmin(int $userId, ?string $newRole = null): bool
-    {
-        $allUsers = $this->userModel->listAll();
-        $targetUser = null;
-        $adminCount = 0;
-
-        foreach ($allUsers as $user) {
-            if ($user['role'] === 'admin') {
-                $adminCount++;
-            }
-            if ($user['id'] == $userId) {
-                $targetUser = $user;
-            }
-        }
-
-        // If the target user is an admin and they are the only one
-        if ($targetUser && $targetUser['role'] === 'admin' && $adminCount === 1) {
-            // And if the action is to delete them or change their role
-            if ($newRole === null || $newRole !== 'admin') {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public function getUserByEmail(string $email): ?array
-    {
-        return $this->userModel->findByEmail($email);
+        $v->check();
+        return [mb_strtolower($email), $password, $name];
     }
 }

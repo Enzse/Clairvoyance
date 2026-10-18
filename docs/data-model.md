@@ -1,6 +1,7 @@
 # Clairvoyance data model (v3 rebuild)
 
-Status: **draft for review** — nothing below is implemented yet.
+Status: **backend implemented** (step 1 of the build order). The frontend (step 2) has not
+been rebuilt yet, so the current web app does not work against this API.
 
 ## What the product is
 
@@ -106,6 +107,9 @@ This replaces `rag_red` / `rag_amber`, whose meaning the frontend and backend di
 
 ## Schema (MariaDB 10.4)
 
+Abridged; the source of truth is `api/migrations/001_baseline.sql`, which also seeds the root
+unit ("Organization").
+
 ```sql
 CREATE TABLE users (
   id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -159,7 +163,8 @@ CREATE TABLE imports (
   user_id       INT NULL,
   filename      VARCHAR(255) NOT NULL,
   rows_total    INT NOT NULL,
-  values_written INT NOT NULL,
+  values_created INT NOT NULL,
+  values_updated INT NOT NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -220,40 +225,62 @@ CREATE TABLE unit_memberships (
 Whole-organisation read access = viewer on the root unit. Per-dashboard sharing and share
 tokens go away; access follows the organisation tree.
 
+The first account registered on a fresh install becomes the admin. Everyone who registers
+after that is a member and sees nothing until an admin grants them access to units.
+`php scripts/set_role.php <email> admin` recovers admin access from the command line.
+
 ## API
+
+All responses are JSON: `{"success": true, "data": …}` or
+`{"success": false, "error": "…", "details": {field: message}}`. Dates are `YYYY-MM-DD`; any
+date inside a period selects that period. `grain` is one of the frequencies and must be at least
+as coarse as the KPI's frequency.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/units` | Tree visible to the current user |
-| POST/PUT/DELETE | `/units[/{id}]` | Admin; delete only when the unit has no values (else deactivate) |
-| GET | `/kpis` | Active KPI definitions |
-| POST/PUT | `/kpis[/{id}]` | Admin; "delete" deactivates |
-| GET/PUT | `/kpis/{id}/targets` | Read / replace targets |
-| GET | `/values?unit=&period=` | Raw values for the data-entry form |
-| PUT | `/values` | Batch upsert `[{kpi_id, unit_id, period, value, note}]` |
-| POST | `/imports/preview` | Parse a CSV with a column mapping; per-row results, nothing written |
-| POST | `/imports` | Commit the same file + mapping in one transaction |
-| GET | `/scorecard?unit=&period=&grain=` | Every KPI: value, target, status, previous period, change, coverage, 12-period sparkline |
-| GET | `/kpis/{id}/series?unit=&grain=&from=&to=` | Values, targets, status and coverage per period |
-| GET | `/kpis/{id}/breakdown?unit=&period=&grain=` | The unit's children, each with value, target, status, coverage |
+| POST | `/auth/register`, `/auth/login`, `/auth/logout` | Session-cookie auth |
+| GET | `/auth/me` | Current user with memberships |
+| GET/POST | `/users` | Admin: list / create users |
+| PUT/DELETE | `/users/{id}` | Admin: change name, role or password / delete (not yourself, not the last admin) |
+| GET/PUT | `/users/{id}/memberships` | Admin: read / replace `[{unit_id, role}]` |
+| GET | `/units` | Units visible to the current user, flat, with `parent_id`, `is_leaf` and `access` |
+| POST/PUT/DELETE | `/units[/{id}]` | Admin; delete only an empty leaf (otherwise deactivate) |
+| GET | `/kpis` | Active KPI definitions (`?include_inactive=1` for admins) |
+| POST/PUT | `/kpis[/{id}]` | Admin; deactivate with `is_active: false` |
+| GET/PUT | `/kpis/{id}/targets` | Read / replace (admin) `[{unit_id \| null, effective_from, value}]` |
+| GET | `/values?unit=&date=` | Data-entry form: every KPI that applies to a leaf unit, at the period containing `date` |
+| PUT | `/values` | Batch upsert `{values: [{kpi_id, unit_id, period, value, note}]}`; `value: null` deletes; all-or-nothing |
+| POST | `/imports/preview` | Multipart `file` + `mapping` JSON; per-row results, nothing written |
+| POST | `/imports` | Same, committed in one transaction; `skip_invalid=1` writes only the valid values |
+| GET | `/imports` | Admin: recent imports |
+| GET | `/scorecard?unit=&date=[&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
+| GET | `/kpis/{id}/series?unit=&grain=&from=&to=` | Value, target, status and coverage per period |
+| GET | `/kpis/{id}/breakdown?unit=&date=&grain=` | The unit's direct children, each with value, target, status, coverage |
 
 ## CSV import
 
 One wide file can fill many KPIs and units at once (as `deped.csv` does):
 
-1. **Unit:** one column holding a unit code or name, *or* several columns forming a path
-   (`Region`, `Division`, `School_Name`). Optionally create missing units under a chosen parent.
-2. **Date:** one column plus an explicit format (`YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY`).
-   Dates snap to each KPI's period start (`2025-06-30` → June 2025), and the preview shows
-   the snapped period.
-3. **KPIs:** map each remaining column to a KPI (auto-suggested by code/name), or ignore it.
-   One text column can be kept as the note.
-4. **Preview** lists every rejected row with its reason. Nothing is skipped silently.
-5. **Commit** upserts in one transaction and reports how many values were new vs replaced.
+1. **Unit:** several columns forming a path (`Region`, `Division`, `School_Name`), or one
+   column matched by unit name (a leaf anywhere under the parent) or by unit code.
+   Admins can let the import create missing units, with a kind per path level.
+2. **Date:** one column plus an explicit format (`YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY`,
+   `YYYY-MM`). Impossible dates such as `31/02/2025` are rejected, never rolled over. Dates
+   snap to each KPI's period start (`2025-06-30` → June 2025), and the preview shows the period.
+3. **KPIs:** map columns to KPI codes; unmapped columns are ignored. Numbers may use thousands
+   separators (`1,250`) and a trailing `%`. Empty cells are skipped and counted.
+4. **Preview** lists every rejected cell with its row, column and reason (wrong date, unknown
+   unit, not a number, non-leaf unit, KPI not applicable, duplicate of an earlier row), plus
+   how many values would be new, changed or unchanged, and which units would be created.
+5. **Commit** refuses a file with errors unless `skip_invalid` is set, then upserts in one
+   transaction. Re-importing the same file reports every value as unchanged.
 
-## What happens to the current system
+Not yet supported: notes from a CSV column, and auto-suggesting the mapping (that belongs in
+the frontend wizard).
 
-| Current | Plan |
+## What replaced the old system
+
+| Old | Now |
 |---|---|
 | `kpis`, `kpi_entries` | Replaced by `kpis`, `kpi_values`, `kpi_targets` |
 | `users` | Kept; roles become `admin` / `member` |
@@ -264,11 +291,10 @@ One wide file can fill many KPIs and units at once (as `deped.csv` does):
 
 ## Build order
 
-1. **Core (backend):** baseline migration; `Period` (alignment, ranges) and `Aggregator`
-   (time/unit rules, targets, status, coverage) as plain PHP classes unit-tested without a
-   database — the worked example above is the first test; then units/KPIs/targets/values,
-   import and scorecard/series/breakdown endpoints. Done when importing `deped.csv`
-   reproduces the worked-example numbers through the API.
+1. **Core (backend) — done.** Baseline migration; `Domain\Period` and `Domain\Aggregator`
+   as plain PHP classes unit-tested without a database; units/KPIs/targets/values, import
+   and scorecard/series/breakdown endpoints. `tests/Integration/DepedImportTest.php` imports
+   `deped.csv` through the API and reproduces the worked-example numbers.
 2. **Frontend:** scorecard home with unit picker and period/grain selector; KPI detail
    (series chart + breakdown table); data-entry form (pick unit + period, fill all its KPIs);
    import wizard; admin screens for units, KPIs, targets, users and memberships.

@@ -2,105 +2,196 @@
 
 namespace Services;
 
-use Models\Kpi;
+use Core\HttpException;
+use Core\Validator;
+use Domain\Period;
+use PDO;
+use Repositories\KpiRepository;
+use Repositories\TargetRepository;
 
 class KpiService
 {
-	private Kpi $kpis;
+    private const TIME_RULES = ['sum', 'average', 'last'];
+    private const UNIT_RULES = ['sum', 'average', 'weighted_average'];
+    private const DIRECTIONS = ['higher_is_better', 'lower_is_better', 'none'];
 
-	public function __construct(Kpi $kpis)
-	{
-		$this->kpis = $kpis;
-	}
+    private PDO $db;
+    private KpiRepository $kpis;
+    private TargetRepository $targets;
+    private AccessService $access;
 
-	public function create(array $currentUser, array $data): array
-	{
-		if (!in_array($currentUser['role'], ['admin','editor'])) {
-			throw new \Exception('Insufficient permissions', 403);
-		}
+    public function __construct(PDO $db, KpiRepository $kpis, TargetRepository $targets, AccessService $access)
+    {
+        $this->db = $db;
+        $this->kpis = $kpis;
+        $this->targets = $targets;
+        $this->access = $access;
+    }
 
-		$required = ['name','direction','target','rag_red','rag_amber','format_prefix','format_suffix'];
-		foreach ($required as $f) {
-			if (!isset($data[$f])) throw new \Exception("Missing field: {$f}", 400);
-		}
+    public function list(bool $includeInactive): array
+    {
+        return $this->kpis->all(!$includeInactive);
+    }
 
-		if (!$this->kpis->validateName($data['name'])) throw new \Exception('Invalid KPI name', 400);
-		if (!$this->kpis->validateDirection($data['direction'])) throw new \Exception('Invalid direction', 400);
-		if (!$this->kpis->validateTarget((float)$data['target'])) throw new \Exception('Invalid target', 400);
-		if (!$this->kpis->validateRagThresholds((float)$data['rag_red'], (float)$data['rag_amber'])) throw new \Exception('Invalid RAG thresholds', 400);
-		if (!$this->kpis->validateFormatPrefix($data['format_prefix'])) throw new \Exception('Invalid format prefix', 400);
-		if (!$this->kpis->validateFormatSuffix($data['format_suffix'])) throw new \Exception('Invalid format suffix', 400);
+    public function get(int $id): array
+    {
+        $kpi = $this->kpis->find($id);
+        if (!$kpi) {
+            throw HttpException::notFound('KPI not found');
+        }
+        return $kpi;
+    }
 
-		return $this->kpis->create($data, (int)$currentUser['id']);
-	}
+    public function create(array $input): array
+    {
+        $fields = $this->validate($input, null);
+        return $this->get($this->kpis->create($fields));
+    }
 
-	public function get(array $currentUser, int $kpiId): array
-	{
-		$kpi = $this->kpis->findById($kpiId);
-		if (!$kpi) throw new \Exception('KPI not found', 404);
+    public function update(int $id, array $input): array
+    {
+        $existing = $this->get($id);
+        $fields = $this->validate($input, $existing);
+        $this->kpis->update($id, $fields);
+        return $this->get($id);
+    }
 
-		// Admin can access any KPI
-		if ($currentUser['role'] === 'admin') {
-			return $kpi;
-		}
+    public function targets(int $id): array
+    {
+        $this->get($id);
+        return $this->targets->forKpis([$id])[$id];
+    }
 
-		// KPI owner can access their own KPIs
-		if ((int)$kpi['user_id'] === (int)$currentUser['id']) {
-			return $kpi;
-		}
+    /** Replace all targets of a KPI. effective_from dates are moved to their period start. */
+    public function replaceTargets(int $id, array $input): array
+    {
+        $kpi = $this->get($id);
+        $v = new Validator($input);
+        $rows = $v->array('targets', true) ?? [];
+        $v->check();
 
-		// Users with access to the owner's dashboard showing this KPI can read it
-		if ($this->kpis->getDashboardPermissionLevel($kpiId, (int)$currentUser['id']) !== null) {
-			return $kpi;
-		}
+        $tree = $this->access->tree();
+        $clean = [];
+        $seen = [];
+        foreach (array_values($rows) as $i => $row) {
+            $rv = new Validator(is_array($row) ? $row : []);
+            $unitId = $rv->int('unit_id', false, 1);
+            $from = $rv->date('effective_from', true);
+            $value = $rv->number('value', true);
+            if ($unitId !== null && !$tree->get($unitId)) {
+                $rv->addError('unit_id', 'unit not found');
+            }
+            try {
+                $rv->check();
+            } catch (HttpException $e) {
+                $v->addError("targets.{$i}", implode('; ', array_map(fn($f, $m) => "{$f} {$m}", array_keys($e->getDetails()), $e->getDetails())));
+                continue;
+            }
+            $from = Period::align($from, $kpi['frequency']);
+            $key = ($unitId ?? 0) . '|' . $from;
+            if (isset($seen[$key])) {
+                $v->addError("targets.{$i}", 'duplicates another target for the same unit and start period');
+                continue;
+            }
+            $seen[$key] = true;
+            $clean[] = ['unit_id' => $unitId, 'effective_from' => $from, 'value' => $value];
+        }
+        $v->check('Some targets are invalid');
 
-		throw new \Exception('Access denied', 403);
-	}
+        $this->db->beginTransaction();
+        try {
+            $this->targets->replace($id, $clean);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+        return $this->targets($id);
+    }
 
-	public function list(array $currentUser): array
-	{
-		if ($currentUser['role'] === 'admin') {
-			return $this->kpis->findAll();
-		}
-		return $this->kpis->findByUserId((int)$currentUser['id']);
-	}
+    /** @param array|null $existing the KPI being updated, or null when creating */
+    private function validate(array $input, ?array $existing): array
+    {
+        $creating = $existing === null;
+        $v = new Validator($input);
+        // Required on create; on update, may be omitted but not blanked
+        $req = fn(string $field) => $creating || $v->has($field);
+        $fields = [
+            'code' => $v->string('code', $req('code'), 64, '/^[a-z][a-z0-9_]*$/', 'must start with a letter and use only a-z, 0-9 and _'),
+            'name' => $v->string('name', $req('name'), 255),
+            'description' => $v->string('description', false, 2000),
+            'frequency' => $v->enum('frequency', Period::FREQUENCIES, $req('frequency')),
+            'time_aggregation' => $v->enum('time_aggregation', self::TIME_RULES, $req('time_aggregation')),
+            'unit_aggregation' => $v->enum('unit_aggregation', self::UNIT_RULES, $req('unit_aggregation')),
+            'weight_kpi_id' => $v->int('weight_kpi_id', false, 1),
+            'direction' => $v->enum('direction', self::DIRECTIONS, $req('direction')),
+            'tolerance_pct' => $v->number('tolerance_pct', $v->has('tolerance_pct'), 0, 1000),
+            'applies_to_kind' => $v->string('applies_to_kind', false, 64),
+            'decimals' => $v->int('decimals', $v->has('decimals'), 0, 6),
+            'prefix' => $v->string('prefix', false, 10),
+            'suffix' => $v->string('suffix', false, 10),
+            'is_active' => $v->bool('is_active', $v->has('is_active')),
+        ];
+        $v->check();
 
-	public function update(array $currentUser, int $kpiId, array $data): bool
-	{
-		$kpi = $this->kpis->findById($kpiId);
-		if (!$kpi) throw new \Exception('KPI not found', 404);
-		if ($currentUser['role'] !== 'admin' && (int)$kpi['user_id'] !== (int)$currentUser['id']) {
-			throw new \Exception('Access denied', 403);
-		}
+        // Only fields that were sent; on create, fill defaults
+        $fields = array_filter($fields, fn($key) => $v->has($key), ARRAY_FILTER_USE_KEY);
+        if ($creating) {
+            $fields += ['tolerance_pct' => 10, 'decimals' => 0, 'prefix' => '', 'suffix' => ''];
+        }
+        foreach (['prefix', 'suffix'] as $key) {
+            if (array_key_exists($key, $fields)) {
+                $fields[$key] ??= ''; // empty text clears it
+            }
+        }
+        $merged = array_merge($existing ?? [], $fields);
+        if ($merged['unit_aggregation'] !== 'weighted_average') {
+            $merged['weight_kpi_id'] = $fields['weight_kpi_id'] = null;
+        }
 
-		$allowed = ['name','direction','target','rag_red','rag_amber','format_prefix','format_suffix'];
-		foreach ($data as $k => $v) {
-			if (!in_array($k, $allowed)) unset($data[$k]);
-		}
+        if (isset($fields['code'])) {
+            $clash = $this->kpis->findByCode($fields['code']);
+            if ($clash && $clash['id'] !== ($existing['id'] ?? null)) {
+                $v->addError('code', 'is already used by another KPI');
+            }
+        }
+        if ($merged['unit_aggregation'] === 'weighted_average') {
+            $this->validateWeight($v, $merged);
+        }
+        if (!$creating && $merged['frequency'] !== $existing['frequency'] && $this->kpis->hasValues($existing['id'])) {
+            $v->addError('frequency', 'cannot change once the KPI has values (they are stored per period)');
+        }
+        if (!$creating && $merged['is_active'] === false && $existing['is_active']) {
+            $dependents = $this->kpis->activeDependents($existing['id']);
+            if ($dependents) {
+                $v->addError('is_active', 'is the weight for: ' . implode(', ', $dependents));
+            }
+        }
+        $v->check();
 
-		if (isset($data['name']) && !$this->kpis->validateName($data['name'])) throw new \Exception('Invalid KPI name', 400);
-		if (isset($data['direction']) && !$this->kpis->validateDirection($data['direction'])) throw new \Exception('Invalid direction', 400);
-		if (isset($data['target']) && !$this->kpis->validateTarget((float)$data['target'])) throw new \Exception('Invalid target', 400);
-		if ((isset($data['rag_red']) || isset($data['rag_amber'])) &&
-			!$this->kpis->validateRagThresholds(
-				isset($data['rag_red']) ? (float)$data['rag_red'] : (float)$kpi['rag_red'],
-				isset($data['rag_amber']) ? (float)$data['rag_amber'] : (float)$kpi['rag_amber']
-			)) {
-			throw new \Exception('Invalid RAG thresholds', 400);
-		}
-		if (isset($data['format_prefix']) && !$this->kpis->validateFormatPrefix($data['format_prefix'])) throw new \Exception('Invalid format prefix', 400);
-		if (isset($data['format_suffix']) && !$this->kpis->validateFormatSuffix($data['format_suffix'])) throw new \Exception('Invalid format suffix', 400);
+        if (isset($fields['is_active'])) {
+            $fields['is_active'] = (int)$fields['is_active'];
+        }
+        return $fields;
+    }
 
-		return $this->kpis->update($kpiId, $data);
-	}
-
-	public function delete(array $currentUser, int $kpiId): bool
-	{
-		$kpi = $this->kpis->findById($kpiId);
-		if (!$kpi) throw new \Exception('KPI not found', 404);
-		if ($currentUser['role'] !== 'admin' && (int)$kpi['user_id'] !== (int)$currentUser['id']) {
-			throw new \Exception('Access denied', 403);
-		}
-		return $this->kpis->delete($kpiId);
-	}
+    private function validateWeight(Validator $v, array $kpi): void
+    {
+        if (empty($kpi['weight_kpi_id'])) {
+            $v->addError('weight_kpi_id', 'is required for a weighted average');
+            return;
+        }
+        $weight = $this->kpis->find($kpi['weight_kpi_id']);
+        if (!$weight) {
+            $v->addError('weight_kpi_id', 'KPI not found');
+        } elseif ($weight['id'] === ($kpi['id'] ?? null)) {
+            $v->addError('weight_kpi_id', 'cannot be the KPI itself');
+        } elseif (!$weight['is_active']) {
+            $v->addError('weight_kpi_id', 'is inactive');
+        } elseif ($weight['frequency'] !== $kpi['frequency']) {
+            $v->addError('weight_kpi_id', "must be reported {$kpi['frequency']} like this KPI");
+        } elseif ($weight['unit_aggregation'] === 'weighted_average') {
+            $v->addError('weight_kpi_id', 'cannot itself be a weighted average');
+        }
+    }
 }

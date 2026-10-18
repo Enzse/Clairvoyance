@@ -2,309 +2,57 @@
 
 namespace Controllers;
 
-use Core\BaseController;
+use Core\Auth;
+use Core\Request;
+use Core\Response;
 use Services\UserService;
-use Services\AuthService;
 
-class UserController extends BaseController
+/** Admin-only user management. */
+class UserController
 {
-    private UserService $userService;
-    private AuthService $authService;
+    private Auth $auth;
+    private UserService $users;
 
-    public function __construct()
+    public function __construct(Auth $auth, UserService $users)
     {
-        parent::__construct();
-        $this->userService = $this->getService(\Services\UserService::class);
-        $this->authService = $this->getService(\Services\AuthService::class);
+        $this->auth = $auth;
+        $this->users = $users;
     }
 
-    public function register(): void
+    public function list(): array
     {
-        try {
-            $data = $this->getRequestData();
-            
-            if (!$this->validateRequired($data, ['email', 'password'])) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing required fields: email, password'
-                ], 400);
-                return;
-            }
-
-            // Public registration always creates editors; admins are created by admins
-            $data['role'] = 'editor';
-
-            $result = $this->userService->createUser($data);
-
-            if ($result['success']) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => 'User registered successfully',
-                    'data' => ['id' => $result['user']['id']]
-                ], 201);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => $result['error']
-                ], 400);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 400);
-        }
+        $this->auth->requireAdmin();
+        return $this->users->list();
     }
 
-    public function login(): void
+    public function create(Request $request): Response
     {
-        try {
-            $data = $this->getRequestData();
-            
-            if (!$this->validateRequired($data, ['email', 'password'])) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing email or password'
-                ], 400);
-                return;
-            }
-
-            $result = $this->authService->login($data['email'], $data['password']);
-
-            if ($result['success']) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => 'Login successful',
-                    'data' => ['user' => $result['user']]
-                ]);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => $result['error']
-                ], 401);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 401);
-        }
+        $this->auth->requireAdmin();
+        return Response::created($this->users->create($request->body));
     }
 
-    public function me(): void
+    public function update(Request $request, array $params): array
     {
-        try {
-            $this->authService->requireAuth();
-            
-            $user = $this->getCurrentUser();
-
-            $this->jsonResponse([
-                'success' => true,
-                'message' => 'Session is valid',
-                'data' => ['user' => $user]
-            ]);
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => 'No active session'
-            ], 401);
-        }
+        $this->auth->requireAdmin();
+        return $this->users->update($params['id'], $request->body);
     }
 
-    public function listAll(): void
+    public function delete(Request $request, array $params): array
     {
-        try {
-            $this->authService->requireRole('admin');
-            
-            $users = $this->userService->listAllUsers();
-
-            $this->jsonResponse([
-                'success' => true,
-                'message' => 'Users retrieved successfully',
-                'data' => $users
-            ]);
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 403);
-        }
+        $this->auth->requireAdmin();
+        $this->users->delete($params['id']);
+        return [];
     }
 
-    public function updateRole(int $userId): void
+    public function memberships(Request $request, array $params): array
     {
-        try {
-            $this->authService->requireRole('admin');
-            
-            if (!$userId) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing user ID'
-                ], 400);
-                return;
-            }
-
-            $data = $this->getRequestData();
-            
-            if (!isset($data['role'])) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing role field'
-                ], 400);
-                return;
-            }
-
-            $result = $this->userService->updateUserRole($userId, $data['role']);
-
-            if ($result['success']) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => $result['message']
-                ]);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => $result['error']
-                ], 400);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 400);
-        }
+        $this->auth->requireAdmin();
+        return $this->users->memberships($params['id']);
     }
 
-    public function delete(int $userId): void
+    public function replaceMemberships(Request $request, array $params): array
     {
-        try {
-            $this->authService->requireRole('admin');
-            
-            if (!$userId) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing user ID'
-                ], 400);
-                return;
-            }
-
-            $result = $this->userService->deleteUser($userId);
-
-            if ($result['success']) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => $result['message']
-                ]);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => $result['error']
-                ], 400);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 400);
-        }
-    }
-
-    public function getOne(int $userId): void
-    {
-        try {
-            $this->authService->requireRole('admin');
-            
-            if (!$userId) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing user ID'
-                ], 400);
-                return;
-            }
-
-            $user = $this->userService->getUserById($userId);
-
-            if ($user) {
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => 'User retrieved successfully',
-                    'data' => $user
-                ]);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'User not found'
-                ], 404);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 404);
-        }
-    }
-
-    public function findByEmail(): void
-    {
-        try {
-            $this->authService->requireAuth();
-
-            $data = $this->getRequestData();
-            
-            if (empty($data['email'])) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'Missing required field: email'
-                ], 400);
-                return;
-            }
-
-            $user = $this->userService->getUserByEmail($data['email']);
-
-            if ($user) {
-                // Only what's needed to share a dashboard with this user
-                $this->jsonResponse([
-                    'success' => true,
-                    'message' => 'User found',
-                    'data' => ['id' => $user['id'], 'email' => $user['email']]
-                ]);
-            } else {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'User not found'
-                ], 404);
-            }
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 400);
-        }
-    }
-
-    public function logout(): void
-    {
-        try {
-            $this->authService->logout();
-
-            $this->jsonResponse([
-                'success' => true,
-                'message' => 'Logged out successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], $e->getCode() ?: 500);
-        }
+        $this->auth->requireAdmin();
+        return $this->users->replaceMemberships($params['id'], $request->body);
     }
 }

@@ -1,12 +1,12 @@
+# Route every request to index.php. Nothing else in this folder (.env, vendor/, scripts/,
+# migrations/, tests/) is ever served or executed directly.
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^(.*)$ index.php?request=$1 [L,QSA]
-    
+    RewriteRule ^index\.php$ - [L]
+    RewriteRule ^ index.php [L,QSA]
 </IfModule>
 
-# Header set Access-Control-Allow-Origin "*"
-# Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-# Header set Access-Control-Allow-Headers "Content-Type, Authorization"
-# Header set Access-Control-Allow-Credentials "true"
+# Without mod_rewrite, refuse everything rather than expose files
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>

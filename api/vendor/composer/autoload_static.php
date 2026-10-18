@@ -18,9 +18,9 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         array (
             'ZipStream\\' => 10,
         ),
-        'U' => 
+        'T' => 
         array (
-            'Utils\\' => 6,
+            'Tests\\' => 6,
         ),
         'S' => 
         array (
@@ -28,6 +28,10 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
             'Symfony\\Polyfill\\Mbstring\\' => 26,
             'Symfony\\Polyfill\\Ctype\\' => 23,
             'Services\\' => 9,
+        ),
+        'R' => 
+        array (
+            'Repositories\\' => 13,
         ),
         'P' => 
         array (
@@ -39,8 +43,6 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         ),
         'M' => 
         array (
-            'Models\\' => 7,
-            'Middleware\\' => 11,
             'Matrix\\' => 7,
         ),
         'G' => 
@@ -54,6 +56,7 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         'D' => 
         array (
             'Dotenv\\' => 7,
+            'Domain\\' => 7,
         ),
         'C' => 
         array (
@@ -62,10 +65,6 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
             'Composer\\Pcre\\' => 14,
             'Complex\\' => 8,
         ),
-        'A' => 
-        array (
-            'App\\' => 4,
-        ),
     );
 
     public static $prefixDirsPsr4 = array (
@@ -73,9 +72,9 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         array (
             0 => __DIR__ . '/..' . '/maennchen/zipstream-php/src',
         ),
-        'Utils\\' => 
+        'Tests\\' => 
         array (
-            0 => __DIR__ . '/../..' . '/utils',
+            0 => __DIR__ . '/../..' . '/tests',
         ),
         'Symfony\\Polyfill\\Php80\\' => 
         array (
@@ -92,6 +91,10 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         'Services\\' => 
         array (
             0 => __DIR__ . '/../..' . '/services',
+        ),
+        'Repositories\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/repositories',
         ),
         'Psr\\SimpleCache\\' => 
         array (
@@ -114,14 +117,6 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
         ),
-        'Models\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/models',
-        ),
-        'Middleware\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/middleware',
-        ),
         'Matrix\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/matrix/classes/src',
@@ -138,6 +133,10 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         array (
             0 => __DIR__ . '/..' . '/vlucas/phpdotenv/src',
         ),
+        'Domain\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/domain',
+        ),
         'Core\\' => 
         array (
             0 => __DIR__ . '/../..' . '/core',
@@ -153,10 +152,6 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         'Complex\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/complex/classes/src',
-        ),
-        'App\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/',
         ),
     );
 
