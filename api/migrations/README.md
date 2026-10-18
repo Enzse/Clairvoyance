@@ -100,4 +100,4 @@ php scripts/rollback.php --all
 - Foreign key constraints are enforced
 - Indexes are created for performance optimization
 - Timestamps are automatically managed by MySQL
-- Default admin user is created with email: admin@clairvoyance.com, password: admin123
+- No default admin is seeded: register an account, then run `php scripts/promote_user.php <email>`

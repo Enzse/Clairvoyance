@@ -5,6 +5,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
+    // Keep the session cookie away from page scripts and cross-site requests
+    session_set_cookie_params(['path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
     session_start();
 }
 
@@ -13,15 +15,10 @@ use Core\Application;
 
 $app = Application::getInstance();
 
-// Set error reporting for development
-$serverName = $_SERVER['SERVER_NAME'] ?? 'localhost';
-if ($serverName === 'localhost' || $serverName === '127.0.0.1') {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-} else {
-    error_reporting(0);
-    ini_set('display_errors', 0);
-}
+// Log errors instead of printing them into JSON responses (check Apache's error log)
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 // Set timezone
 date_default_timezone_set('Asia/Manila');

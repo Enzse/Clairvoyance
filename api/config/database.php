@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Environment.php';
+require_once __DIR__ . '/environment.php';
 
 //set default time zone
 date_default_timezone_set("Asia/Manila");

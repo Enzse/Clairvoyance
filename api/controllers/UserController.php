@@ -31,8 +31,8 @@ class UserController extends BaseController
                 return;
             }
 
-            // Default role to 'editor' for public registration
-            $data['role'] = $data['role'] ?? 'editor';
+            // Public registration always creates editors; admins are created by admins
+            $data['role'] = 'editor';
 
             $result = $this->userService->createUser($data);
 
@@ -254,6 +254,8 @@ class UserController extends BaseController
     public function findByEmail(): void
     {
         try {
+            $this->authService->requireAuth();
+
             $data = $this->getRequestData();
             
             if (empty($data['email'])) {
@@ -267,10 +269,11 @@ class UserController extends BaseController
             $user = $this->userService->getUserByEmail($data['email']);
 
             if ($user) {
+                // Only what's needed to share a dashboard with this user
                 $this->jsonResponse([
                     'success' => true,
                     'message' => 'User found',
-                    'data' => $user
+                    'data' => ['id' => $user['id'], 'email' => $user['email']]
                 ]);
             } else {
                 $this->jsonResponse([

@@ -80,11 +80,12 @@ try {
         http_response_code(404);
         echo json_encode(['status' => 'error', 'message' => 'Resource not found']);
     }
-} catch (Exception $e) {
-    error_log("API Error: " . $e->getMessage());
+} catch (Throwable $e) {
+    // Details go to the error log only; clients get a generic message
+    error_log("API Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode([
-        'status' => 'error',
-        'message' => 'Internal server error: ' . $e->getMessage()
+        'success' => false,
+        'error' => 'Internal server error'
     ]);
 }

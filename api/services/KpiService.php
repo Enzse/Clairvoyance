@@ -3,17 +3,14 @@
 namespace Services;
 
 use Models\Kpi;
-use PDO;
 
 class KpiService
 {
 	private Kpi $kpis;
-	private PDO $db;
 
-	public function __construct(Kpi $kpis, PDO $db)
+	public function __construct(Kpi $kpis)
 	{
 		$this->kpis = $kpis;
-		$this->db = $db;
 	}
 
 	public function create(array $currentUser, array $data): array
@@ -52,8 +49,8 @@ class KpiService
 			return $kpi;
 		}
 
-		// Check if user has access to any dashboard that contains this KPI
-		if ($this->hasKpiAccessThroughDashboard($currentUser['id'], $kpiId)) {
+		// Users with access to the owner's dashboard showing this KPI can read it
+		if ($this->kpis->getDashboardPermissionLevel($kpiId, (int)$currentUser['id']) !== null) {
 			return $kpi;
 		}
 
@@ -105,39 +102,5 @@ class KpiService
 			throw new \Exception('Access denied', 403);
 		}
 		return $this->kpis->delete($kpiId);
-	}
-
-	/**
-	 * Check if user has access to a KPI through dashboard permissions
-	 */
-	private function hasKpiAccessThroughDashboard(int $userId, int $kpiId): bool
-	{
-		try {
-			// Get all dashboards the user has access to
-			$stmt = $this->db->prepare('
-				SELECT DISTINCT d.id, d.layout
-				FROM dashboards d 
-				LEFT JOIN dashboard_access da ON d.id = da.dashboard_id AND da.user_id = ?
-				WHERE d.user_id = ? OR da.user_id = ?
-			');
-			$stmt->execute([$userId, $userId, $userId]);
-			$dashboards = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-			// Check if any dashboard layout contains the KPI
-			foreach ($dashboards as $dashboard) {
-				$layout = json_decode($dashboard['layout'], true);
-				if (is_array($layout)) {
-					foreach ($layout as $widget) {
-						if (isset($widget['kpi_id']) && (int)$widget['kpi_id'] === $kpiId) {
-							return true;
-						}
-					}
-				}
-			}
-
-			return false;
-		} catch (\Exception $e) {
-			return false;
-		}
 	}
 }

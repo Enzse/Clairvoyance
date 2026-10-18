@@ -15,6 +15,10 @@ This directory contains comprehensive tests for our KPI Analytics system models.
 
 ## Running Tests
 
+Tests delete data, so they refuse to run unless the database name ends in `_test`.
+They use `clairvoyance_v3_test` by default; override `DB_NAME` (or other DB settings)
+in `api/.env.test`. Create that database and run the migrations against it first.
+
 ### Run All Tests
 ```bash
 php tests/ModelIntegrationTest.php

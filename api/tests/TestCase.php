@@ -56,6 +56,12 @@ class TestCase
     
     protected function cleanupTestData()
     {
+        // Last line of defence: never wipe a non-test database
+        $dbName = $this->db->query('SELECT DATABASE()')->fetchColumn();
+        if (substr((string)$dbName, -5) !== '_test') {
+            throw new \Exception("Refusing to clean up non-test database '{$dbName}'");
+        }
+
         // Clean up test data in reverse dependency order
         $this->db->exec("DELETE FROM kpi_entries");
         $this->db->exec("DELETE FROM kpis");

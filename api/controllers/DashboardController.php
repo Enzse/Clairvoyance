@@ -364,6 +364,8 @@ class DashboardController extends BaseController
     public function getUsers(int $dashboardId): void
     {
         try {
+            $this->authService->requireAuth();
+
             $currentUser = $this->getCurrentUser();
             $users = $this->dashboardService->getDashboardUsers($currentUser, $dashboardId);
 

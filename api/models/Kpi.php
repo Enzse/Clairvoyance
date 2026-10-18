@@ -199,11 +199,51 @@ class Kpi
         }
     }
     
+    /**
+     * Highest permission a user holds on a dashboard that shows this KPI.
+     * Only dashboards owned by the KPI's owner count, so nobody can gain access
+     * to someone else's KPI by putting its id into their own dashboard layout.
+     */
+    public function getDashboardPermissionLevel(int $kpiId, int $userId): ?string
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT d.layout, da.permission_level
+                FROM kpis k
+                JOIN dashboards d ON d.user_id = k.user_id
+                JOIN dashboard_access da ON da.dashboard_id = d.id AND da.user_id = ?
+                WHERE k.id = ?
+            ');
+            $stmt->execute([$userId, $kpiId]);
+
+            $levels = ['viewer' => 1, 'editor' => 2, 'owner' => 3];
+            $best = null;
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $layout = json_decode($row['layout'], true);
+                if (!is_array($layout)) {
+                    continue;
+                }
+                foreach ($layout as $widget) {
+                    if (isset($widget['kpi_id']) && (int)$widget['kpi_id'] === $kpiId) {
+                        $level = $row['permission_level'];
+                        if ($best === null || ($levels[$level] ?? 0) > $levels[$best]) {
+                            $best = $level;
+                        }
+                        break;
+                    }
+                }
+            }
+            return $best;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
     public function getStats(int $userId): array
     {
         try {
             $stmt = $this->db->prepare('
-                SELECT 
+                SELECT
                     COUNT(*) as total_kpis,
                     COUNT(CASE WHEN direction = "higher_is_better" THEN 1 END) as higher_is_better_count,
                     COUNT(CASE WHEN direction = "lower_is_better" THEN 1 END) as lower_is_better_count,

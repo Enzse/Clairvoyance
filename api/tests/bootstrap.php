@@ -16,14 +16,24 @@ ini_set('display_errors', 1);
 // Set timezone for consistent testing
 date_default_timezone_set('UTC');
 
-// Load environment variables for testing
+// Tests delete rows, so they run against a separate database (override in api/.env.test).
+// This must happen before config/database.php is loaded, since it reads DB_NAME once.
+require_once __DIR__ . '/../config/environment.php';
+$env = Environment::getInstance();
+$env->set('DB_NAME', 'clairvoyance_v3_test');
+
 if (file_exists(__DIR__ . '/../.env.test')) {
     $lines = file(__DIR__ . '/../.env.test', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
         list($key, $value) = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value);
+        $env->set(trim($key), trim($value));
     }
+}
+
+if (substr($env->get('DB_NAME'), -5) !== '_test') {
+    fwrite(STDERR, "Refusing to run: DB_NAME '{$env->get('DB_NAME')}' must end in _test.\n");
+    exit(1);
 }
 
 // Initialize the application

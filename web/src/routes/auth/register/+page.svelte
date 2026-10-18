@@ -55,9 +55,10 @@
           id="password" 
           class="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
           type="password" 
-          placeholder="Password" 
-          bind:value={password} 
-          required 
+          placeholder="Password (min. 8 characters)"
+          bind:value={password}
+          minlength="8"
+          required
         />
       </div>
       

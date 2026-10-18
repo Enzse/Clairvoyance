@@ -25,6 +25,10 @@ class UserService
             return ['success' => false, 'error' => 'Invalid email format'];
         }
 
+        if (!is_string($data['password']) || strlen($data['password']) < 8) {
+            return ['success' => false, 'error' => 'Password must be at least 8 characters'];
+        }
+
         // Check if user already exists
         if ($this->userModel->findByEmail($data['email'])) {
             return ['success' => false, 'error' => 'User with this email already exists'];

@@ -9,6 +9,9 @@ class AuthService
     private User $userModel;
     private \PDO $db;
 
+    // Whether the session user has been re-checked against the database this request
+    private static bool $sessionVerified = false;
+
     public function __construct(User $userModel, \PDO $db)
     {
         $this->userModel = $userModel;
@@ -18,23 +21,44 @@ class AuthService
     public function login(string $email, string $password): array
     {
         $result = $this->userModel->authenticate($email, $password);
-        
+
         if ($result['success']) {
+            // New session id on login prevents session fixation
+            session_regenerate_id(true);
             $_SESSION['user'] = $result['user'];
+            self::$sessionVerified = true;
             return ['success' => true, 'user' => $result['user']];
         }
-        
+
         return ['success' => false, 'error' => $result['error']];
     }
 
     public function logout(): void
     {
+        $_SESSION = [];
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 3600, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
         session_destroy();
     }
 
     public function isAuthenticated(): bool
     {
-        return isset($_SESSION['user']);
+        if (!isset($_SESSION['user']['id'])) {
+            return false;
+        }
+
+        // Reload the user so deletions and role changes take effect immediately
+        if (!self::$sessionVerified) {
+            $user = $this->userModel->findById((int)$_SESSION['user']['id']);
+            if (!$user) {
+                unset($_SESSION['user']);
+                return false;
+            }
+            $_SESSION['user'] = ['id' => $user['id'], 'email' => $user['email'], 'role' => $user['role']];
+            self::$sessionVerified = true;
+        }
+
+        return true;
     }
 
     public function getCurrentUser(): ?array
