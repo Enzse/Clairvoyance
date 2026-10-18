@@ -26,6 +26,7 @@ php scripts/seed_demo.php you@example.com
 | `php scripts/migrate.php --fresh` | Drop every table first. **Deletes all data.** |
 | `php scripts/seed_demo.php <admin-email>` | Load the DepEd sample; safe to re-run |
 | `php scripts/set_role.php <email> <admin\|member>` | Change a role from the command line (e.g. lost admin) |
+| `php scripts/reset_password.php <email>` | Set and print a new random password for a forgotten one |
 
 ## Tests
 
