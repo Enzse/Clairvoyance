@@ -11,15 +11,19 @@
 	let name = $state('');
 	let email = $state(page.url.searchParams.get('email') ?? '');
 	let password = $state('');
+	let confirm = $state('');
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 
 	const next = $derived(page.url.searchParams.get('next'));
 	const joining = $derived(next?.startsWith('/invite/') ?? false);
+	// Said once the second password is as long as the first, so it doesn't complain mid-typing
+	const mismatch = $derived(confirm.length >= password.length && confirm !== password && confirm !== '');
 
 	// The (auth) layout moves on to onboarding (or the invitation) once signed in
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (password !== confirm) return;
 		busy = true;
 		error = null;
 		try {
@@ -55,8 +59,12 @@
 		<label class="field-label" for="password">Password</label>
 		<PasswordInput bind:value={password} autocomplete="new-password" rule error={error?.field('password') ? `Password ${error.field('password')}` : ''} />
 	</div>
+	<div>
+		<label class="field-label" for="confirm-password">Confirm password</label>
+		<PasswordInput id="confirm-password" bind:value={confirm} autocomplete="new-password" error={mismatch ? "The passwords don't match" : ''} />
+	</div>
 	<FormAlert message={error && !error.field('email') && !error.field('password') ? error.message : ''} />
-	<button class="btn btn-primary w-full" disabled={busy}>{busy ? 'Creating your account…' : 'Create account'}</button>
+	<button class="btn btn-primary w-full" disabled={busy || !password || password !== confirm}>{busy ? 'Creating your account…' : 'Create account'}</button>
 </form>
 
 <AuthFooter>

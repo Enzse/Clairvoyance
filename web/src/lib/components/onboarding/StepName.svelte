@@ -35,15 +35,6 @@
 	<!-- svelte-ignore a11y_autofocus -->
 	<input id="org-name" class="input h-12 text-md" placeholder="e.g. Bean There Coffee" maxlength="255" required autofocus bind:value={name} />
 
-	<!-- How it will look at the top of the structure -->
-	<div class="mt-3 flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5 ring-1 ring-line" aria-hidden="true">
-		<span class="grid size-9 place-items-center rounded-lg bg-navy text-navy-ink"><Icon name="building" size={17} /></span>
-		<span class="leading-tight">
-			<span class="block font-semibold {name.trim() ? '' : 'text-muted'}">{name.trim() || 'Your organisation'}</span>
-			<span class="block text-xs text-muted">adds up everything below it</span>
-		</span>
-	</div>
-
 	<fieldset class="mt-7">
 		<legend class="field-label">Money is shown in</legend>
 		<div class="flex flex-wrap gap-2">
