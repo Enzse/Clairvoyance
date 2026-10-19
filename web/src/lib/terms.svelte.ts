@@ -6,7 +6,7 @@ export const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
 
 /**
  * The organisation's own word for the parts that report figures ("branch", "department",
- * "team"), chosen in onboarding and changeable in Admin › Settings. Read it in templates
+ * "team"), chosen in onboarding and changeable in Manage › Settings. Read it in templates
  * ({term.many}) so it updates when the organisation changes.
  */
 export const term = {

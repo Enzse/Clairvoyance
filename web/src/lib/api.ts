@@ -116,9 +116,9 @@ export const api = {
 
 	// Organisation
 	units: () => request<Unit[]>('GET', '/units'),
-	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null }) =>
+	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null; icon?: string | null }) =>
 		request<Unit>('POST', '/units', { body }),
-	updateUnit: (id: number, body: Partial<Pick<Unit, 'name' | 'code' | 'kind' | 'is_active' | 'parent_id'>>) =>
+	updateUnit: (id: number, body: Partial<Pick<Unit, 'name' | 'code' | 'kind' | 'icon' | 'is_active' | 'parent_id'>>) =>
 		request<Unit>('PUT', `/units/${id}`, { body }),
 	deleteUnit: (id: number) => request<[]>('DELETE', `/units/${id}`),
 

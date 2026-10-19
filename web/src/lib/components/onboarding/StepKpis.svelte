@@ -123,7 +123,7 @@
 
 	<p class="mt-6 flex items-start gap-2 text-sm text-ink-2">
 		<Icon name="pencil" size={14} class="mt-0.5 shrink-0 text-muted" />
-		Need something else? Create your own KPIs under Admin › KPIs once you're set up.
+		Need something else? Create your own KPIs under Manage › KPIs once you're set up.
 	</p>
 
 	{#if error}<p class="mt-4 text-sm text-bad-ink" role="alert">{error}</p>{/if}

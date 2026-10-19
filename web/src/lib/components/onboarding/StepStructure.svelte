@@ -8,7 +8,7 @@
 	/**
 	 * One location, several locations, or departments. Names go in one per line; a live preview
 	 * shows the tree that will be created. Deeper trees (regions with branches) are built later
-	 * under Admin › Structure. The kind becomes the organisation's word for them everywhere
+	 * under Manage › Structure. The kind becomes the organisation's word for them everywhere
  * ("2 of 3 branches reported").
 	 */
 	let { onDone }: { onDone: () => void } = $props();

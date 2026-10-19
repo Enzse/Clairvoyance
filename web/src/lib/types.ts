@@ -86,6 +86,8 @@ export interface Unit {
 	name: string;
 	code: string | null;
 	kind: string | null;
+	/** Chosen icon (see unit-icons.ts); null shows the default */
+	icon: string | null;
 	is_active: boolean;
 	has_values: boolean;
 	is_leaf?: boolean;

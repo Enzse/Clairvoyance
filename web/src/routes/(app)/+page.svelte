@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import ChangeCell from '$lib/components/ChangeCell.svelte';
 	import ExportDrawer from '$lib/components/ExportDrawer.svelte';
@@ -110,10 +111,18 @@
 						</div>
 					</div>
 					{#if card.kpis.length === 0}
-						<p class="px-5 pb-6 text-ink-2">
-							No KPIs are defined yet.
-							{#if session.user?.organization?.role === 'admin'}<a class="text-accent hover:underline" href="/admin/kpis">Define the first KPI</a>.{/if}
-						</p>
+						<div class="flex flex-col items-center border-t border-line px-6 py-14 text-center" in:fade={{ duration: 250 }}>
+							<span class="grid size-14 place-items-center rounded-2xl bg-accent-wash text-accent"><Icon name="chart" size={26} /></span>
+							<h3 class="mt-4 text-lg font-semibold tracking-[-0.01em]">No KPIs yet</h3>
+							{#if session.user?.organization?.role === 'admin'}
+								<p class="mt-1.5 max-w-[46ch] text-ink-2">
+									KPIs are what you measure, like revenue or customer satisfaction. Add the first one and this scorecard comes to life.
+								</p>
+								<a class="btn btn-primary mt-5" href="/admin/kpis?new=1"><Icon name="plus" size={15} /> Add your first KPI</a>
+							{:else}
+								<p class="mt-1.5 max-w-[46ch] text-ink-2">Once an administrator adds the KPIs {session.user?.organization?.name} tracks, they appear here.</p>
+							{/if}
+						</div>
 					{:else}
 						<div class="overflow-x-auto">
 							<table class="w-full text-left">

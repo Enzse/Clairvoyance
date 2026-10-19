@@ -133,6 +133,8 @@ Abridged; the source of truth is `api/migrations/`:
   schema;
 - `004_unit_label.sql`, which adds `organizations.unit_label`, set from the existing units'
   most common kind.
+- `005_setup_skips.sql` (skipped getting-started steps) and `006_unit_icon.sql`
+  (`units.icon`, a name from the web app's icon set; NULL shows the default).
 
 Nothing is seeded: an organisation's root unit is created together with the organisation.
 

@@ -67,6 +67,17 @@ class UnitStore {
 		return this.roots[0];
 	}
 
+	/** The unit and everything inside it. */
+	subtree(id: number): Unit[] {
+		const unit = this.get(id);
+		return unit ? [unit, ...this.children(id).flatMap((c) => this.subtree(c.id))] : [];
+	}
+
+	/** The units that report figures inside this one (the bottom of its tree). */
+	reporting(id: number): Unit[] {
+		return this.subtree(id).filter((u) => u.parent_id !== null && this.children(u.id).length === 0);
+	}
+
 	/** Active leaf units the user can enter data for. */
 	enterable(): Unit[] {
 		return this.list

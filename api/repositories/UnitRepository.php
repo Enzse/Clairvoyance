@@ -18,7 +18,7 @@ class UnitRepository
     public function all(int $organizationId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.parent_id, u.name, u.code, u.kind, u.is_active,
+            'SELECT u.id, u.parent_id, u.name, u.code, u.kind, u.icon, u.is_active,
                     EXISTS (SELECT 1 FROM kpi_values v WHERE v.unit_id = u.id) AS has_values
              FROM units u
              WHERE u.organization_id = ?
@@ -32,22 +32,23 @@ class UnitRepository
             'name' => $row['name'],
             'code' => $row['code'],
             'kind' => $row['kind'],
+            'icon' => $row['icon'],
             'is_active' => (bool)$row['is_active'],
             'has_values' => (bool)$row['has_values'],
         ], $stmt->fetchAll());
     }
 
     /** $parentId null creates the organisation's root unit. */
-    public function create(int $organizationId, ?int $parentId, string $name, ?string $code, ?string $kind): int
+    public function create(int $organizationId, ?int $parentId, string $name, ?string $code, ?string $kind, ?string $icon = null): int
     {
-        $stmt = $this->db->prepare('INSERT INTO units (organization_id, parent_id, name, code, kind) VALUES (?, ?, ?, ?, ?)');
-        $stmt->execute([$organizationId, $parentId, $name, $code, $kind]);
+        $stmt = $this->db->prepare('INSERT INTO units (organization_id, parent_id, name, code, kind, icon) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$organizationId, $parentId, $name, $code, $kind, $icon]);
         return (int)$this->db->lastInsertId();
     }
 
     public function update(int $organizationId, int $id, array $fields): void
     {
-        $allowed = array_intersect_key($fields, array_flip(['parent_id', 'name', 'code', 'kind', 'is_active']));
+        $allowed = array_intersect_key($fields, array_flip(['parent_id', 'name', 'code', 'kind', 'icon', 'is_active']));
         if (!$allowed) {
             return;
         }

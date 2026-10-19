@@ -122,7 +122,7 @@
 						{/if}
 					</p>
 				</div>
-				<button class="btn btn-ghost btn-sm" onclick={() => close('Guide hidden. You can bring it back from Admin › Settings.')}>Hide</button>
+				<button class="btn btn-ghost btn-sm" onclick={() => close('Guide hidden. You can bring it back from Manage › Settings.')}>Hide</button>
 			</header>
 
 			<div class="grid md:grid-cols-[minmax(0,290px)_minmax(0,1fr)]">

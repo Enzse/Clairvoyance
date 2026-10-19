@@ -141,6 +141,15 @@ class OnboardingTest extends ApiTestCase
         $this->assertTrue(strpos(json_encode($refused[1]), 'adds up the branches under it') !== false, json_encode($refused[1]));
     }
 
+    public function test6cUnitsCanHaveAnIcon(): void
+    {
+        $this->actingAs(self::$admin);
+        $unit = $this->ok('POST', '/units', [], ['parent_id' => $this->rootId(), 'name' => 'Airport kiosk', 'icon' => 'coffee']);
+        $this->assertSame('coffee', $unit['icon']);
+        $this->assertStatus(400, $this->call('PUT', "/units/{$unit['id']}", [], ['icon' => '<svg>']));
+        $this->assertSame(null, $this->ok('PUT', "/units/{$unit['id']}", [], ['icon' => null])['icon'], 'back to the default');
+    }
+
     public function test7KpiScopedToADepartment(): void
     {
         $this->actingAs(self::$admin);
