@@ -28,7 +28,8 @@
 	let selectedId = $state<number | null>(null);
 	let fresh = $state<number | null>(null);
 	let query = $state('');
-	let touring = $state(!tourSeen('kpis'));
+	// Arriving to add one: the introduction can wait for the next visit
+	let touring = $state(!tourSeen('kpis') && !page.url.searchParams.has('new'));
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 
 	// The getting-started guide links here with ?new to open the guide straight away

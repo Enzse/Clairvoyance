@@ -1,93 +1,50 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { flip } from 'svelte/animate';
+	import { cubicOut } from 'svelte/easing';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fly } from 'svelte/transition';
 	import { page } from '$app/state';
-	import { api, ApiError } from '$lib/api';
-	import Drawer from '$lib/components/Drawer.svelte';
+	import { api } from '$lib/api';
+	import HelpButton from '$lib/components/HelpButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import InviteList from '$lib/components/InviteList.svelte';
-	import { joinNames } from '$lib/format';
-	import { session, setMe } from '$lib/session.svelte';
+	import Avatar from '$lib/components/people/Avatar.svelte';
+	import InviteModal from '$lib/components/people/InviteModal.svelte';
+	import PeopleTour from '$lib/components/people/PeopleTour.svelte';
+	import { accessSummary, shortDate } from '$lib/components/people/people';
+	import PersonPanel from '$lib/components/people/PersonPanel.svelte';
+	import Tooltip from '$lib/components/Tooltip.svelte';
+	import { markTourSeen, tourSeen } from '$lib/components/Tour.svelte';
+	import { plural } from '$lib/format';
+	import { problem } from '$lib/problem';
+	import { session } from '$lib/session.svelte';
 	import { toast } from '$lib/toast.svelte';
-	import type { Invitation, Member, Membership, Role } from '$lib/types';
-	import { units } from '$lib/units.svelte';
-	import { term } from '$lib/terms.svelte';
+	import type { Invitation, Member } from '$lib/types';
 
+	/** Everyone in the organisation and who's still to join. Clicking someone slides in their role and access. */
 	let members = $state<Member[]>([]);
 	let invitations = $state<Invitation[]>([]);
 	let loaded = $state(false);
-
-	onMount(load);
+	let selectedId = $state<number | null>(null);
+	let query = $state('');
 	// The getting-started guide links here with ?invite to open the invite form
 	let inviting = $state(page.url.searchParams.has('invite'));
+	// Arriving to invite someone: the introduction can wait for the next visit
+	let touring = $state(!tourSeen('people') && !page.url.searchParams.has('invite'));
+	const move = $derived(prefersReducedMotion.current ? 0 : 1);
+
+	onMount(load);
 	async function load() {
 		[members, invitations] = await Promise.all([api.members(), api.invitations()]);
 		loaded = true;
 	}
 
-	function accessSummary(role: Role, list: Membership[]): string {
-		if (role === 'admin') return 'Everything';
-		if (!list.length) return 'No access yet';
-		const names = (r: Membership['role']) => list.filter((m) => m.role === r).map((m) => units.get(m.unit_id)?.name ?? 'something deleted');
-		return [names('contributor').length && `Enters data for ${joinNames(names('contributor'))}`, names('viewer').length && `Views ${joinNames(names('viewer'))}`]
-			.filter(Boolean)
-			.join('. ');
-	}
-
-	// ---- Invite drawer
-
-
-	// ---- Member drawer
-	let open = $state(false);
-	let editing = $state<Member | null>(null);
-	let role = $state<Role>('member');
-	let access = $state<(Membership & { key: number })[]>([]);
-	let error = $state<ApiError | null>(null);
-	let busy = $state(false);
-	let keySeq = 0;
-
-	const isSelf = $derived(editing?.id === session.user?.id);
-	const unitOptions = $derived(units.list.filter((u) => u.is_active));
-
-	function startEdit(member: Member) {
-		editing = member;
-		role = member.role;
-		access = member.memberships.map((m) => ({ ...m, key: keySeq++ }));
-		error = null;
-		open = true;
-	}
-
-	async function save(event: SubmitEvent) {
-		event.preventDefault();
-		if (!editing) return;
-		busy = true;
-		error = null;
-		try {
-			if (role !== editing.role) await api.setMemberRole(editing.id, role);
-			if (role === 'member') await api.saveMemberships(editing.id, access.map(({ unit_id, role }) => ({ unit_id, role })));
-			toast(`Saved ${editing.name || editing.email}`);
-			open = false;
-			if (isSelf) setMe(await api.me());
-			await load();
-		} catch (e) {
-			error = e instanceof ApiError ? e : new ApiError(0, 'Could not save');
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function remove() {
-		if (!editing) return;
-		const who = editing.name || editing.email;
-		if (!confirm(`Remove ${who} from ${session.user?.organization?.name}? Their account and the figures they entered are kept.`)) return;
-		try {
-			await api.removeMember(editing.id);
-			toast(`Removed ${who}`);
-			open = false;
-			await load();
-		} catch (e) {
-			toast(e instanceof ApiError ? e.message : 'Could not remove', 'error');
-		}
-	}
+	const selected = $derived(members.find((m) => m.id === selectedId));
+	const shown = $derived.by(() => {
+		const q = query.trim().toLowerCase();
+		return q ? members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(q)) : members;
+	});
+	const admins = $derived(members.filter((m) => m.role === 'admin').length);
 
 	/** Sends a fresh link by email; the old link stops working. */
 	async function resend(invite: Invitation) {
@@ -97,7 +54,7 @@
 			else toast(sent.email_problem === 'unverified' ? 'Confirm your email address first' : `Couldn't email ${invite.email}`, 'error');
 			await load();
 		} catch (e) {
-			toast(e instanceof ApiError ? e.message : 'Could not resend', 'error');
+			toast(problem(e, 'Could not resend'), 'error');
 		}
 	}
 
@@ -107,120 +64,106 @@
 			toast(`Cancelled the invitation for ${invite.email}`);
 			await load();
 		} catch (e) {
-			toast(e instanceof ApiError ? e.message : 'Could not cancel', 'error');
+			toast(problem(e, 'Could not cancel'), 'error');
 		}
 	}
 </script>
 
 <svelte:head><title>People | Clairvoyance</title></svelte:head>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && !inviting && (selectedId = null)} />
 
-<div class="flex flex-wrap items-end justify-between gap-4">
-	<div>
-		<h2 class="text-lg font-semibold">People</h2>
-		<p class="mt-1 max-w-[70ch] text-ink-2">Access to a {term.one} or group includes everything inside it. People who can enter data can also upload spreadsheets.</p>
+<div class="transition-[padding] duration-300 {selected ? 'lg:pr-[max(0px,calc(524px-(100vw-1240px)/2))]' : ''}">
+	<div class="flex flex-wrap items-end justify-between gap-4">
+		<div class="min-w-0">
+			<h2 class="text-lg font-semibold">People</h2>
+			<p class="mt-1 max-w-[68ch] text-ink-2">
+				{#if loaded}
+					{plural(members.length, 'person', 'people')} in {session.user?.organization?.name}, {plural(admins, 'administrator')}{invitations.length ? `, ${invitations.length} waiting to join` : ''}.
+				{/if}
+				Click someone to change what they can see.
+			</p>
+		</div>
+		<div class="flex flex-wrap gap-2">
+			{#if members.length > 8}
+				<label class="relative">
+					<span class="sr-only">Find someone</span>
+					<Icon name="search" size={15} class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
+					<input class="input h-10 w-52 pl-9" type="search" placeholder="Find someone" bind:value={query} />
+				</label>
+			{/if}
+			<button class="btn btn-primary" onclick={() => (inviting = true)}><Icon name="send" size={15} /> Invite people</button>
+		</div>
 	</div>
-	<button class="btn btn-primary" onclick={() => (inviting = true)}><Icon name="plus" size={15} /> Invite people</button>
-</div>
 
-{#if loaded}
-	<div class="panel mt-5 overflow-x-auto">
-		<table class="w-full min-w-[640px] text-left">
-			<thead class="bg-surface-2 text-sm text-ink-2">
-				<tr class="border-b border-line">
-					<th scope="col" class="px-5 py-2.5 font-medium">Person</th>
-					<th scope="col" class="px-3 py-2.5 font-medium">Role</th>
-					<th scope="col" class="px-3 py-2.5 font-medium">Access</th>
-					<th scope="col" class="px-5 py-2.5"><span class="sr-only">Actions</span></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each members as m (m.id)}
-					{@const summary = accessSummary(m.role, m.memberships)}
-					<tr class="border-b border-line last:border-b-0 hover:bg-surface-2">
-						<th scope="row" class="px-5 py-3 font-normal">
-							<span class="font-semibold">{m.name || m.email}</span>
-							{#if m.id === session.user?.id}<span class="ml-1.5 text-sm text-muted">(you)</span>{/if}
-							{#if m.name}<span class="block text-sm text-ink-2">{m.email}</span>{/if}
-						</th>
-						<td class="px-3 py-3">{m.role === 'admin' ? 'Administrator' : 'Member'}</td>
-						<td class="px-3 py-3 text-sm {summary === 'No access yet' ? 'text-warn-ink' : 'text-ink-2'}">{summary}</td>
-						<td class="px-5 py-3 text-right"><button class="btn btn-ghost btn-sm" onclick={() => startEdit(m)}>Edit</button></td>
-					</tr>
-				{/each}
-				{#each invitations as invite (invite.id)}
-					<tr class="border-b border-line bg-surface-2/60 last:border-b-0">
-						<th scope="row" class="px-5 py-3 font-normal">
-							<span class="font-semibold text-ink-2">{invite.email}</span>
-							<span class="block text-sm text-muted">
-								{invite.emailed_at ? 'Emailed' : 'Invited'}{invite.invited_by ? ` by ${invite.invited_by}` : ''}, link valid until {invite.expires_at.slice(0, 10)}
+	{#if loaded}
+		<ul class="panel mt-5 divide-y divide-line overflow-hidden" aria-label="People">
+			{#each shown as m (m.id)}
+				{@const summary = accessSummary(m.role, m.memberships)}
+				{@const on = m.id === selectedId}
+				<li animate:flip={{ duration: 250 * move }} in:fly={{ y: 8 * move, duration: 250, easing: cubicOut }}>
+					<button
+						class="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors sm:px-5 {on ? 'bg-accent-wash' : 'hover:bg-surface-2'}"
+						aria-pressed={on}
+						onclick={() => (selectedId = on ? null : m.id)}
+					>
+						<Avatar name={m.name} email={m.email} />
+						<span class="min-w-0 flex-1">
+							<span class="block truncate font-semibold">{m.name || m.email}{#if m.id === session.user?.id}<span class="ml-1.5 font-normal text-muted">(you)</span>{/if}</span>
+							<span class="block truncate text-sm {summary === 'No access yet' ? 'text-warn-ink' : 'text-ink-2'}">{summary}</span>
+						</span>
+						<span class="hidden items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex {m.role === 'admin' ? 'bg-accent-wash text-accent' : 'bg-surface-2 text-ink-2 ring-1 ring-line'}">
+							<Icon name={m.role === 'admin' ? 'shield' : 'user'} size={12} />{m.role === 'admin' ? 'Administrator' : 'Member'}
+						</span>
+						<Icon name="chevron-right" size={16} class="text-muted transition-transform group-hover:translate-x-0.5" />
+					</button>
+				</li>
+			{:else}
+				<li class="px-5 py-8 text-center text-ink-2">Nobody here is called “{query}”.</li>
+			{/each}
+		</ul>
+
+		{#if invitations.length}
+			<section class="mt-8" aria-labelledby="waiting-h">
+				<h3 id="waiting-h" class="mb-3 text-sm font-semibold text-ink-2">Waiting to join <span class="font-normal text-muted">· invited, not signed up yet</span></h3>
+				<ul class="space-y-2">
+					{#each invitations as invite (invite.id)}
+						<li class="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3 sm:px-5" animate:flip={{ duration: 250 * move }} transition:fly={{ y: 8 * move, duration: 220 }}>
+							<span class="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-muted ring-1 ring-line"><Icon name="mail" size={16} /></span>
+							<span class="min-w-0 flex-1">
+								<span class="block truncate font-medium">{invite.email}</span>
+								<span class="flex items-center gap-1 text-sm text-ink-2">
+									<Icon name="clock" size={12} class="text-muted" />
+									{invite.emailed_at ? 'Emailed' : 'Invited'}{invite.invited_by ? ` by ${invite.invited_by}` : ''} · link works until {shortDate(invite.expires_at)} · {accessSummary(invite.role, invite.access)}
+								</span>
 							</span>
-						</th>
-						<td class="px-3 py-3 text-ink-2">{invite.role === 'admin' ? 'Administrator' : 'Member'}</td>
-						<td class="px-3 py-3 text-sm text-ink-2">{accessSummary(invite.role, invite.access)}</td>
-						<td class="px-5 py-3 text-right whitespace-nowrap">
-							{#if session.user?.email_delivery}
-								<button class="btn btn-ghost btn-sm" onclick={() => resend(invite)}>{invite.emailed_at ? 'Resend' : 'Email it'}</button>
-							{/if}
-							<button class="btn btn-ghost btn-sm" onclick={() => revoke(invite)}>Cancel</button>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-{/if}
-
-<Drawer bind:open={inviting} title="Invite people" width={640}>
-	<p class="mb-5 text-ink-2">Each person gets a link that only works for their email address. They sign in or create an account, then join {session.user?.organization?.name}.</p>
-	<InviteList onCreated={load} />
-</Drawer>
-
-<Drawer bind:open title={editing ? editing.name || editing.email : ''}>
-	<form id="member-form" class="space-y-6" onsubmit={save}>
-		<fieldset disabled={isSelf}>
-			<legend class="field-label">Role</legend>
-			<div class="flex gap-2">
-				{#each [['member', 'Member'], ['admin', 'Administrator']] as [value, text] (value)}
-					<label class="flex flex-1 cursor-pointer items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1 {role === value ? 'bg-accent-wash ring-chart' : 'ring-line-strong'}">
-						<input type="radio" name="role" {value} bind:group={role} class="accent-[var(--accent)]" /> {text}
-					</label>
-				{/each}
-			</div>
-			<p class="field-hint">{isSelf ? "You can't change your own role." : 'Administrators can see and change everything in this organisation.'}</p>
-		</fieldset>
-
-		{#if role === 'member'}
-			<section aria-labelledby="access-heading">
-				<h3 id="access-heading" class="field-label">Access</h3>
-				{#each access as m (m.key)}
-					<div class="mt-2 flex items-center gap-2">
-						<select class="input min-w-0 flex-1" bind:value={m.unit_id} aria-label={term.One}>
-							{#each unitOptions as u (u.id)}<option value={u.id}>{units.pathLabel(u.id) ? `${units.pathLabel(u.id)} › ` : ''}{u.name}</option>{/each}
-						</select>
-						<select class="input w-40" bind:value={m.role} aria-label="Access level">
-							<option value="viewer">Can view</option>
-							<option value="contributor">Can enter data</option>
-						</select>
-						<button type="button" class="rounded p-1.5 text-muted hover:bg-bad-wash hover:text-bad-ink" aria-label="Remove access" onclick={() => (access = access.filter((x) => x.key !== m.key))}>
-							<Icon name="x" size={15} />
-						</button>
-					</div>
-				{:else}
-					<p class="text-sm text-ink-2">No access yet: they'll see an empty scorecard.</p>
-				{/each}
-				<button type="button" class="btn btn-ghost btn-sm mt-2 -ml-2.5" onclick={() => (access = [...access, { key: keySeq++, unit_id: units.home()?.id ?? 0, role: 'viewer' }])}>
-					<Icon name="plus" size={14} /> Give access to more
-				</button>
+							<span class="flex gap-1">
+								{#if session.user?.email_delivery}
+									<button class="btn btn-ghost btn-sm" onclick={() => resend(invite)}><Icon name="send" size={13} /> {invite.emailed_at ? 'Resend' : 'Email it'}</button>
+								{/if}
+								<Tooltip text="Cancel invitation" side="left">
+									<button class="rounded-md p-1.5 text-muted hover:bg-bad-wash hover:text-bad-ink" aria-label="Cancel the invitation for {invite.email}" onclick={() => revoke(invite)}><Icon name="x" size={16} /></button>
+								</Tooltip>
+							</span>
+						</li>
+					{/each}
+				</ul>
 			</section>
 		{/if}
+	{/if}
+</div>
 
-		{#if error}<p class="text-sm text-bad-ink" role="alert">{Object.values(error.details)[0] ?? error.message}</p>{/if}
-	</form>
-	{#snippet footer()}
-		{#if editing && !isSelf}
-			<button class="btn btn-danger mr-auto" type="button" onclick={remove}>Remove from organisation</button>
-		{/if}
-		<button class="btn btn-secondary" type="button" onclick={() => (open = false)}>Cancel</button>
-		<button class="btn btn-primary" form="member-form" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
-	{/snippet}
-</Drawer>
+{#if selected}
+	<aside
+		class="fixed inset-y-0 right-0 z-40 w-full max-w-[500px] border-l border-line bg-surface shadow-pop"
+		aria-label="{selected.name || selected.email}"
+		transition:fly={{ x: 520 * move, duration: 280, easing: cubicOut, opacity: 1 }}
+	>
+		<PersonPanel member={selected} onClose={() => (selectedId = null)} onSaved={load} />
+	</aside>
+{/if}
+
+<InviteModal bind:open={inviting} onCreated={load} />
+<PeopleTour bind:open={touring} onClose={() => markTourSeen('people')} />
+{#if !selected}
+	<HelpButton label="How People works" onclick={() => (touring = true)} />
+{/if}

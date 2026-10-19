@@ -59,7 +59,13 @@
 		layers: ['m12 3 9 5-9 5-9-5 9-5Z', 'm3 13 9 5 9-5'],
 		target: [circle(12, 12, 9), circle(12, 12, 5), circle(12, 12, 1)],
 		calendar: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3v4', 'M16 3v4'],
-		more: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01']
+		more: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01'],
+		shield: ['M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z', 'm9 12 2 2 4-4'],
+		eye: ['M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z', circle(12, 12, 3)],
+		link: ['M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1', 'M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'],
+		clock: [circle(12, 12, 9), 'M12 7v5l3 2'],
+		send: ['M22 2 11 13', 'm22 2-7 20-4-9-9-4 20-7Z'],
+		copy: ['M9 9h11v11H9z', 'M5 15H4V4h11v1']
 	} satisfies Record<string, string[]>;
 
 	export type IconName = keyof typeof ICONS;
