@@ -65,6 +65,19 @@ final class Aggregator
         ];
     }
 
+    /**
+     * Leaf units with a value for every one of the periods. Comparing two periods is only fair
+     * over units complete in both; otherwise a branch that hasn't reported looks like a drop.
+     * @return int[]
+     */
+    public static function completeUnits(array $leafIds, array $periods, array $values): array
+    {
+        return array_values(array_filter(
+            $leafIds,
+            fn($unitId) => $periods && !array_filter($periods, fn($p) => !isset($values[$unitId][$p]))
+        ));
+    }
+
     private function target(array $cells, array $weights, array $periods, ?int $scopeUnitId): ?float
     {
         if (!$cells) {

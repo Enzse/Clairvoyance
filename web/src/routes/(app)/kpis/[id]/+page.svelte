@@ -8,7 +8,8 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { trimLeading } from '$lib/chart';
-	import { describeRules, formatDelta, formatValue } from '$lib/format';
+	import { describeRules, formatValue } from '$lib/format';
+	import { describeChange } from '$lib/summary';
 	import { contextParams, href, readContext } from '$lib/nav';
 	import { GRAIN_NAMES } from '$lib/period';
 	import { FREQUENCIES } from '$lib/period';
@@ -66,7 +67,6 @@
 
 	const current = $derived(series?.periods.at(-1) ?? null);
 	const previous = $derived(series && series.periods.length > 1 ? series.periods.at(-2)! : null);
-	const delta = $derived(current?.value != null && previous?.value != null ? current.value - previous.value : null);
 
 	const self = (params: { unit?: number | null; date?: string | null; grain?: Frequency }) =>
 		href(`/kpis/${kpiId}`, contextParams({ unit: unitId, date: ctx.date, grain: ctx.grain, ...params }));
@@ -78,11 +78,7 @@
 		if (current.value === null) return `${unit?.name} has no ${kpi.name.toLowerCase()} figure for ${current.period_label} yet.`;
 		let text = `${formatValue(kpi, current.value)} in ${current.period_label}`;
 		if (current.status && current.target !== null) text += `, ${STATUS[current.status].label.toLowerCase()} (target ${formatValue(kpi, current.target)})`;
-		text += '.';
-		if (delta !== null && previous) {
-			text += delta === 0 ? ` Unchanged from ${previous.period_label}.` : ` ${delta > 0 ? 'Up' : 'Down'} ${formatDelta(kpi, Math.abs(delta)).slice(1)} from ${previous.period_label}.`;
-		}
-		return text;
+		return text + '.' + describeChange(kpi, series?.change ?? null, previous, grain);
 	}
 </script>
 

@@ -119,8 +119,21 @@ export interface ScorecardRow extends PeriodResult {
 	kpi: Kpi;
 	grain: Frequency;
 	previous: { period_start: string; period_label: string; value: number | null } | null;
-	change: { value: number; percent: number | null; direction: 'better' | 'worse' | 'flat' | null } | null;
+	change: Change | null;
 	sparkline: { period_start: string; value: number | null; status: Status | null }[];
+}
+
+/**
+ * Change from the previous period. "all" compares totals; "like_for_like" (when either period
+ * is missing reports) compares only the units that reported fully in both.
+ */
+export interface Change {
+	value: number;
+	percent: number | null;
+	direction: 'better' | 'worse' | 'flat' | null;
+	basis: 'all' | 'like_for_like';
+	units_compared: number | null;
+	units_total: number | null;
 }
 
 export interface Scorecard {
@@ -134,6 +147,8 @@ export interface Series {
 	unit: Unit;
 	grain: Frequency;
 	periods: PeriodResult[];
+	/** From the second-to-last to the last period */
+	change: Change | null;
 }
 
 export interface Breakdown {

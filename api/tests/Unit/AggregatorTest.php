@@ -201,6 +201,14 @@ class AggregatorTest extends TestCase
         ];
     }
 
+    public function testCompleteUnitsHaveEveryPeriod(): void
+    {
+        $values = [1 => ['2025-01-01' => 5, '2025-02-01' => 6], 2 => ['2025-01-01' => 7], 3 => []];
+        $this->assertSame([1], Aggregator::completeUnits([1, 2, 3], ['2025-01-01', '2025-02-01'], $values));
+        $this->assertSame([1, 2], Aggregator::completeUnits([1, 2, 3], ['2025-01-01'], $values));
+        $this->assertSame([], Aggregator::completeUnits([1, 2], [], $values));
+    }
+
     private function target(?int $unitId, string $from, float $value): array
     {
         return ['unit_id' => $unitId, 'effective_from' => $from, 'value' => $value];

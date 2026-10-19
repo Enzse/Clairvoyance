@@ -106,6 +106,23 @@ never hidden.
 
 This replaces `rag_red` / `rag_amber`, whose meaning the frontend and backend disagreed on.
 
+### Change from the previous period
+
+When both periods are fully reported, the change compares their values (`basis: "all"`).
+
+When either period is missing reports, comparing totals would mistake a unit that hasn't
+reported for a drop. For example, Downtown and Airport made 790,000 in August, but only
+Downtown has reported September (452,500), so the totals read as "down 337,500". So the
+change is computed **like-for-like** (`basis: "like_for_like"`), the way retailers compare
+same-store sales:
+
+1. Find the leaf units that have every native period in *both* periods.
+2. Aggregate each period over only those units, with the KPI's usual rules.
+3. Compare those two values: "up 42,500 for the 1 of 2 units that reported both months".
+
+If no unit qualifies, the change is null ("not comparable yet"). The headline value itself
+stays the total of what has been reported, with its coverage shown beside it.
+
 ## Schema (MariaDB 10.4)
 
 Abridged; the source of truth is `api/migrations/`:
@@ -397,7 +414,7 @@ as coarse as the KPI's frequency.
 | POST | `/imports` | Same, committed in one transaction; `skip_invalid=1` writes only the valid values |
 | GET | `/imports` | Admin: recent imports |
 | GET | `/scorecard?unit=[&date=][&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
-| GET | `/kpis/{id}/series?unit=&grain=[&from=][&to=]` | Value, target, status and coverage per period; defaults to the 12 periods ending at the latest data |
+| GET | `/kpis/{id}/series?unit=&grain=[&from=][&to=]` | Value, target, status and coverage per period, and the change into the last period; defaults to the 12 periods ending at the latest data |
 | GET | `/kpis/{id}/breakdown?unit=&grain=[&date=]` | The unit's direct children, each with value, target, status, coverage |
 | GET | `/kpis/{id}/history?unit=[&date=]` | The latest 50 changes to the KPI's figures in the unit's subtree, optionally for one period |
 | GET | `/exports/values?unit=&from=&to=` | Every figure in the unit's subtree with a period start in the range, plus the units and KPIs to label them |

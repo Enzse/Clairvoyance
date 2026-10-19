@@ -68,7 +68,7 @@ class ReportService
                 'kpi' => $kpi,
                 'grain' => $g,
                 'previous' => $before ? ['period_start' => $before['period_start'], 'period_label' => $before['period_label'], 'value' => $before['value']] : null,
-                'change' => $this->change($kpi, $now['value'], $before['value'] ?? null),
+                'change' => $this->comparison($kpi, $unitId, $series, $g),
                 'sparkline' => array_map(fn($p) => ['period_start' => $p['period_start'], 'value' => $p['value'], 'status' => $p['status']], $series),
             ];
         }
@@ -91,7 +91,8 @@ class ReportService
         $this->checkDate($from);
         $starts = $this->range(Period::align($from, $grain), Period::align($to, $grain), $grain);
 
-        return ['kpi' => $kpi, 'unit' => $unit, 'grain' => $grain, 'periods' => $this->series($kpi, $unitId, $starts, $grain)];
+        $periods = $this->series($kpi, $unitId, $starts, $grain);
+        return ['kpi' => $kpi, 'unit' => $unit, 'grain' => $grain, 'periods' => $periods, 'change' => $this->comparison($kpi, $unitId, $periods, $grain)];
     }
 
     /** One KPI at one period (default: the latest with data) for each unit directly under $unitId. */
@@ -166,7 +167,45 @@ class ReportService
         return new Aggregator($kpi, $weightKpi, new TargetSet($this->targets->forKpis([$kpi['id']])[$kpi['id']]));
     }
 
-    /** Difference from the previous period and whether it moved in the good direction. */
+    /**
+     * Change from the second-to-last to the last period of a series. When both are complete,
+     * the totals are compared ("all"). When either is missing figures, totals would mistake a
+     * unit that hasn't reported for a drop, so only the units that reported fully in both
+     * periods are compared ("like_for_like"), as retailers compare same-store sales. Null when
+     * no unit can be compared.
+     */
+    private function comparison(array $kpi, int $unitId, array $series, string $grain): ?array
+    {
+        if (count($series) < 2) {
+            return null;
+        }
+        [$before, $now] = array_slice($series, -2);
+        if ($before['value'] === null || $now['value'] === null) {
+            return null;
+        }
+        if ($now['reported'] === $now['expected'] && $before['reported'] === $before['expected']) {
+            return $this->change($kpi, $now['value'], $before['value']) + ['basis' => 'all', 'units_compared' => null, 'units_total' => null];
+        }
+
+        $leafIds = KpiScope::leaves($this->access->tree(), $kpi, $unitId);
+        [$values, $weights] = $this->load($kpi, $leafIds, $before['period_start'], Period::next($now['period_start'], $grain));
+        $periodsBefore = Period::periodsWithin($before['period_start'], $grain, $kpi['frequency']);
+        $periodsNow = Period::periodsWithin($now['period_start'], $grain, $kpi['frequency']);
+        $comparable = array_values(array_intersect(
+            Aggregator::completeUnits($leafIds, $periodsBefore, $values),
+            Aggregator::completeUnits($leafIds, $periodsNow, $values)
+        ));
+        if (!$comparable) {
+            return null;
+        }
+        $aggregator = $this->aggregator($kpi);
+        $then = $aggregator->compute($comparable, $periodsBefore, $values, $weights)['value'];
+        $latest = $aggregator->compute($comparable, $periodsNow, $values, $weights)['value'];
+        $change = $this->change($kpi, $latest, $then);
+        return $change === null ? null : $change + ['basis' => 'like_for_like', 'units_compared' => count($comparable), 'units_total' => count($leafIds)];
+    }
+
+    /** Difference between two values and whether it moved in the good direction. */
     private function change(array $kpi, ?float $now, ?float $before): ?array
     {
         if ($now === null || $before === null) {
