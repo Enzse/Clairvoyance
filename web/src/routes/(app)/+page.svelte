@@ -7,7 +7,7 @@
 	import Masthead from '$lib/components/Masthead.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import SetupChecklist from '$lib/components/SetupChecklist.svelte';
+	import GettingStarted from '$lib/components/GettingStarted.svelte';
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
@@ -94,7 +94,7 @@
 		{:else if card}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
 				<!-- Report card -->
-				{#if session.user?.organization?.role === 'admin'}<SetupChecklist bind:shown={checklistShown} />{/if}
+				{#if session.user?.organization?.role === 'admin'}<GettingStarted bind:shown={checklistShown} />{/if}
 				<section class="panel overflow-hidden {checklistShown ? '' : '-mt-5'}" aria-labelledby="kpis-heading">
 					<div class="flex items-center justify-between gap-4 px-5 pt-5 pb-3">
 						<h2 id="kpis-heading" class="text-md font-semibold">KPIs</h2>

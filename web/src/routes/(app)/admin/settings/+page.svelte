@@ -33,6 +33,15 @@
 		}
 	}
 
+	async function showGuide() {
+		try {
+			await api.dismissSetup(false);
+			goto('/');
+		} catch (e) {
+			toast(e instanceof ApiError ? e.message : 'Could not show the guide', 'error');
+		}
+	}
+
 	async function remove(event: SubmitEvent) {
 		event.preventDefault();
 		deleting = true;
@@ -74,6 +83,14 @@
 			<button class="btn btn-secondary" disabled={saving !== null || !label.trim() || label.trim().toLowerCase() === term.one}>Save</button>
 		</div>
 	</form>
+
+	<div class="panel flex flex-wrap items-center gap-4 p-6 lg:col-span-2">
+		<div class="min-w-0 flex-1">
+			<h2 class="font-semibold">Getting started guide</h2>
+			<p class="mt-1 text-sm text-ink-2">The step-by-step guide on the scorecard. Bring it back if you hid it, or to finish skipped steps.</p>
+		</div>
+		<button class="btn btn-secondary" onclick={showGuide}>Show it on the scorecard</button>
+	</div>
 
 	<form class="panel p-6 ring-1 ring-bad/30 lg:col-span-2" onsubmit={remove}>
 		<h2 class="font-semibold text-bad-ink">Delete this organisation</h2>

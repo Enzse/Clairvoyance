@@ -21,7 +21,7 @@ class OrganizationRepository
 
     public function find(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, name, unit_label, setup_dismissed_at, created_at FROM organizations WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT id, name, unit_label, setup_dismissed_at, setup_skipped, created_at FROM organizations WHERE id = ?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row ? ['id' => (int)$row['id']] + $row : null;
@@ -37,9 +37,16 @@ class OrganizationRepository
         $this->db->prepare('UPDATE organizations SET unit_label = ? WHERE id = ?')->execute([$label, $id]);
     }
 
-    public function dismissSetup(int $id): void
+    /** Hide (or show again) the getting-started guide. */
+    public function setSetupDismissed(int $id, bool $dismissed): void
     {
-        $this->db->prepare('UPDATE organizations SET setup_dismissed_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$id]);
+        $this->db->prepare('UPDATE organizations SET setup_dismissed_at = ' . ($dismissed ? 'CURRENT_TIMESTAMP' : 'NULL') . ' WHERE id = ?')->execute([$id]);
+    }
+
+    /** @param string[] $steps getting-started steps the organisation chose to skip */
+    public function setSetupSkipped(int $id, array $steps): void
+    {
+        $this->db->prepare('UPDATE organizations SET setup_skipped = ? WHERE id = ?')->execute([implode(',', $steps), $id]);
     }
 
     /** The user's role in the organisation, or null if they don't belong to it. */

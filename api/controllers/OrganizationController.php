@@ -33,16 +33,6 @@ class OrganizationController
         return $this->organizations->select($request->body);
     }
 
-    public function setup(): array
-    {
-        return $this->organizations->setup();
-    }
-
-    public function dismissSetup(): array
-    {
-        return $this->organizations->dismissSetup();
-    }
-
     /** POST /organization/leave */
     public function leave(): array
     {

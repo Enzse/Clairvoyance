@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import ChoiceGroup from '$lib/components/ChoiceGroup.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
@@ -14,7 +15,11 @@
 	let kpis = $state<Kpi[]>([]);
 	let loaded = $state(false);
 
-	onMount(load);
+	// The getting-started guide links here with ?new to open the form straight away
+	onMount(async () => {
+		await load();
+		if (page.url.searchParams.has('new')) startNew();
+	});
 	async function load() {
 		kpis = await api.kpis(true);
 		loaded = true;

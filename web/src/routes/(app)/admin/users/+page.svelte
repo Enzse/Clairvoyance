@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -16,6 +17,8 @@
 	let loaded = $state(false);
 
 	onMount(load);
+	// The getting-started guide links here with ?invite to open the invite form
+	let inviting = $state(page.url.searchParams.has('invite'));
 	async function load() {
 		[members, invitations] = await Promise.all([api.members(), api.invitations()]);
 		loaded = true;
@@ -31,7 +34,7 @@
 	}
 
 	// ---- Invite drawer
-	let inviting = $state(false);
+
 
 	// ---- Member drawer
 	let open = $state(false);

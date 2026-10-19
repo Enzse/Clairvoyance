@@ -16,6 +16,7 @@ import type {
 	Scorecard,
 	Series,
 	Setup,
+	SetupStep,
 	Target,
 	Unit,
 	User,
@@ -98,7 +99,8 @@ export const api = {
 	leaveOrganization: () => request<Me>('POST', '/organization/leave'),
 	deleteOrganization: (name: string, password: string) => request<Me>('DELETE', '/organization', { body: { name, password } }),
 	setup: () => request<Setup>('GET', '/organization/setup'),
-	dismissSetup: () => request<Setup>('POST', '/organization/setup/dismiss'),
+	dismissSetup: (dismissed = true) => request<Setup>('POST', '/organization/setup/dismiss', { body: { dismissed } }),
+	skipSetupStep: (step: SetupStep, skipped = true) => request<Setup>('POST', '/organization/setup/skip', { body: { step, skipped } }),
 
 	// People (admin)
 	members: () => request<Member[]>('GET', '/members'),

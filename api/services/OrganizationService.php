@@ -91,30 +91,6 @@ class OrganizationService
         return $this->accounts->me();
     }
 
-    /** What a new organisation has set up so far, for the getting-started checklist. */
-    public function setup(): array
-    {
-        $organization = $this->auth->requireAdmin();
-        $facts = $this->organizations->setupFacts($organization['id']);
-        $dismissed = $this->organizations->find($organization['id'])['setup_dismissed_at'] !== null;
-        return [
-            'dismissed' => $dismissed,
-            'steps' => [
-                'structure' => $facts['units'] > 0,
-                'kpis' => $facts['kpis'] > 0,
-                'targets' => $facts['targets'] > 0,
-                'data' => $facts['kpi_values'] > 0,
-                'people' => $facts['members'] > 1 || $facts['invitations'] > 0,
-            ],
-        ];
-    }
-
-    public function dismissSetup(): array
-    {
-        $this->organizations->dismissSetup($this->auth->requireAdmin()['id']);
-        return $this->setup();
-    }
-
     /** Leave the current organisation. Its last administrator has to hand over or delete it. */
     public function leave(): array
     {
