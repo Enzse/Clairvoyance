@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { scale, slide } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
+	import FormAlert from '$lib/components/auth/FormAlert.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import { kpiIcon } from '$lib/components/kpis/shared';
 	import { plural } from '$lib/format';
 	import { AREAS, STARTER_KPIS, type StarterKpi } from '$lib/starter-kpis';
 	import type { Kpi } from '$lib/types';
@@ -91,22 +94,26 @@
 	<div class="grid gap-x-8 gap-y-7 md:grid-cols-2">
 		{#each AREAS as area (area)}
 			<fieldset>
-				<legend class="mb-2 font-semibold">{area}</legend>
+				<legend class="mb-2.5 text-xs font-semibold tracking-wide text-muted uppercase">{area}</legend>
 				<div class="space-y-2">
 					{#each STARTER_KPIS.filter((k) => k.area === area) as t (t.key)}
 						{@const done = existingCodes.has(t.key)}
 						{@const on = selected.has(t.key) || done}
-						<div class="rounded-lg ring-1 {on ? 'bg-accent-wash ring-chart' : 'ring-line hover:bg-surface-2'} {done ? 'opacity-70' : ''}">
-							<label class="flex cursor-pointer items-start gap-3 p-3">
-								<input type="checkbox" class="mt-1 size-4 accent-[var(--accent)]" checked={on} disabled={done} onchange={() => toggle(t.key)} />
-								<span class="min-w-0">
+						<div class="rounded-xl ring-1 transition-all {on ? 'bg-accent-wash ring-2 ring-chart' : 'ring-line-strong hover:bg-surface-2'} {done ? 'opacity-70' : ''}">
+							<label class="relative flex cursor-pointer items-start gap-3 p-3.5 has-[:focus-visible]:rounded-xl has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-chart">
+								<input type="checkbox" class="sr-only" checked={on} disabled={done} onchange={() => toggle(t.key)} />
+								<span class="grid size-9 shrink-0 place-items-center rounded-lg {on ? 'bg-surface text-accent' : 'bg-surface-2 text-muted'}">
+									<Icon name={kpiIcon({ prefix: t.money ? currency || '$' : '', suffix: t.suffix ?? '' })} size={16} />
+								</span>
+								<span class="min-w-0 flex-1 pr-5">
 									<span class="block font-medium">{t.name}{t.money && currency ? ` (${currency})` : t.suffix ? ` (${t.suffix})` : ''}</span>
 									<span class="block text-sm text-ink-2">{t.description}</span>
 									<span class="mt-0.5 block text-xs text-muted">{done ? 'Already added' : t.summary.replace('{many}', term.many)}</span>
 								</span>
+								{#if on}<span class="absolute top-3 right-3 text-accent" in:scale={{ start: 0.5, duration: 180 }}><Icon name="check" size={15} stroke={3} /></span>{/if}
 							</label>
 							{#if on && !done && topUnits.length > 1}
-								<label class="flex items-center gap-2 border-t border-line px-3 py-2 text-sm text-ink-2">
+								<label class="flex items-center gap-2 border-t border-chart/20 px-3.5 py-2 text-sm text-ink-2" transition:slide={{ duration: 160 }}>
 									Reported by
 									<select class="input h-8 flex-1 py-0 text-sm" bind:value={scope[t.key]}>
 										<option value="">Everyone</option>
@@ -123,15 +130,16 @@
 
 	<p class="mt-6 flex items-start gap-2 text-sm text-ink-2">
 		<Icon name="pencil" size={14} class="mt-0.5 shrink-0 text-muted" />
-		Need something else? Create your own KPIs under Manage › KPIs once you're set up.
+		Need something else? Make your own under Manage › KPIs once you're set up.
 	</p>
 
-	{#if error}<p class="mt-4 text-sm text-bad-ink" role="alert">{error}</p>{/if}
+	<div class="mt-4"><FormAlert message={error} /></div>
 
-	<div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5">
+	<div class="sticky bottom-0 -mx-6 mt-6 flex flex-wrap items-center justify-end gap-3 rounded-b-xl border-t border-line bg-surface/95 px-6 py-4 backdrop-blur sm:-mx-8 sm:px-8">
+		<span class="mr-auto text-sm text-ink-2" aria-live="polite">{count ? `${plural(count, 'KPI')} chosen` : 'None chosen'}</span>
 		<button type="button" class="btn btn-ghost" onclick={onSkip}>Skip for now</button>
 		<button class="btn btn-primary" disabled={busy}>
-			{busy ? 'Adding…' : count ? `Add ${plural(count, 'KPI')}` : 'Continue'}
+			{busy ? 'Adding…' : count ? `Add ${plural(count, 'KPI')}` : 'Continue'} <Icon name="arrow-right" size={15} />
 		</button>
 	</div>
 </form>

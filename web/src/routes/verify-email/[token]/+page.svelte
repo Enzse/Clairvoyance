@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
+	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	import { session, setMe } from '$lib/session.svelte';
 
@@ -26,14 +27,15 @@
 
 <AuthShell>
 	{#if status === 'checking'}
-		<p class="text-ink-2" aria-live="polite">Confirming your email address…</p>
+		<div class="flex items-center gap-3 text-ink-2" aria-live="polite">
+			<span class="size-5 animate-spin rounded-full border-2 border-line-strong border-t-chart"></span>
+			Confirming your email address…
+		</div>
 	{:else if status === 'done'}
-		<h1 class="text-xl font-semibold tracking-[-0.015em]">Email address confirmed</h1>
-		<p class="mt-2 text-ink-2">Thanks. Invitations you send are now emailed to people directly.</p>
+		<AuthHeading icon="check" tone="bg-good-wash text-good-ink" title="Email address confirmed" lead="Thanks. Invitations you send are now emailed to people directly." />
 		<a class="btn btn-primary mt-8 w-full" href={session.user ? '/' : '/login'}>{session.user ? 'Go to Clairvoyance' : 'Sign in'}</a>
 	{:else}
-		<h1 class="text-xl font-semibold tracking-[-0.015em]">This link can't be used</h1>
-		<p class="mt-2 text-ink-2">{error}.</p>
+		<AuthHeading icon="alert" tone="bg-warn-wash text-warn-ink" title="This link can't be used" lead="{error}." />
 		<a class="btn btn-primary mt-8 w-full" href={session.user ? '/' : '/login'}>{session.user ? 'Go to Clairvoyance' : 'Sign in'}</a>
 	{/if}
 </AuthShell>

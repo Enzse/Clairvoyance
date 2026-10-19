@@ -2,6 +2,9 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
+	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
+	import FormAlert from '$lib/components/auth/FormAlert.svelte';
+	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	import { landingFor, setMe } from '$lib/session.svelte';
 	import { toast } from '$lib/toast.svelte';
@@ -34,22 +37,16 @@
 
 <AuthShell>
 	{#if expired}
-		<h1 class="text-xl font-semibold tracking-[-0.015em]">This link can't be used</h1>
-		<p class="mt-2 text-ink-2">{error}.</p>
+		<AuthHeading icon="alert" tone="bg-warn-wash text-warn-ink" title="This link can't be used" lead="{error}." />
 		<a class="btn btn-primary mt-8 w-full" href="/forgot-password">Send a new link</a>
 	{:else}
-		<h1 class="text-xl font-semibold tracking-[-0.015em]">Choose a new password</h1>
-		<p class="mt-2 text-ink-2">You'll be signed in here and signed out everywhere else.</p>
-
+		<AuthHeading icon="lock" title="Choose a new password" lead="You'll be signed in here and signed out everywhere else." />
 		<form class="mt-8 space-y-5" onsubmit={submit}>
 			<div>
 				<label class="field-label" for="password">New password</label>
-				<input id="password" class="input" type="password" autocomplete="new-password" minlength="8" required bind:value={password} aria-describedby="password-hint" />
-				<p id="password-hint" class="field-hint">At least 8 characters.</p>
+				<PasswordInput bind:value={password} autocomplete="new-password" rule />
 			</div>
-			{#if error}
-				<p class="text-sm text-bad-ink" role="alert">{error}</p>
-			{/if}
+			<FormAlert message={error} />
 			<button class="btn btn-primary w-full" disabled={busy}>{busy ? 'Saving…' : 'Save password and sign in'}</button>
 		</form>
 	{/if}

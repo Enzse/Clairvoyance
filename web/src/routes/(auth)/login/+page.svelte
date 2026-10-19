@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { ApiError } from '$lib/api';
+	import AuthFooter from '$lib/components/auth/AuthFooter.svelte';
+	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
+	import FormAlert from '$lib/components/auth/FormAlert.svelte';
+	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
 	import { href } from '$lib/nav';
 	import { login } from '$lib/session.svelte';
 
@@ -10,6 +14,7 @@
 	let busy = $state(false);
 
 	const next = $derived(page.url.searchParams.get('next'));
+	const joining = $derived(next?.startsWith('/invite/') ?? false);
 
 	// The (auth) layout moves on as soon as the session has a user
 	async function submit(event: SubmitEvent) {
@@ -28,27 +33,25 @@
 
 <svelte:head><title>Sign in | Clairvoyance</title></svelte:head>
 
-<h1 class="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>
-<p class="mt-2 text-ink-2">Welcome back.</p>
+<AuthHeading icon="log-in" title="Welcome back" lead={joining ? 'Sign in to accept your invitation.' : 'Sign in to see how things are going.'} />
 
 <form class="mt-8 space-y-5" onsubmit={submit}>
 	<div>
 		<label class="field-label" for="email">Email</label>
-		<input id="email" class="input" type="email" autocomplete="email" required bind:value={email} />
+		<!-- svelte-ignore a11y_autofocus -->
+		<input id="email" class="input" type="email" autocomplete="email" required autofocus={!email} bind:value={email} />
 	</div>
 	<div>
 		<div class="flex items-baseline justify-between gap-3">
 			<label class="field-label" for="password">Password</label>
-			<a class="text-sm text-accent hover:underline" href={href('/forgot-password', { email: email || null })}>Forgot password?</a>
+			<a class="text-sm text-accent hover:underline" href={href('/forgot-password', { email: email || null })}>Forgot it?</a>
 		</div>
-		<input id="password" class="input" type="password" autocomplete="current-password" required bind:value={password} />
+		<PasswordInput bind:value={password} />
 	</div>
-	{#if error}
-		<p class="text-sm text-bad-ink" role="alert">{error}</p>
-	{/if}
+	<FormAlert message={error} />
 	<button class="btn btn-primary w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
 </form>
 
-<p class="mt-8 text-sm text-ink-2">
+<AuthFooter>
 	New to Clairvoyance? <a class="font-medium text-accent hover:underline" href={href('/register', { next, email: email || null })}>Create an account</a>
-</p>
+</AuthFooter>
