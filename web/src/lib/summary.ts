@@ -55,3 +55,4 @@ export function describeChange(
 	const periods = `${GRAIN_NAMES[grain].noun.toLowerCase()}s`;
 	return ` ${movement} for the ${change.units_compared} of ${change.units_total} ${units} that reported both ${periods}.`;
 }
+

@@ -81,7 +81,7 @@ export function suggestKpi(header: string, kpis: Kpi[]): Kpi | undefined {
 	return kpis.find((k) => k.code === key || normalize(k.name) === key);
 }
 
-const UNIT_HEADER = /region|division|district|province|school|branch|store|shop|unit|department|dept|office|site|location|clinic|area/i;
+const UNIT_HEADER = /region|division|district|province|school|branch|store|shop|unit|department|dept|office|site|location|clinic|area|depot|hub|warehouse/i;
 
 /** Columns that probably name units, in file order (a path such as Region, Division, School). */
 export function suggestUnitColumns(headers: string[], profiles: ReturnType<typeof profileColumn>[]): string[] {

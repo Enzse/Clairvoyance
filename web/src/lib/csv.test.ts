@@ -40,6 +40,12 @@ describe('suggestions', () => {
 		const samples = [['DEPED-1', 'DEPED-2'], ['NCR', 'NCR'], ['Manila', 'Cebu'], ['A', 'B'], ['January', 'January'], ['2025-01-31', '2025-01-31'], ['1785', '1240']];
 		expect(suggestUnitColumns(headers, samples.map(profileColumn))).toEqual(['Region', 'Division', 'School_Name']);
 	});
+
+	it('knows depots, hubs and warehouses too', () => {
+		const headers = ['Region', 'Depot', 'Week', 'Parcels delivered'];
+		const samples = [['Luzon'], ['Clark'], ['2026-10-05'], ['1300']];
+		expect(suggestUnitColumns(headers, samples.map(profileColumn))).toEqual(['Region', 'Depot']);
+	});
 });
 
 describe('export', () => {

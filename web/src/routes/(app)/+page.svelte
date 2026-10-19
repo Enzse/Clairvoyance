@@ -3,6 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import ChangeCell from '$lib/components/ChangeCell.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ExportDialog from '$lib/components/ExportDialog.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
@@ -12,6 +13,7 @@
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
+	import { align, label, today } from '$lib/period';
 	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
@@ -61,20 +63,25 @@
 	const periodHref = (date: string, grain: Frequency) => href('/', contextParams({ unit: unitId, date, grain }));
 	const kpiHref = (kpiId: number, unit = unitId) => href(`/kpis/${kpiId}`, contextParams({ unit, date: card?.date, grain: ctx.grain }));
 
-	const canEnter = $derived(isLeaf && (unit?.access === 'admin' || unit?.access === 'contributor') && unit?.is_active);
+	// Figures are added for this month, unless a period was picked on purpose (e.g. to correct it).
+	// Without one, the scorecard shows the latest period with data, which may be long finished.
+	const entryMonth = $derived(align(ctx.date && card ? card.date : today(), 'monthly'));
+
+	// Something here or below that this person can enter figures for
+	const canEnter = $derived(unitId !== null && units.enterable().some((u) => units.path(u.id).some((p) => p.id === unitId)));
 </script>
 
 <svelte:head><title>{unit?.name ?? 'Scorecard'} | Clairvoyance</title></svelte:head>
 
 {#if unitId === null}
 	<main class="mx-auto max-w-[1240px] px-4 py-16 sm:px-6">
-		<div class="panel mx-auto max-w-xl p-8">
-			<h1 class="text-lg font-semibold">You don't have access to anything yet</h1>
-			<p class="mt-2 text-ink-2">
-				An administrator needs to give {session.user?.email} access to the {term.many} you report for or review. Once they do, your
-				scorecard appears here.
+		<EmptyState icon="lock" title="Nothing to show you yet">
+			<p>
+				You've joined {session.user?.organization?.name}, but an administrator still needs to give you access to the {term.many} you
+				report for or review. Once they do, your scorecard appears here.
 			</p>
-		</div>
+			<p class="mt-4 text-sm text-muted">Signed in as {session.user?.email}</p>
+		</EmptyState>
 	</main>
 {:else}
 	<Masthead {unitId} periodStart={card?.date ?? null} grain={ctx.grain} {unitHref} {periodHref}>
@@ -104,8 +111,8 @@
 								<button class="btn btn-secondary btn-sm" onclick={() => (exporting = true)}><Icon name="download" size={14} /> Export</button>
 							{/if}
 							{#if canEnter}
-								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: card.date })}>
-									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
+								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: entryMonth })}>
+									<Icon name="pencil" size={14} /> Add {label(entryMonth, 'monthly')} data
 								</a>
 							{/if}
 						</div>

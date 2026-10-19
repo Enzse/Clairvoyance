@@ -155,13 +155,14 @@
 							<BreakdownBars rows={breakdown.units} {kpi} hrefFor={unitHref} />
 						</section>
 					{:else}
-						<div></div>
+						<!-- Nothing inside this unit to break down: its history takes the space -->
+						<ChangeHistory {kpi} {unitId} showUnit={false} class="h-fit" />
 					{/if}
 
 					<KpiAbout {kpi} weightName={weight?.name} target={current.target} />
 				</div>
 
-				<ChangeHistory {kpi} {unitId} showUnit={!isLeaf} />
+				{#if breakdown && !isLeaf}<ChangeHistory {kpi} {unitId} showUnit />{/if}
 			</div>
 		{/if}
 	</main>

@@ -28,3 +28,4 @@ describe('describeChange', () => {
 		expect(describeChange(kpi, null, { period_label: 'Aug 2026', value: null }, 'monthly')).toBe('');
 	});
 });
+

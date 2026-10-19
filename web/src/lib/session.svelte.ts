@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, ApiError } from './api';
 import type { Me } from './types';
 import { units } from './units.svelte';
 
@@ -6,13 +6,16 @@ import { units } from './units.svelte';
  * The signed-in person and the organisation they're working in. `loaded` turns true once the
  * first session check has finished.
  */
-export const session = $state<{ user: Me | null; loaded: boolean }>({ user: null, loaded: false });
+export const session = $state<{ user: Me | null; loaded: boolean; unreachable: boolean }>({ user: null, loaded: false, unreachable: false });
 
 export async function loadSession(): Promise<void> {
 	try {
 		session.user = await api.me();
-	} catch {
+		session.unreachable = false;
+	} catch (e) {
 		session.user = null;
+		// No answer at all (not "signed out"): say so rather than asking to sign in again
+		session.unreachable = e instanceof ApiError && e.status === 0;
 	} finally {
 		session.loaded = true;
 	}

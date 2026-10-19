@@ -9,7 +9,7 @@
 	import Avatar from './people/Avatar.svelte';
 
 	/** Who changed this KPI's figures in the unit and the units inside it, newest first. */
-	let { kpi, unitId, showUnit }: { kpi: Kpi; unitId: number; showUnit: boolean } = $props();
+	let { kpi, unitId, showUnit, class: className = 'mt-6' }: { kpi: Kpi; unitId: number; showUnit: boolean; class?: string } = $props();
 
 	const SHOWN = 8;
 	let changes = $state<ValueChange[] | null>(null);
@@ -30,7 +30,7 @@
 	const exact = (at: string) => new Date(at.replace(' ', 'T')).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 </script>
 
-<section class="panel mt-6 min-w-0 p-5 sm:p-6" aria-labelledby="history-heading">
+<section class="panel min-w-0 p-5 sm:p-6 {className}" aria-labelledby="history-heading">
 	<div class="flex items-start gap-3">
 		<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-wash text-accent"><Icon name="history" size={17} /></span>
 		<div>
