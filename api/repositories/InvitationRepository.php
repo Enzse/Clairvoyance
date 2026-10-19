@@ -54,6 +54,11 @@ class InvitationRepository
         return $stmt->fetch() ?: null;
     }
 
+    public function markEmailed(int $id): void
+    {
+        $this->db->prepare('UPDATE invitations SET emailed_at = ? WHERE id = ?')->execute([date('Y-m-d H:i:s'), $id]);
+    }
+
     public function markAccepted(int $id): void
     {
         $this->db->prepare('UPDATE invitations SET accepted_at = NOW() WHERE id = ?')->execute([$id]);
@@ -76,6 +81,7 @@ class InvitationRepository
             'role' => $row['role'],
             'access' => json_decode($row['access'] ?? '[]', true) ?: [],
             'invited_by' => $row['invited_by_name'] ?: $row['invited_by_email'],
+            'emailed_at' => $row['emailed_at'],
             'expires_at' => $row['expires_at'],
             'accepted_at' => $row['accepted_at'],
             'created_at' => $row['created_at'],

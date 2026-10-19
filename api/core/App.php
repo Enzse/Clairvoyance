@@ -2,6 +2,8 @@
 
 namespace Core;
 
+use Core\Mail\Mailer;
+use Core\Mail\SmtpMailer;
 use PDO;
 
 /**
@@ -12,11 +14,14 @@ class App
 {
     /** @var callable(): PDO */
     private $connect;
+    /** @var callable(): Mailer */
+    private $mailer;
     private Router $router;
 
-    public function __construct(?callable $connect = null)
+    public function __construct(?callable $connect = null, ?callable $mailer = null)
     {
         $this->connect = $connect ?? fn() => Database::connect(Environment::getInstance());
+        $this->mailer = $mailer ?? fn() => new SmtpMailer(Environment::getInstance());
         $this->router = new Router();
         (require __DIR__ . '/../routes.php')($this->router);
     }
@@ -28,6 +33,8 @@ class App
 
             $container = new Container();
             $container->set(PDO::class, fn() => ($this->connect)());
+            $container->set(Mailer::class, fn() => ($this->mailer)());
+            $container->set(Environment::class, fn() => Environment::getInstance());
             $result = $container->get($class)->$method($request, $params);
 
             return $result instanceof Response ? $result : Response::ok($result);

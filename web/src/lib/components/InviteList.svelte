@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { api, ApiError, invitationLink } from '$lib/api';
 	import { plural } from '$lib/format';
-	import type { Membership, Role } from '$lib/types';
+	import { session } from '$lib/session.svelte';
+	import type { Invitation, Membership, Role } from '$lib/types';
 	import { units } from '$lib/units.svelte';
 	import Icon from './Icon.svelte';
 
 	/**
-	 * Invite people by email with one level of access each. There is no mail server, so the
-	 * result is a link per person to send them yourself.
+	 * Invite people by email with one level of access each. The server emails the link when it
+	 * can; the link is always shown too, to send another way.
 	 */
 	let { onCreated }: { onCreated?: (count: number) => void } = $props();
 
@@ -16,7 +17,11 @@
 	const blank = (): Row => ({ key: seq++, email: '', access: units.home() ? `view:${units.home()!.id}` : 'admin' });
 
 	let rows = $state<Row[]>([blank()]);
-	let links = $state<{ email: string; link: string; copied: boolean }[]>([]);
+	type Sent = { email: string; link: string; copied: boolean; emailed: boolean; problem: Invitation['email_problem'] };
+	let links = $state<Sent[]>([]);
+	const emailing = $derived(!!session.user?.email_delivery);
+	const allEmailed = $derived(links.length > 0 && links.every((l) => l.emailed));
+	const unverified = $derived(links.some((l) => l.problem === 'unverified'));
 	let busy = $state(false);
 
 	const root = $derived(units.home());
@@ -36,7 +41,13 @@
 			row.error = undefined;
 			try {
 				const invite = await api.invite({ email: row.email.trim(), ...decode(row.access) });
-				links.push({ email: invite.email, link: invitationLink(invite.token!), copied: false });
+				links.push({
+					email: invite.email,
+					link: invitationLink(invite.token!),
+					copied: false,
+					emailed: !!invite.emailed,
+					problem: invite.email_problem ?? null
+				});
 				row.email = '';
 				made++;
 			} catch (e) {
@@ -93,18 +104,32 @@
 	{/each}
 	<div class="flex flex-wrap items-center gap-3 pt-1">
 		<button type="button" class="btn btn-ghost btn-sm -ml-2.5" onclick={() => (rows = [...rows, blank()])}><Icon name="plus" size={14} /> Add another person</button>
-		<button class="btn btn-secondary ml-auto" disabled={busy || !rows.some((r) => r.email.trim())}>{busy ? 'Creating…' : 'Create invitation links'}</button>
+		<button class="btn btn-secondary ml-auto" disabled={busy || !rows.some((r) => r.email.trim())}>{busy ? 'Inviting…' : emailing ? 'Send invitations' : 'Create invitation links'}</button>
 	</div>
 </form>
 
 {#if links.length}
 	<section class="mt-6 rounded-xl bg-surface-2 p-4 ring-1 ring-line" aria-live="polite">
-		<p class="font-semibold">{plural(links.length, 'invitation link')} ready</p>
-		<p class="mt-0.5 text-sm text-ink-2">Send each person their link. It works once, for that email address, for 14 days.</p>
+		<p class="font-semibold">{allEmailed ? `${plural(links.length, 'invitation')} emailed` : `${plural(links.length, 'invitation link')} ready`}</p>
+		<p class="mt-0.5 text-sm text-ink-2">
+			{#if allEmailed}
+				Each person got an email with their link. You can also send it another way.
+			{:else if unverified}
+				Once you confirm your email address, invitations are emailed for you. For now, send each person their link.
+			{:else}
+				Send each person their link.
+			{/if}
+			It works once, for that email address, for 14 days.
+		</p>
 		<ul class="mt-3 space-y-2">
 			{#each links as entry (entry.link)}
 				<li class="flex flex-wrap items-center gap-2">
-					<span class="w-48 truncate text-sm font-medium">{entry.email}</span>
+					<span class="w-48 truncate text-sm font-medium">
+						{entry.email}
+						<span class="block text-xs font-normal text-ink-2">
+							{entry.emailed ? 'Emailed' : entry.problem === 'failed' ? "Couldn't be emailed: send the link" : 'Not emailed'}
+						</span>
+					</span>
 					<input class="input h-8 min-w-0 flex-1 font-mono text-xs" readonly value={entry.link} aria-label="Invitation link for {entry.email}" onfocus={(e) => e.currentTarget.select()} />
 					<button type="button" class="btn btn-secondary btn-sm" onclick={() => copy(entry)}>
 						<Icon name={entry.copied ? 'check' : 'file'} size={13} /> {entry.copied ? 'Copied' : 'Copy'}

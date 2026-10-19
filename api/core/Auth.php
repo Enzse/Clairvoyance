@@ -30,8 +30,12 @@ class Auth
         if (!$this->loaded) {
             $id = $_SESSION['user_id'] ?? null;
             $this->user = $id ? $this->users->find((int)$id) : null;
+            // A password reset bumps the account's session version, signing out older sessions
+            if ($this->user && (int)($_SESSION['session_version'] ?? 0) !== $this->users->sessionVersion($this->user['id'])) {
+                $this->user = null;
+            }
             if ($id && !$this->user) {
-                unset($_SESSION['user_id'], $_SESSION['org_id']);
+                unset($_SESSION['user_id'], $_SESSION['org_id'], $_SESSION['session_version']);
             }
             $this->loaded = true;
         }
@@ -123,9 +127,24 @@ class Auth
             session_regenerate_id(true); // prevents session fixation
         }
         $_SESSION['user_id'] = $user['id'];
+        $_SESSION['session_version'] = $this->users->sessionVersion($user['id']);
         unset($_SESSION['org_id']);
         $this->user = $user;
         $this->loaded = true;
+        $this->organizationLoaded = false;
+    }
+
+    /** Signs out the user's other sessions and keeps this one. */
+    public function signOutOtherSessions(): void
+    {
+        $user = $this->requireUser();
+        $_SESSION['session_version'] = $this->users->bumpSessionVersion($user['id']);
+    }
+
+    /** Re-read the user after their record changed during this request. */
+    public function refresh(): void
+    {
+        $this->loaded = false;
         $this->organizationLoaded = false;
     }
 
@@ -139,5 +158,7 @@ class Auth
         }
         $this->user = null;
         $this->organization = null;
+        $this->loaded = true;
+        $this->organizationLoaded = true;
     }
 }

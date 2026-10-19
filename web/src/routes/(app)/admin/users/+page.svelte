@@ -85,6 +85,18 @@
 		}
 	}
 
+	/** Sends a fresh link by email; the old link stops working. */
+	async function resend(invite: Invitation) {
+		try {
+			const sent = await api.invite({ email: invite.email, role: invite.role, access: invite.access });
+			if (sent.emailed) toast(`Emailed a new link to ${invite.email}`);
+			else toast(sent.email_problem === 'unverified' ? 'Confirm your email address first' : `Couldn't email ${invite.email}`, 'error');
+			await load();
+		} catch (e) {
+			toast(e instanceof ApiError ? e.message : 'Could not resend', 'error');
+		}
+	}
+
 	async function revoke(invite: Invitation) {
 		try {
 			await api.revokeInvitation(invite.id);
@@ -135,11 +147,18 @@
 					<tr class="border-b border-line bg-surface-2/60 last:border-b-0">
 						<th scope="row" class="px-5 py-3 font-normal">
 							<span class="font-semibold text-ink-2">{invite.email}</span>
-							<span class="block text-sm text-muted">Invited{invite.invited_by ? ` by ${invite.invited_by}` : ''}, link valid until {invite.expires_at.slice(0, 10)}</span>
+							<span class="block text-sm text-muted">
+								{invite.emailed_at ? 'Emailed' : 'Invited'}{invite.invited_by ? ` by ${invite.invited_by}` : ''}, link valid until {invite.expires_at.slice(0, 10)}
+							</span>
 						</th>
 						<td class="px-3 py-3 text-ink-2">{invite.role === 'admin' ? 'Administrator' : 'Member'}</td>
 						<td class="px-3 py-3 text-sm text-ink-2">{accessSummary(invite.role, invite.access)}</td>
-						<td class="px-5 py-3 text-right"><button class="btn btn-ghost btn-sm" onclick={() => revoke(invite)}>Cancel invitation</button></td>
+						<td class="px-5 py-3 text-right whitespace-nowrap">
+							{#if session.user?.email_delivery}
+								<button class="btn btn-ghost btn-sm" onclick={() => resend(invite)}>{invite.emailed_at ? 'Resend' : 'Email it'}</button>
+							{/if}
+							<button class="btn btn-ghost btn-sm" onclick={() => revoke(invite)}>Cancel</button>
+						</td>
 					</tr>
 				{/each}
 			</tbody>

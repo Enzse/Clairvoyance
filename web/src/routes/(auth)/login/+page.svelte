@@ -37,7 +37,10 @@
 		<input id="email" class="input" type="email" autocomplete="email" required bind:value={email} />
 	</div>
 	<div>
-		<label class="field-label" for="password">Password</label>
+		<div class="flex items-baseline justify-between gap-3">
+			<label class="field-label" for="password">Password</label>
+			<a class="text-sm text-accent hover:underline" href={href('/forgot-password', { email: email || null })}>Forgot password?</a>
+		</div>
 		<input id="password" class="input" type="password" autocomplete="current-password" required bind:value={password} />
 	</div>
 	{#if error}

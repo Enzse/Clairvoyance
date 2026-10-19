@@ -14,8 +14,8 @@ use Repositories\UserRepository;
 /**
  * Invitations to join an organisation. An admin creates one for an email address with a role
  * and optional unit access; the link carries a random token (only its hash is stored). The
- * person signs in or signs up with that email and accepts. There is no mail server, so the
- * admin passes the link on.
+ * person signs in or signs up with that email and accepts. The link is emailed when a mail
+ * server is set up, and is always shown to the admin to pass on themselves.
  */
 class InvitationService
 {
@@ -29,10 +29,13 @@ class InvitationService
     private UserRepository $users;
     private MemberService $members;
     private AccountService $accounts;
+    private InvitationMailer $mailer;
 
     public function __construct(PDO $db, Auth $auth, InvitationRepository $invitations, OrganizationRepository $organizations,
-                                MembershipRepository $memberships, UserRepository $users, MemberService $members, AccountService $accounts)
+                                MembershipRepository $memberships, UserRepository $users, MemberService $members, AccountService $accounts,
+                                InvitationMailer $mailer)
     {
+        $this->mailer = $mailer;
         $this->db = $db;
         $this->auth = $auth;
         $this->invitations = $invitations;
@@ -43,7 +46,10 @@ class InvitationService
         $this->accounts = $accounts;
     }
 
-    /** @return array the invitation plus `token`, which is only ever returned here */
+    /**
+     * @return array the invitation plus `token`, which is only ever returned here, and whether
+     *   it was emailed (see InvitationMailer::send)
+     */
     public function create(array $input): array
     {
         $organization = $this->auth->requireAdmin();
@@ -80,7 +86,9 @@ class InvitationService
             throw $e;
         }
 
-        return $this->invitations->findByTokenHash(hash('sha256', $token)) + ['token' => $token];
+        $invite = $this->invitations->findByTokenHash(hash('sha256', $token));
+        $sent = $this->mailer->send($invite, $token, $this->auth->requireUser());
+        return $this->invitations->findByTokenHash(hash('sha256', $token)) + ['token' => $token] + $sent;
     }
 
     public function pending(): array
@@ -130,12 +138,17 @@ class InvitationService
             }
             $this->grantAccess($orgId, $user['id'], $invite['access']);
             $this->invitations->markAccepted($invite['id']);
+            // Opening a link that was emailed to this address proves it is theirs
+            if ($invite['emailed_at'] !== null) {
+                $this->users->markVerified($user['id']);
+            }
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
 
+        $this->auth->refresh();
         $this->auth->selectOrganization($orgId);
         return $this->accounts->me();
     }

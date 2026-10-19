@@ -20,6 +20,7 @@ import type {
 	User
 } from './types';
 
+/** Absolute in development (the API runs under XAMPP); "/api" in production, on the same origin. */
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost/clairvoyance-v3/api').replace(/\/$/, '');
 
 /** An error response from the API. `details` maps field names to messages. */
@@ -49,7 +50,7 @@ export function setUnauthorizedHandler(handler: () => void) {
 type Query = Record<string, string | number | null | undefined>;
 
 async function request<T>(method: string, path: string, options: { query?: Query; body?: unknown; form?: FormData } = {}): Promise<T> {
-	const url = new URL(BASE + path);
+	const url = new URL(BASE + path, location.origin);
 	for (const [key, value] of Object.entries(options.query ?? {})) {
 		if (value !== null && value !== undefined && value !== '') url.searchParams.set(key, String(value));
 	}
@@ -63,7 +64,7 @@ async function request<T>(method: string, path: string, options: { query?: Query
 			body: options.form ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined)
 		});
 	} catch {
-		throw new ApiError(0, 'Could not reach the server. Check that Apache is running.');
+		throw new ApiError(0, 'Could not reach the server. Check your connection and try again.');
 	}
 
 	const payload = await response.json().catch(() => null);
@@ -82,6 +83,10 @@ export const api = {
 	logout: () => request<[]>('POST', '/auth/logout'),
 	updateAccount: (body: { name?: string | null; current_password?: string; new_password?: string }) =>
 		request<User>('PUT', '/auth/me', { body }),
+	verifyEmail: (token: string) => request<Me | []>('POST', '/auth/verify-email', { body: { token } }),
+	resendVerification: () => request<[]>('POST', '/auth/verify-email/resend'),
+	forgotPassword: (email: string) => request<[]>('POST', '/auth/forgot-password', { body: { email } }),
+	resetPassword: (token: string, password: string) => request<Me>('POST', '/auth/reset-password', { body: { token, password } }),
 
 	// Organisations
 	createOrganization: (name: string) => request<Me>('POST', '/organizations', { body: { name } }),

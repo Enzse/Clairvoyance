@@ -4,6 +4,7 @@ namespace Services;
 
 use Core\Auth;
 use Core\HttpException;
+use Core\RateLimiter;
 use Core\Validator;
 use Repositories\MembershipRepository;
 use Repositories\OrganizationRepository;
@@ -18,9 +19,14 @@ class AccountService
     private UserRepository $users;
     private OrganizationRepository $organizations;
     private MembershipRepository $memberships;
+    private AccountEmailService $verification;
+    private RateLimiter $limiter;
 
-    public function __construct(Auth $auth, UserRepository $users, OrganizationRepository $organizations, MembershipRepository $memberships)
+    public function __construct(Auth $auth, UserRepository $users, OrganizationRepository $organizations, MembershipRepository $memberships,
+                                AccountEmailService $verification, RateLimiter $limiter)
     {
+        $this->verification = $verification;
+        $this->limiter = $limiter;
         $this->auth = $auth;
         $this->users = $users;
         $this->organizations = $organizations;
@@ -28,8 +34,9 @@ class AccountService
     }
 
     /** Creates the account and signs in. The next step is creating or joining an organisation. */
-    public function register(array $input): array
+    public function register(array $input, string $ip): array
     {
+        $this->limiter->attempt("register:{$ip}", 10, 3600);
         $v = new Validator($input);
         $email = $v->string('email', true);
         $password = $v->secret('password', true);
@@ -47,20 +54,28 @@ class AccountService
 
         $user = $this->users->find($this->users->create(mb_strtolower($email), $password, $name));
         $this->auth->login($user);
+        $this->verification->sendVerification($user);
         return $this->me();
     }
 
-    public function login(array $input): array
+    /** Five wrong passwords lock that email for 15 minutes; many failures lock the address. */
+    public function login(array $input, string $ip): array
     {
         $v = new Validator($input);
         $email = $v->string('email', true);
         $password = $v->secret('password', true);
         $v->check();
 
-        $user = $this->users->verifyCredentials($email, $password);
+        $emailBucket = RateLimiter::emailBucket('login', $email);
+        $this->limiter->check($emailBucket, 5, 900);
+        $this->limiter->check("login-ip:{$ip}", 30, 900);
+        $user = $this->users->verifyCredentials(mb_strtolower($email), $password);
         if (!$user) {
+            $this->limiter->hit($emailBucket, 900);
+            $this->limiter->hit("login-ip:{$ip}", 900);
             throw new HttpException(401, 'Wrong email or password');
         }
+        $this->limiter->clear($emailBucket);
         $this->auth->login($user);
         return $this->me();
     }
@@ -74,6 +89,8 @@ class AccountService
         $user = $this->auth->requireUser();
         $current = $this->auth->organization();
         return $user + [
+            'email_verified' => $this->verification->isVerified($user),
+            'email_delivery' => $this->verification->deliveryEnabled(),
             'organizations' => $this->organizations->forUser($user['id']),
             'organization' => $current,
             'memberships' => $current ? $this->memberships->forUser($current['id'], $user['id']) : [],
@@ -104,6 +121,9 @@ class AccountService
             $fields['password'] = $new;
         }
         $this->users->update($user['id'], $fields);
+        if ($new !== null) {
+            $this->auth->signOutOtherSessions();
+        }
         return $this->users->find($user['id']) + ['organizations' => $this->organizations->forUser($user['id'])];
     }
 }

@@ -7,7 +7,7 @@ use PDO;
 /** Accounts. Roles are per organisation (see OrganizationRepository). */
 class UserRepository
 {
-    private const PUBLIC_COLUMNS = 'id, email, name, created_at, updated_at';
+    private const PUBLIC_COLUMNS = 'id, email, name, email_verified_at, created_at, updated_at';
 
     private PDO $db;
 
@@ -69,6 +69,31 @@ class UserRepository
         $sets = implode(', ', array_map(fn($column) => "{$column} = ?", array_keys($allowed)));
         $stmt = $this->db->prepare("UPDATE users SET {$sets} WHERE id = ?");
         $stmt->execute([...array_values($allowed), $id]);
+    }
+
+    public function markVerified(int $id): void
+    {
+        $this->db->prepare('UPDATE users SET email_verified_at = ? WHERE id = ? AND email_verified_at IS NULL')
+            ->execute([date('Y-m-d H:i:s'), $id]);
+    }
+
+    /** Sessions remember this number; changing it signs out every session that has the old one. */
+    public function sessionVersion(int $id): int
+    {
+        $stmt = $this->db->prepare('SELECT session_version FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function bumpSessionVersion(int $id): int
+    {
+        $this->db->prepare('UPDATE users SET session_version = session_version + 1 WHERE id = ?')->execute([$id]);
+        return $this->sessionVersion($id);
+    }
+
+    public function delete(int $id): void
+    {
+        $this->db->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     }
 
     private function cast(?array $row): ?array

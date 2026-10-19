@@ -10,7 +10,7 @@ if (PHP_SAPI !== 'cli') {
     exit('Command line only.');
 }
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../autoload.php';
 
 [, $email, $role, $orgId] = $argv + [null, null, null, null];
 if (!$email || !in_array($role, ['admin', 'member'], true)) {

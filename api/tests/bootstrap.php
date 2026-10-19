@@ -5,7 +5,7 @@
  * (override DB_NAME or other settings in api/.env.test) and refuse anything not ending in _test.
  */
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../autoload.php';
 
 error_reporting(E_ALL);
 ini_set('display_errors', '1');

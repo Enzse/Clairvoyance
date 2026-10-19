@@ -26,6 +26,10 @@ export interface User {
 
 /** The signed-in person; `organization` null means they still need to create or join one. */
 export interface Me extends User {
+	/** Address confirmed (always true when the server can't send email) */
+	email_verified: boolean;
+	/** Whether the server sends email: invitations, password resets */
+	email_delivery: boolean;
 	organizations: OrganizationSummary[];
 	organization: OrganizationSummary | null;
 	memberships: Membership[];
@@ -44,10 +48,13 @@ export interface Invitation {
 	role: Role;
 	access: Membership[];
 	invited_by: string | null;
+	emailed_at: string | null;
 	expires_at: string;
 	created_at: string;
 	/** Only present in the response that created it */
 	token?: string;
+	emailed?: boolean;
+	email_problem?: 'not_configured' | 'unverified' | 'failed' | null;
 }
 
 export interface InvitationLookup {

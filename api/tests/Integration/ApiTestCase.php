@@ -8,6 +8,7 @@ use Core\Environment;
 use Core\Migrator;
 use Core\Request;
 use PDO;
+use Tests\Support\RecordingMailer;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,10 @@ abstract class ApiTestCase extends TestCase
     protected const PASSWORD = 'test-password';
     protected static ?PDO $db = null;
     private static ?App $app = null;
+    /** Not configured unless a test turns it on, like an install without a mail server */
+    protected static RecordingMailer $mailer;
+    /** Client address for calls; null gives each call a different one so IP limits stay out of the way */
+    protected ?string $clientIp = null;
 
     public static function setUpBeforeClass(): void
     {
@@ -28,14 +33,16 @@ abstract class ApiTestCase extends TestCase
         $migrator = new Migrator(self::$db);
         $migrator->dropAllTables();
         $migrator->migrate();
-        self::$app = new App(fn() => self::$db);
+        self::$mailer = new RecordingMailer();
+        self::$app = new App(fn() => self::$db, fn() => self::$mailer);
         $_SESSION = [];
     }
 
     /** @return array{0: int, 1: array} status code and decoded payload */
     protected function call(string $method, string $path, array $query = [], array $body = [], array $files = []): array
     {
-        $response = self::$app->handle(new Request($method, $path, $query, $body, $files));
+        $ip = $this->clientIp ?? '10.' . random_int(0, 255) . '.' . random_int(0, 255) . '.' . random_int(1, 254);
+        $response = self::$app->handle(new Request($method, $path, $query, $body, $files, $ip));
         // Round-trip through JSON so tests see exactly what a client would
         return [$response->status, json_decode(json_encode($response->payload), true)];
     }
@@ -55,10 +62,16 @@ abstract class ApiTestCase extends TestCase
         $this->assertSame($expected, $result[0], ($message ? "{$message} " : '') . json_encode($result[1]));
     }
 
-    /** Act as this user, in their first organisation unless one is given. */
+    /** Act as this user (a fresh sign-in), in their first organisation unless one is given. */
     protected function actingAs(?int $userId, ?int $organizationId = null): void
     {
-        $_SESSION = $userId === null ? [] : array_filter(['user_id' => $userId, 'org_id' => $organizationId]);
+        if ($userId === null) {
+            $_SESSION = [];
+            return;
+        }
+        $version = self::$db->prepare('SELECT session_version FROM users WHERE id = ?');
+        $version->execute([$userId]);
+        $_SESSION = array_filter(['user_id' => $userId, 'org_id' => $organizationId]) + ['session_version' => (int)$version->fetchColumn()];
     }
 
     /**

@@ -9,9 +9,12 @@ class Request
     public array $query;
     public array $body;
     public array $files;
+    /** The client address, for throttling */
+    public string $ip;
 
-    public function __construct(string $method, string $path, array $query = [], array $body = [], array $files = [])
+    public function __construct(string $method, string $path, array $query = [], array $body = [], array $files = [], string $ip = '127.0.0.1')
     {
+        $this->ip = $ip;
         $this->method = strtoupper($method);
         $this->path = '/' . trim($path, '/');
         $this->query = $query;
@@ -38,7 +41,7 @@ class Request
             $body = $_POST;
         }
 
-        return new self($_SERVER['REQUEST_METHOD'] ?? 'GET', $uriPath, $_GET, $body, $_FILES);
+        return new self($_SERVER['REQUEST_METHOD'] ?? 'GET', $uriPath, $_GET, $body, $_FILES, $_SERVER['REMOTE_ADDR'] ?? '');
     }
 
     /** Value from the JSON/form body. */

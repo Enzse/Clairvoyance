@@ -1,6 +1,7 @@
 <?php
 
 use Controllers\AuthController;
+use Controllers\HealthController;
 use Controllers\ImportController;
 use Controllers\InvitationController;
 use Controllers\KpiController;
@@ -18,6 +19,12 @@ return function (Router $r): void {
     $r->add('POST', '/auth/logout', [AuthController::class, 'logout']);
     $r->add('GET', '/auth/me', [AuthController::class, 'me']);
     $r->add('PUT', '/auth/me', [AuthController::class, 'update']);
+    $r->add('POST', '/auth/verify-email', [AuthController::class, 'verifyEmail']);
+    $r->add('POST', '/auth/verify-email/resend', [AuthController::class, 'resendVerification']);
+    $r->add('POST', '/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    $r->add('POST', '/auth/reset-password', [AuthController::class, 'resetPassword']);
+
+    $r->add('GET', '/health', [HealthController::class, 'check']);
 
     // Organisations: create, switch, rename the current one, getting-started checklist
     $r->add('POST', '/organizations', [OrganizationController::class, 'create']);

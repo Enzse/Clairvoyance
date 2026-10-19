@@ -7,3 +7,9 @@ api/.env
 api/.env.test
 api/config/.env
 .backups/
+
+# API runtime files: sessions, logs, backups
+api/storage/
+
+# Built release (scripts/release.sh)
+release/
