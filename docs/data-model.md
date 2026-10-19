@@ -412,10 +412,11 @@ as coarse as the KPI's frequency.
 | POST | `/invitations/accept` | Join with `{token}`; the signed-in email must match |
 | GET | `/units` | Units of the selected organisation visible to the current user, flat, with `parent_id`, `is_leaf` and `access` |
 | POST/PUT/DELETE | `/units[/{id}]` | Admin; delete only an empty leaf (otherwise deactivate) |
-| GET | `/kpis` | Active KPI definitions (`?include_inactive=1` for admins) |
+| GET | `/kpis` | Active KPI definitions (`?include_inactive=1` for admins), each with the organisation-wide `target` in force today and `unit_target_count` |
 | POST/PUT | `/kpis[/{id}]` | Admin; deactivate with `is_active: false` |
 | GET/PUT | `/kpis/{id}/targets` | Read / replace (admin) `[{unit_id \| null, effective_from, value}]` |
-| GET | `/values?unit=&date=` | Data-entry form: every KPI that applies to a leaf unit, at the period containing `date` |
+| GET | `/values?unit=&date=` | Data-entry form for a leaf unit and the month containing `date`: every period of every KPI that applies (each week or day of weekly and daily KPIs, up to today; otherwise the period the month is in), each with its value, note and the previous period's value |
+| GET | `/values/progress?date=` | For each active leaf unit the user can enter data for: how many figures the month needs (counted as on the form) and how many are in |
 | PUT | `/values` | Batch upsert `{values: [{kpi_id, unit_id, period, value, note}]}`; `value: null` deletes; all-or-nothing |
 | POST | `/imports/preview` | Multipart `file` + `mapping` JSON; per-row results, nothing written |
 | POST | `/imports` | Same, committed in one transaction; `skip_invalid=1` writes only the valid values |
@@ -447,8 +448,10 @@ One wide file can fill many KPIs and units at once (as `deped.csv` does):
 5. **Commit** refuses a file with errors unless `skip_invalid` is set, then upserts in one
    transaction. Re-importing the same file reports every value as unchanged.
 
-Not yet supported: notes from a CSV column, and auto-suggesting the mapping (that belongs in
-the frontend wizard).
+The import wizard in the web app suggests the mapping from the column names and contents,
+remembers it for the next file with the same columns, reads Excel (`.xlsx`) files by turning
+the first sheet into CSV in the browser, and offers a template: one row per unit the person
+reports for, one column per KPI. Not yet supported: notes from a CSV column.
 
 ## What replaced the old system
 
@@ -480,6 +483,11 @@ the frontend wizard).
    - release packaging, CI and deploy, daily backups.
 
    See [deployment.md](deployment.md).
+2d. **Polish — done.** Every screen redesigned around cards, slide-in panels and short
+   tutorials: Structure (tree, who has access), KPIs (cards, a four-step "New KPI"), People,
+   Settings, Add data (who still has figures to enter; weekly and daily periods; notes),
+   spreadsheet upload (Excel, template, remembered matching), a KPI's page, sign-in and
+   onboarding. Light theme by default.
 3. **Later:**
    - saved dashboards;
    - print-friendly report page;

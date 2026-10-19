@@ -3,7 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import ChangeCell from '$lib/components/ChangeCell.svelte';
-	import ExportDrawer from '$lib/components/ExportDrawer.svelte';
+	import ExportDialog from '$lib/components/ExportDialog.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
@@ -190,6 +190,6 @@
 	</main>
 
 	{#if card && unit}
-		<ExportDrawer bind:open={exporting} unitId={unitId} unitName={unit.name} date={card.date} />
+		<ExportDialog bind:open={exporting} unitId={unitId} unitName={unit.name} date={card.date} />
 	{/if}
 {/if}

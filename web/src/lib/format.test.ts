@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDelta, formatValue, joinNames, plural } from './format';
+import { formatDelta, formatValue, joinNames, plural, timeAgo } from './format';
 
 describe('plural', () => {
 	it('pluralises the unit kinds people type', () => {
@@ -32,5 +32,17 @@ describe('joinNames', () => {
 		expect(joinNames(['Sales'])).toBe('Sales');
 		expect(joinNames(['Sales', 'Support'])).toBe('Sales and Support');
 		expect(joinNames(['A', 'B', 'C', 'D'])).toBe('A, B and 2 others');
+	});
+});
+
+describe('timeAgo', () => {
+	const now = new Date('2026-10-20T12:00:00');
+	it('says how long ago in plain words', () => {
+		expect(timeAgo('2026-10-20 11:59:40', now)).toBe('just now');
+		expect(timeAgo('2026-10-20 11:55:00', now)).toBe('5 minutes ago');
+		expect(timeAgo('2026-10-20 09:00:00', now)).toBe('3 hours ago');
+		expect(timeAgo('2026-10-19 10:00:00', now)).toBe('yesterday');
+		expect(timeAgo('2026-10-16 12:00:00', now)).toBe('4 days ago');
+		expect(timeAgo('2026-09-01 12:00:00', now)).toBe('1 Sept');
 	});
 });

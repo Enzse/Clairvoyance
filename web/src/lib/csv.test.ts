@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectDateFormat, exportRows, parseCsv, profileColumn, suggestKpi, suggestUnitColumns, writeCsv } from './csv';
+import { detectDateFormat, exportRows, parseCsv, profileColumn, suggestKpi, suggestUnitColumns, templateRows, writeCsv } from './csv';
 import type { Kpi } from './types';
 
 describe('parseCsv', () => {
@@ -76,5 +76,19 @@ describe('export', () => {
 		expect(parsed.headers).toEqual(['Unit', 'Belongs to', 'Period', 'Sales', 'Score, "net"']);
 		expect(parsed.rows[0]).toEqual(['Store A', 'North', '2025-06-01', '1250', '']);
 		expect(suggestUnitColumns(parsed.headers, parsed.headers.map((_, i) => profileColumn(parsed.rows.map((r) => r[i]))))).toEqual(['Unit']);
+	});
+});
+
+describe('templateRows', () => {
+	it('lays out one empty row per unit, like an export', () => {
+		const units = [
+			{ id: 1, name: 'Store A', code: null, path: ['North', 'Store A'] },
+			{ id: 2, name: 'Store B', code: null, path: ['North', 'Store B'] }
+		];
+		expect(templateRows(units, [{ name: 'Sales' }, { name: 'Visits' }], '2025-06-01')).toEqual([
+			['Unit', 'Belongs to', 'Period', 'Sales', 'Visits'],
+			['Store A', 'North', '2025-06-01', null, null],
+			['Store B', 'North', '2025-06-01', null, null]
+		]);
 	});
 });

@@ -38,39 +38,7 @@
 	--shadow-pop: 0 12px 32px -8px rgb(12 35 64 / 0.22), 0 0 0 1px rgb(12 35 64 / 0.06);
 }
 
-@media (prefers-color-scheme: dark) {
-	:root:where(:not([data-theme='light'])) {
-		color-scheme: dark;
-		--plane: #0a111c;
-		--surface: #111a28;
-		--surface-2: #162134;
-		--navy: #0f2443;
-		--navy-2: #1b3660;
-		--navy-ink: #eef2f7;
-		--navy-ink-2: #9fb0c6;
-		--ink: #e8edf4;
-		--ink-2: #aab5c5;
-		--muted: #7f8ba0;
-		--line: #223047;
-		--line-strong: #33435e;
-		--accent: #6da7ec;
-		--accent-hover: #86b6ef;
-		--accent-wash: rgb(109 167 236 / 0.12);
-		--chart: #3987e5;
-		--chart-wash: rgb(57 135 229 / 0.15);
-		--good: #0ca30c;
-		--good-ink: #4cd24c;
-		--good-wash: rgb(12 163 12 / 0.16);
-		--warn: #fab219;
-		--warn-ink: #fbc75e;
-		--warn-wash: rgb(250 178 25 / 0.16);
-		--bad: #e05252;
-		--bad-ink: #f28b8b;
-		--bad-wash: rgb(224 82 82 / 0.16);
-		--shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.08);
-	}
-}
-
+/* Dark only when chosen with the theme button; light is the default */
 :root[data-theme='dark'] {
 	color-scheme: dark;
 	--plane: #0a111c;
@@ -211,11 +179,6 @@
 	:root[data-theme='dark'] .btn-primary {
 		color: #08172b;
 	}
-	@media (prefers-color-scheme: dark) {
-		:root:where(:not([data-theme='light'])) .btn-primary {
-			color: #08172b;
-		}
-	}
 	.btn-primary:hover:not(:disabled) {
 		background: var(--accent-hover);
 	}
@@ -322,5 +285,16 @@ dialog::backdrop {
 	}
 	to {
 		background-color: transparent;
+	}
+}
+
+/* Illustrations drift gently up and down */
+@keyframes float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-8px);
 	}
 }

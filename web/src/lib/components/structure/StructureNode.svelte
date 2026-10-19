@@ -67,11 +67,12 @@
 			<span class="block w-full {isRoot ? 'font-semibold' : 'font-medium'} {unit.is_active ? '' : 'text-muted line-through'}">
 				<InlineEdit value={unit.name} label="Name" tip="Rename" tipSide="right" onSave={(name) => saveUnit(unit, { name })} />
 			</span>
-			<span class="flex w-full min-w-0 items-center gap-1 text-xs text-muted">
+			<!-- The term (first) stays whole; the summary after it shortens on narrow screens -->
+			<span class="flex w-full min-w-0 items-center gap-1 text-xs text-muted [&>:first-child]:shrink-0">
 				{#if !isRoot}
 					<InlineEdit value={unit.kind} label="Term" tip="Change term" tipSide="right" placeholder="Add a term" optional onSave={(kind) => saveUnit(unit, { kind: kind || null })} />
 				{/if}
-				<span class="shrink-0">
+				<span class="min-w-0 truncate">
 					{isRoot ? '' : '·'}
 					{#if !unit.is_active}
 						switched off

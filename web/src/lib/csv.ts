@@ -97,6 +97,18 @@ export function writeCsv(rows: (string | number | null)[][]): string {
 	return '﻿' + rows.map((row) => row.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
+type SheetUnit = ExportData['units'][number];
+
+/** The unit columns shared by exports and templates: name, then code and where it sits when useful. */
+function unitLayout(units: SheetUnit[]) {
+	const hasCodes = units.some((u) => u.code);
+	const nested = units.some((u) => u.path.length > 1);
+	return {
+		header: ['Unit', ...(hasCodes ? ['Code'] : []), ...(nested ? ['Belongs to'] : [])],
+		cells: (unit: SheetUnit) => [unit.name, ...(hasCodes ? [unit.code] : []), ...(nested ? [unit.path.slice(0, -1).join(' › ')] : [])]
+	};
+}
+
 /**
  * Exported figures as rows the importer reads back: one per unit and period, then one column
  * per KPI (named as in the app, which the import wizard matches). Match units by name, or by
@@ -106,8 +118,7 @@ export function exportRows(data: ExportData): (string | number | null)[][] {
 	const withValues = new Set(data.values.map((v) => v.kpi_id));
 	const kpis = data.kpis.filter((k) => withValues.has(k.id));
 	const units = new Map(data.units.map((u) => [u.id, u]));
-	const hasCodes = data.units.some((u) => u.code);
-	const nested = data.units.some((u) => u.path.length > 1);
+	const layout = unitLayout(data.units);
 
 	const rows = new Map<string, Map<number, number>>();
 	for (const v of data.values) {
@@ -122,20 +133,18 @@ export function exportRows(data: ExportData): (string | number | null)[][] {
 		return order.indexOf(Number(ua)) - order.indexOf(Number(ub)) || pa.localeCompare(pb);
 	});
 
-	const header = ['Unit', ...(hasCodes ? ['Code'] : []), ...(nested ? ['Belongs to'] : []), 'Period', ...kpis.map((k) => k.name)];
 	return [
-		header,
+		[...layout.header, 'Period', ...kpis.map((k) => k.name)],
 		...keys.map((key) => {
 			const [unitId, period] = key.split('|');
-			const unit = units.get(Number(unitId))!;
 			const values = rows.get(key)!;
-			return [
-				unit.name,
-				...(hasCodes ? [unit.code] : []),
-				...(nested ? [unit.path.slice(0, -1).join(' › ')] : []),
-				period,
-				...kpis.map((k) => values.get(k.id) ?? null)
-			];
+			return [...layout.cells(units.get(Number(unitId))!), period, ...kpis.map((k) => values.get(k.id) ?? null)];
 		})
 	];
+}
+
+/** An empty sheet to fill in: one row per unit for the period, one column per KPI. */
+export function templateRows(units: SheetUnit[], kpis: { name: string }[], period: string): (string | number | null)[][] {
+	const layout = unitLayout(units);
+	return [[...layout.header, 'Period', ...kpis.map((k) => k.name)], ...units.map((u) => [...layout.cells(u), period, ...kpis.map(() => null)])];
 }

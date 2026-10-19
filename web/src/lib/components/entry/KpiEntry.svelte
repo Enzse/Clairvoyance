@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { slide } from 'svelte/transition';
 	import { parseFigure, periodName, rowKey } from '$lib/entry';
 	import { formatValue } from '$lib/format';
 	import { label } from '$lib/period';
@@ -13,16 +14,25 @@
 		kpi,
 		rows,
 		inputs = $bindable(),
+		notes = $bindable(),
 		errors,
 		canEdit
-	}: { kpi: Kpi; rows: EntryRow[]; inputs: Record<string, string>; errors: Record<string, string>; canEdit: boolean } = $props();
+	}: { kpi: Kpi; rows: EntryRow[]; inputs: Record<string, string>; notes: Record<string, string>; errors: Record<string, string>; canEdit: boolean } = $props();
 
 	const several = $derived(rows.length > 1);
+	// A note box opens on request, or straight away when there already is a note
+	let noting = $state(false);
+	const noteKey = $derived(rowKey(rows[0]));
+	const showNote = $derived(!several && (noting || !!notes[noteKey]));
 	const filled = $derived(rows.filter((r) => parseFigure(inputs[rowKey(r)] ?? '') != null).length);
 	const complete = $derived(filled === rows.length);
 
 	function messageFor(row: EntryRow): string {
-		return errors[rowKey(row)] ?? (parseFigure(inputs[rowKey(row)] ?? '') === undefined ? 'Enter a number, like 1250 or 95.5' : '');
+		const key = rowKey(row);
+		const value = parseFigure(inputs[key] ?? '');
+		if (errors[key]) return errors[key];
+		if (value === undefined) return 'Enter a number, like 1250 or 95.5';
+		return value === null && notes[key]?.trim() ? 'Add the figure the note is about, or clear the note' : '';
 	}
 
 	/** "May 2026: 1,200. Last saved 18 Oct by lee@example.com" */
@@ -77,9 +87,35 @@
 			{#if !several}<p class="mt-1 text-sm text-muted">{history(rows[0])}</p>{/if}
 		</div>
 		{#if !several}
-			<div>{@render field(rows[0], false)}</div>
+			<div>
+				{@render field(rows[0], false)}
+				{#if canEdit && !showNote}
+					<button type="button" class="mt-1.5 flex items-center gap-1 text-xs text-muted hover:text-accent" onclick={() => (noting = true)}>
+						<Icon name="note" size={12} /> Add a note
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</div>
+	{#if showNote}
+		<div class="mt-3" transition:slide={{ duration: 160 }}>
+			<label class="sr-only" for="note-{noteKey}">Note on {kpi.name}</label>
+			<div class="flex items-start gap-2">
+				<Icon name="note" size={14} class="mt-2.5 shrink-0 text-muted" />
+				<!-- svelte-ignore a11y_autofocus -->
+				<textarea
+					id="note-{noteKey}"
+					class="input min-h-0 flex-1 py-1.5 text-sm {(notes[noteKey] ?? '') !== (rows[0].note ?? '') ? 'bg-accent-wash' : ''}"
+					rows="2"
+					maxlength="500"
+					placeholder="Why the figure is what it is, e.g. closed for two days for repairs"
+					disabled={!canEdit}
+					autofocus={noting && !notes[noteKey]}
+					bind:value={notes[noteKey]}
+				></textarea>
+			</div>
+		</div>
+	{/if}
 	{#if several}
 		<div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 {kpi.frequency === 'daily' ? 'lg:grid-cols-7' : 'lg:grid-cols-5'}">
 			{#each rows as row (row.period_start)}

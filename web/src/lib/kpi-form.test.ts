@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALWAYS, codeFrom, mainTarget, rollupExample, shortRules, stepOfError, withMainTarget, type TargetRow } from './kpi-form';
+import { ALWAYS, codeFrom, mainTarget, rollupExample, shortRules, statusBands, stepOfError, withMainTarget, type TargetRow } from './kpi-form';
 
 describe('codeFrom', () => {
 	it('makes a spreadsheet-safe code', () => {
@@ -53,5 +53,14 @@ describe('stepOfError', () => {
 		expect(stepOfError({ weight_kpi_id: 'is required' })).toBe(1);
 		expect(stepOfError({ 'targets.0': 'bad' })).toBe(2);
 		expect(stepOfError({ scope_unit_ids: 'bad' })).toBe(3);
+	});
+});
+
+describe('statusBands', () => {
+	const fmt = (n: number) => String(n);
+	it('describes each status around the target', () => {
+		expect(statusBands('higher_is_better', 1000, 10, fmt)).toEqual({ good: '1000 or more', close: '900 to 1000', bad: 'below 900' });
+		expect(statusBands('lower_is_better', 10, 50, fmt)).toEqual({ good: '10 or less', close: '10 to 15', bad: 'above 15' });
+		expect(statusBands('none', 10, 10, fmt)).toBeNull();
 	});
 });

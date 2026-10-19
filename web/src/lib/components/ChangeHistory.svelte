@@ -1,8 +1,12 @@
 <script lang="ts">
+	import { cubicOut } from 'svelte/easing';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fly } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
-	import { formatValue } from '$lib/format';
-	import { term } from '$lib/terms.svelte';
+	import { formatValue, timeAgo } from '$lib/format';
 	import type { Kpi, ValueChange } from '$lib/types';
+	import Icon from './Icon.svelte';
+	import Avatar from './people/Avatar.svelte';
 
 	/** Who changed this KPI's figures in the unit and the units inside it, newest first. */
 	let { kpi, unitId, showUnit }: { kpi: Kpi; unitId: number; showUnit: boolean } = $props();
@@ -11,6 +15,7 @@
 	let changes = $state<ValueChange[] | null>(null);
 	let error = $state('');
 	let all = $state(false);
+	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 
 	$effect(() => {
 		changes = null;
@@ -22,55 +27,51 @@
 	});
 
 	const visible = $derived(changes ? (all ? changes : changes.slice(0, SHOWN)) : []);
-	const when = (at: string) =>
-		new Date(at.replace(' ', 'T')).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+	const exact = (at: string) => new Date(at.replace(' ', 'T')).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 </script>
 
 <section class="panel mt-6 min-w-0 p-5 sm:p-6" aria-labelledby="history-heading">
-	<h2 id="history-heading" class="text-md font-semibold">Recent changes</h2>
-	<p class="mt-1 text-sm text-ink-2">Every figure entered, corrected or deleted, and who did it.</p>
+	<div class="flex items-start gap-3">
+		<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-wash text-accent"><Icon name="history" size={17} /></span>
+		<div>
+			<h2 id="history-heading" class="text-md font-semibold">Recent changes</h2>
+			<p class="text-sm text-ink-2">Every figure entered, corrected or deleted, and who did it.</p>
+		</div>
+	</div>
 	{#if error}
 		<p class="mt-4 text-sm text-bad-ink">{error}</p>
 	{:else if changes && !changes.length}
-		<p class="mt-4 text-sm text-ink-2">No figures have been entered yet.</p>
+		<p class="mt-4 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm text-ink-2">No figures have been entered yet.</p>
 	{:else if changes}
-		<div class="mt-4 overflow-x-auto">
-			<table class="w-full min-w-[560px] text-left text-sm">
-				<thead class="text-ink-2">
-					<tr class="border-b border-line">
-						<th scope="col" class="py-2 pr-4 font-medium">When</th>
-						{#if showUnit}<th scope="col" class="py-2 pr-4 font-medium">{term.One}</th>{/if}
-						<th scope="col" class="py-2 pr-4 font-medium">Period</th>
-						<th scope="col" class="py-2 pr-4 font-medium">Change</th>
-						<th scope="col" class="py-2 font-medium">By</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each visible as c (c.id)}
-						<tr class="border-b border-line last:border-b-0">
-							<td class="py-2 pr-4 whitespace-nowrap text-ink-2">{when(c.changed_at)}</td>
-							{#if showUnit}<td class="py-2 pr-4">{c.unit_name}</td>{/if}
-							<td class="py-2 pr-4 whitespace-nowrap">{c.period_label}</td>
-							<td class="num py-2 pr-4 whitespace-nowrap">
-								{#if c.old_value === null}
-									<span class="text-ink-2">Entered</span> {formatValue(kpi, c.new_value)}
-								{:else if c.new_value === null}
-									<span class="text-ink-2">Deleted</span> <s class="text-ink-2">{formatValue(kpi, c.old_value)}</s>
-								{:else if c.old_value === c.new_value}
-									<span class="text-ink-2">Note changed</span>
-								{:else}
-									{formatValue(kpi, c.old_value)} <span class="text-ink-2" aria-label="to">→</span> {formatValue(kpi, c.new_value)}
-								{/if}
-							</td>
-							<td class="py-2">
-								{c.changed_by ?? 'A deleted account'}
-								{#if c.import_file}<span class="text-ink-2"> · import of {c.import_file}</span>{/if}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+		<ol class="mt-5 space-y-1">
+			{#each visible as c, i (c.id)}
+				{@const who = c.changed_by ?? 'A deleted account'}
+				<li class="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-surface-2" in:fly={{ y: 6 * move, duration: 240, delay: Math.min(i, 8) * 30 * move, easing: cubicOut }}>
+					<Avatar name={who} email={who} size="sm" />
+					<div class="min-w-0 flex-1 text-sm">
+						<p>
+							<span class="font-medium">{who}</span>
+							{#if c.old_value === null}
+								entered <strong class="num font-semibold">{formatValue(kpi, c.new_value)}</strong>
+							{:else if c.new_value === null}
+								deleted <s class="num text-ink-2">{formatValue(kpi, c.old_value)}</s>
+							{:else if c.old_value === c.new_value}
+								{c.new_note ? 'noted' : 'removed the note on'} <span class="num">{formatValue(kpi, c.new_value)}</span>
+							{:else}
+								changed <span class="num text-ink-2">{formatValue(kpi, c.old_value)}</span> <span class="text-muted" aria-label="to">→</span> <strong class="num font-semibold">{formatValue(kpi, c.new_value)}</strong>
+							{/if}
+						</p>
+						<p class="text-xs text-muted">
+							{showUnit ? `${c.unit_name} · ` : ''}{c.period_label}{c.import_file ? ` · from ${c.import_file}` : ''}
+						</p>
+						{#if c.new_note && c.new_note !== c.old_note}
+							<p class="mt-1 flex items-start gap-1.5 text-sm text-ink-2"><Icon name="note" size={13} class="mt-0.5 shrink-0 text-muted" />{c.new_note}</p>
+						{/if}
+					</div>
+					<time class="shrink-0 text-xs text-muted" datetime={c.changed_at.replace(' ', 'T')} title={exact(c.changed_at)}>{timeAgo(c.changed_at)}</time>
+				</li>
+			{/each}
+		</ol>
 		{#if changes.length > SHOWN && !all}
 			<button class="btn btn-ghost btn-sm mt-3 -ml-2.5" onclick={() => (all = true)}>Show all {changes.length}</button>
 		{/if}

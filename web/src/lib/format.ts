@@ -45,21 +45,16 @@ export function joinNames(names: string[], max = 2): string {
 	return `${names.slice(0, max).join(', ')} and ${plural(names.length - max, 'other')}`;
 }
 
-const FREQUENCY_NOUN = { daily: 'daily', weekly: 'weekly', monthly: 'monthly', quarterly: 'quarterly', yearly: 'yearly' };
-
-/** The KPI's aggregation rules in two plain sentences. */
-export function describeRules(kpi: Kpi, weightName?: string, many = 'teams'): string {
-	const Many = many.charAt(0).toUpperCase() + many.slice(1);
-	const figures = `${FREQUENCY_NOUN[kpi.frequency]} figures`;
-	const time = {
-		sum: `Longer periods add up the ${figures}.`,
-		average: `Longer periods average the ${figures}.`,
-		last: `Longer periods use the latest of the ${figures}.`
-	}[kpi.time_aggregation];
-	const units = {
-		sum: `${Many} are added together.`,
-		average: `${Many} are averaged, each counting equally.`,
-		weighted_average: `${Many} are averaged, weighted by ${weightName ?? 'another KPI'}.`
-	}[kpi.unit_aggregation];
-	return kpi.frequency === 'yearly' ? units : `${time} ${units}`;
+/** "just now", "5 minutes ago", "3 hours ago", "yesterday", "4 days ago", then the date. */
+export function timeAgo(at: string, now: Date = new Date()): string {
+	const then = new Date(at.replace(' ', 'T'));
+	const minutes = Math.floor((now.getTime() - then.getTime()) / 60000);
+	if (minutes < 1) return 'just now';
+	if (minutes < 60) return `${plural(minutes, 'minute')} ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${plural(hours, 'hour')} ago`;
+	const days = Math.floor(hours / 24);
+	if (days === 1) return 'yesterday';
+	if (days < 7) return `${days} days ago`;
+	return then.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: then.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 }

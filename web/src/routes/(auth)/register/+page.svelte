@@ -1,21 +1,28 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
+	import AuthFooter from '$lib/components/auth/AuthFooter.svelte';
+	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
+	import FormAlert from '$lib/components/auth/FormAlert.svelte';
+	import PasswordInput, { mismatched } from '$lib/components/auth/PasswordInput.svelte';
 	import { href } from '$lib/nav';
 	import { setMe } from '$lib/session.svelte';
 
 	let name = $state('');
 	let email = $state(page.url.searchParams.get('email') ?? '');
 	let password = $state('');
+	let confirm = $state('');
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 
 	const next = $derived(page.url.searchParams.get('next'));
 	const joining = $derived(next?.startsWith('/invite/') ?? false);
+	const mismatch = $derived(mismatched(password, confirm));
 
 	// The (auth) layout moves on to onboarding (or the invitation) once signed in
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (password !== confirm) return;
 		busy = true;
 		error = null;
 		try {
@@ -30,15 +37,17 @@
 
 <svelte:head><title>Create account | Clairvoyance</title></svelte:head>
 
-<h1 class="text-xl font-semibold tracking-[-0.015em]">Create your account</h1>
-<p class="mt-2 text-ink-2">
-	{joining ? "Then you'll join the organisation that invited you." : "Next you'll set up your organisation. It takes a few minutes."}
-</p>
+<AuthHeading
+	icon="user-plus"
+	title="Create your account"
+	lead={joining ? "Then you'll join the organisation that invited you." : "Next you'll set up your organisation. It takes a few minutes."}
+/>
 
 <form class="mt-8 space-y-5" onsubmit={submit} novalidate>
 	<div>
 		<label class="field-label" for="name">Your name</label>
-		<input id="name" class="input" autocomplete="name" bind:value={name} />
+		<!-- svelte-ignore a11y_autofocus -->
+		<input id="name" class="input" autocomplete="name" placeholder="e.g. Ana Reyes" autofocus bind:value={name} />
 	</div>
 	<div>
 		<label class="field-label" for="email">Work email</label>
@@ -47,24 +56,16 @@
 	</div>
 	<div>
 		<label class="field-label" for="password">Password</label>
-		<input
-			id="password"
-			class="input"
-			type="password"
-			autocomplete="new-password"
-			minlength="8"
-			required
-			bind:value={password}
-			aria-invalid={!!error?.field('password')}
-		/>
-		<p class={error?.field('password') ? 'field-error' : 'field-hint'}>At least 8 characters.</p>
+		<PasswordInput bind:value={password} autocomplete="new-password" rule error={error?.field('password') ? `Password ${error.field('password')}` : ''} />
 	</div>
-	{#if error && !error.field('email') && !error.field('password')}
-		<p class="text-sm text-bad-ink" role="alert">{error.message}</p>
-	{/if}
-	<button class="btn btn-primary w-full" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
+	<div>
+		<label class="field-label" for="confirm-password">Confirm password</label>
+		<PasswordInput id="confirm-password" bind:value={confirm} autocomplete="new-password" error={mismatch ? "The passwords don't match" : ''} />
+	</div>
+	<FormAlert message={error && !error.field('email') && !error.field('password') ? error.message : ''} />
+	<button class="btn btn-primary w-full" disabled={busy || !password || password !== confirm}>{busy ? 'Creating your account…' : 'Create account'}</button>
 </form>
 
-<p class="mt-8 text-sm text-ink-2">
+<AuthFooter>
 	Already have an account? <a class="font-medium text-accent hover:underline" href={href('/login', { next, email: email || null })}>Sign in</a>
-</p>
+</AuthFooter>

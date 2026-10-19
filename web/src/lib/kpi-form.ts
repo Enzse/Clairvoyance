@@ -129,3 +129,17 @@ export function shortRules(kpi: Pick<Kpi, 'time_aggregation' | 'unit_aggregation
 				: `${time} over time, ${across} across ${many}`;
 	return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
+
+/** What on target, close and behind mean for a target, e.g. "1,000 or more", "900 to 1,000", "below 900". */
+export function statusBands(
+	direction: Kpi['direction'],
+	target: number,
+	tolerancePct: number,
+	fmt: (n: number) => string
+): { good: string; close: string; bad: string } | null {
+	if (direction === 'none') return null;
+	const edge = target * (tolerancePct / 100);
+	return direction === 'higher_is_better'
+		? { good: `${fmt(target)} or more`, close: `${fmt(target - edge)} to ${fmt(target)}`, bad: `below ${fmt(target - edge)}` }
+		: { good: `${fmt(target)} or less`, close: `${fmt(target)} to ${fmt(target + edge)}`, bad: `above ${fmt(target + edge)}` };
+}

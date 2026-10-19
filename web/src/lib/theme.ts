@@ -1,10 +1,8 @@
 export type Theme = 'light' | 'dark';
 
-/** The theme currently showing: the saved choice, else the operating system's. */
+/** The theme currently showing: the saved choice, else light. */
 export function currentTheme(): Theme {
-	const saved = document.documentElement.dataset.theme;
-	if (saved === 'light' || saved === 'dark') return saved;
-	return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+	return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
 }
 
 export function setTheme(theme: Theme): void {
