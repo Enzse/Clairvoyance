@@ -23,8 +23,18 @@ class Migrator
     }
 
     /** Create the database if it doesn't exist yet (connects without selecting one). */
+    /**
+     * Creates the database if it's missing. On shared hosting the database is made in the
+     * control panel and the user can't create one, which is fine as long as it exists.
+     */
     public static function ensureDatabase(Environment $env): void
     {
+        try {
+            Database::connect($env)->query('SELECT 1');
+            return;
+        } catch (\PDOException $e) {
+            // Missing (or unreachable): try to create it, and report the original problem if that fails too
+        }
         $name = str_replace('`', '', $env->get('DB_NAME'));
         Database::connect($env, false)->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     }
