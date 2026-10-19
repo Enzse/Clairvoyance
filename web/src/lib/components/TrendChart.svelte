@@ -111,7 +111,10 @@
 		<!-- Latest value: end dot with a surface ring, labelled -->
 		{#if lastIndex >= 0 && active === null}
 			{@const last = periods[lastIndex]}
-			<circle cx={x(lastIndex)} cy={y(last.value!)} r="4.5" class="fill-chart stroke-surface" stroke-width="2" />
+			<!-- Still hollow when not everyone has reported yet -->
+			{#if last.reported >= last.expected}
+				<circle cx={x(lastIndex)} cy={y(last.value!)} r="4.5" class="fill-chart stroke-surface" stroke-width="2" />
+			{/if}
 			<text x={x(lastIndex) + 10} y={y(last.value!)} dy="0.32em" class="fill-ink text-sm font-semibold">{formatValue(kpi, last.value)}</text>
 		{/if}
 

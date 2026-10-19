@@ -4,8 +4,9 @@
 	import { fly } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import Icon, { type IconName } from '$lib/components/Icon.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import InlineEdit from '$lib/components/InlineEdit.svelte';
+	import SectionHeading from '$lib/components/SectionHeading.svelte';
 	import DeleteOrganization from '$lib/components/settings/DeleteOrganization.svelte';
 	import WordPicker from '$lib/components/settings/WordPicker.svelte';
 	import { problem } from '$lib/problem';
@@ -36,36 +37,28 @@
 
 <svelte:head><title>Settings | Clairvoyance</title></svelte:head>
 
-{#snippet heading(icon: IconName, title: string, lead: string, tone = 'bg-accent-wash text-accent')}
-	<div class="flex items-start gap-3.5">
-		<span class="grid size-10 shrink-0 place-items-center rounded-xl {tone}"><Icon name={icon} size={19} /></span>
-		<div class="min-w-0">
-			<h3 class="font-semibold">{title}</h3>
-			<p class="mt-0.5 text-sm text-ink-2">{lead}</p>
-		</div>
-	</div>
-{/snippet}
+
 
 <div class="mx-auto max-w-3xl space-y-4">
 	<section class="panel p-5 sm:p-6" in:fly={{ y: 10 * move, duration: 260, easing: cubicOut }}>
-		{@render heading('building', 'Organisation name', 'Click the name to change it. It shows in the top bar, on the scorecard and in invitation emails.')}
+		<SectionHeading icon="building" title="Organisation name" lead="Click the name to change it. It shows in the top bar, on the scorecard and in invitation emails." />
 		<p class="mt-4 pl-[3.375rem] text-xl font-semibold tracking-[-0.015em]">
 			<InlineEdit value={current} label="Organisation name" tip="Rename" onSave={rename} inputClass="w-full" />
 		</p>
 	</section>
 
 	<section class="panel p-5 sm:p-6" in:fly={{ y: 10 * move, duration: 260, delay: 60 * move, easing: cubicOut }}>
-		{@render heading('pin', 'Your word for units', `Units are the parts of ${current} that report figures, like branches, schools or departments. Choose the word your people use, and the scorecard, data entry and the rest of the app will use it.`)}
+		<SectionHeading icon="pin" title="Your word for units" lead={`Units are the parts of ${current} that report figures, like branches, schools or departments. Choose the word your people use, and the scorecard, data entry and the rest of the app will use it.`} />
 		<div class="mt-4 sm:pl-[3.375rem]"><WordPicker /></div>
 	</section>
 
 	<section class="panel flex flex-wrap items-center gap-4 p-5 sm:p-6" in:fly={{ y: 10 * move, duration: 260, delay: 120 * move, easing: cubicOut }}>
-		<div class="min-w-0 flex-1">{@render heading('flag', 'Getting started guide', 'The step-by-step guide on the scorecard. Bring it back if you hid it, or to finish skipped steps.')}</div>
+		<div class="min-w-0 flex-1"><SectionHeading icon="flag" title="Getting started guide" lead="The step-by-step guide on the scorecard. Bring it back if you hid it, or to finish skipped steps." /></div>
 		<button class="btn btn-secondary" onclick={showGuide}>Show it again <Icon name="arrow-right" size={15} /></button>
 	</section>
 
 	<section class="flex flex-wrap items-center gap-4 rounded-xl p-5 ring-1 ring-bad/30 sm:p-6" in:fly={{ y: 10 * move, duration: 260, delay: 180 * move, easing: cubicOut }}>
-		<div class="min-w-0 flex-1">{@render heading('trash', `Delete ${current}`, 'Removes it and all its figures for everyone. People keep their accounts.', 'bg-bad-wash text-bad-ink')}</div>
+		<div class="min-w-0 flex-1"><SectionHeading icon="trash" title={`Delete ${current}`} lead="Removes it and all its figures for everyone. People keep their accounts." tone="bg-bad-wash text-bad-ink" /></div>
 		<button class="btn btn-danger" onclick={() => (deleting = true)}>Delete…</button>
 	</section>
 </div>

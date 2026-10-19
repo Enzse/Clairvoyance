@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { cubicOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { beforeNavigate } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { api, ApiError } from '$lib/api';
 	import { byKpi, parseFigure, rowKey } from '$lib/entry';
 	import { href } from '$lib/nav';
@@ -9,6 +9,7 @@
 	import { problem } from '$lib/problem';
 	import { toast } from '$lib/toast.svelte';
 	import type { EntryForm, Unit } from '$lib/types';
+	import ConfirmDialog from '../ConfirmDialog.svelte';
 	import Icon from '../Icon.svelte';
 	import KpiEntry from './KpiEntry.svelte';
 
@@ -83,9 +84,21 @@
 		errors = {};
 	}
 
+	// Leaving with unsaved figures asks first; closing the tab is left to the browser's own warning
+	let asking = $state(false);
+	let destination = '';
+	let leaveAnyway = false;
 	beforeNavigate((nav) => {
-		if (changed.length && !saving && !confirm('You have unsaved figures. Leave without saving them?')) nav.cancel();
+		if (leaveAnyway || saving || !changed.length || nav.type === 'leave' || !nav.to) return;
+		nav.cancel();
+		destination = nav.to.url.pathname + nav.to.url.search;
+		asking = true;
 	});
+	function leave() {
+		leaveAnyway = true;
+		asking = false;
+		goto(destination);
+	}
 </script>
 
 <svelte:window onbeforeunload={(e) => { if (changed.length) e.preventDefault(); }} />
@@ -131,3 +144,7 @@
 		{/if}
 	</form>
 {/if}
+
+<ConfirmDialog bind:open={asking} title="Leave without saving?" icon="alert" tone="bg-warn-wash text-warn-ink" confirmLabel="Leave without saving" cancelLabel="Keep editing" onConfirm={leave}>
+	<p>{changed.length === 1 ? 'One figure you typed hasn’t' : `${changed.length} figures you typed haven’t`} been saved yet.</p>
+</ConfirmDialog>

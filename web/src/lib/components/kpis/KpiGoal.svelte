@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { formatValue } from '$lib/format';
-	import { ALWAYS, mainTarget, withMainTarget, type KpiForm, type TargetRow } from '$lib/kpi-form';
+	import { ALWAYS, mainTarget, statusBands, withMainTarget, type KpiForm, type TargetRow } from '$lib/kpi-form';
 	import { GRAIN_NAMES } from '$lib/period';
 	import { CURRENCIES } from '$lib/starter-kpis';
 	import { term } from '$lib/terms.svelte';
@@ -33,13 +33,7 @@
 	}
 
 	// What on target, close and behind mean for this target and tolerance
-	const bands = $derived.by(() => {
-		if (!main || form.direction === 'none') return null;
-		const edge = main.value * (form.tolerance_pct / 100);
-		return form.direction === 'higher_is_better'
-			? { good: `${fmt(main.value)} or more`, close: `${fmt(main.value - edge)} to ${fmt(main.value)}`, bad: `below ${fmt(main.value - edge)}` }
-			: { good: `${fmt(main.value)} or less`, close: `${fmt(main.value)} to ${fmt(main.value + edge)}`, bad: `above ${fmt(main.value + edge)}` };
-	});
+	const bands = $derived(main ? statusBands(form.direction, main.value, form.tolerance_pct, fmt) : null);
 	const errorsOfTargets = $derived(Object.entries(errors).filter(([k]) => k.startsWith('targets')).map(([, m]) => m));
 </script>
 

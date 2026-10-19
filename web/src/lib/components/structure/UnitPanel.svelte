@@ -40,6 +40,7 @@
 	// A different unit selected: start from its saved values
 	$effect(() => {
 		void unit.id;
+		confirming = false;
 		hasCode = !!unit.code;
 		code = unit.code ?? '';
 		gathering = gatherFirst;
@@ -100,8 +101,10 @@
 		}
 	}
 
+	// Deleting is confirmed in the panel's footer
+	let confirming = $state(false);
+
 	async function remove() {
-		if (!confirm(`Delete ${unit.name}? This can't be undone.`)) return;
 		const { id, name, parent_id: parent } = unit;
 		try {
 			await api.deleteUnit(id);
@@ -242,7 +245,15 @@
 			{:else if unit.has_values}
 				<p class="text-xs text-muted">{unit.name} has figures, so it can't be deleted. Switch it off to hide it and keep its history.</p>
 			{:else}
-				<button class="btn btn-ghost btn-sm -ml-2.5 text-bad-ink hover:bg-bad-wash" onclick={remove}><Icon name="trash" size={14} /> Delete {unit.name}</button>
+				{#if confirming}
+					<div class="flex flex-wrap items-center gap-2" transition:slide={{ duration: 160 }}>
+						<p class="mr-auto text-sm">Delete <strong class="font-medium">{unit.name}</strong>? This can't be undone.</p>
+						<button class="btn btn-danger btn-sm" onclick={remove}>Delete</button>
+						<button class="btn btn-ghost btn-sm" onclick={() => (confirming = false)}>Keep it</button>
+					</div>
+				{:else}
+					<button class="btn btn-ghost btn-sm -ml-2.5 text-bad-ink hover:bg-bad-wash" onclick={() => (confirming = true)}><Icon name="trash" size={14} /> Delete {unit.name}</button>
+				{/if}
 			{/if}
 		</footer>
 	{/if}

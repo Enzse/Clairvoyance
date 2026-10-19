@@ -6,13 +6,14 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import KpiAbout from '$lib/components/kpi-detail/KpiAbout.svelte';
+	import KpiHero from '$lib/components/kpi-detail/KpiHero.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { trimLeading } from '$lib/chart';
-	import { describeRules, formatValue } from '$lib/format';
+	import { formatValue } from '$lib/format';
 	import { describeChange } from '$lib/summary';
 	import { contextParams, href, readContext } from '$lib/nav';
-	import { GRAIN_NAMES } from '$lib/period';
-	import { FREQUENCIES } from '$lib/period';
+	import { FREQUENCIES, GRAIN_NAMES } from '$lib/period';
 	import { STATUS } from '$lib/status';
 	import type { Breakdown, Frequency, Kpi, Series } from '$lib/types';
 	import { units } from '$lib/units.svelte';
@@ -99,40 +100,8 @@
 			</div>
 		{:else if series && kpi && current}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
-				<section class="panel -mt-5 p-5 sm:p-6" aria-labelledby="trend-heading">
-					<div class="flex flex-wrap items-start gap-x-10 gap-y-4">
-						<div>
-							<h2 id="trend-heading" class="text-sm text-ink-2">{unit?.name}, {current.period_label}</h2>
-							<p class="mt-1 text-[48px] leading-none font-semibold tracking-[-0.03em]">{formatValue(kpi, current.value)}</p>
-						</div>
-						<dl class="flex flex-wrap gap-x-8 gap-y-3 pt-1">
-							{#if kpi.direction !== 'none'}
-								<div>
-									<dt class="text-sm text-ink-2">Status</dt>
-									<dd class="mt-1.5"><StatusBadge status={current.value === null ? null : current.status} empty={current.value === null ? 'No data' : 'No target'} /></dd>
-								</div>
-							{/if}
-							<div>
-								<dt class="text-sm text-ink-2">Target</dt>
-								<dd class="num mt-1 text-md">{formatValue(kpi, current.target)}</dd>
-							</div>
-							<div>
-								<dt class="text-sm text-ink-2">Reports in</dt>
-								<dd class="num mt-1 text-md">{current.reported} of {current.expected}</dd>
-							</div>
-						</dl>
-						<div class="ml-auto flex rounded-lg bg-surface-2 p-0.5 ring-1 ring-line" role="group" aria-label="View">
-							{#each [['chart', 'Chart'], ['table', 'Table']] as [value, text] (value)}
-								<button
-									class="rounded-md px-3 py-1 text-sm {view === value ? 'bg-surface font-semibold text-ink shadow-sm ring-1 ring-line' : 'text-ink-2 hover:text-ink'}"
-									aria-pressed={view === value}
-									onclick={() => (view = value as 'chart' | 'table')}
-								>
-									{text}
-								</button>
-							{/each}
-						</div>
-					</div>
+				<section class="panel -mt-5 p-5 sm:p-7" aria-labelledby="trend-heading">
+					<KpiHero {kpi} where={unit?.name ?? ''} {current} {previous} change={series.change} bind:view />
 
 					<div class="mt-6">
 						{#if view === 'chart'}
@@ -176,42 +145,20 @@
 				<div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
 					{#if breakdown && !isLeaf}
 						<section class="panel min-w-0 p-5 sm:p-6" aria-labelledby="units-heading">
-							<h2 id="units-heading" class="text-md font-semibold">By {wordFor(breakdown.units.map((r) => r.unit), false)}, {breakdown.period_label}</h2>
-							<p class="mt-1 mb-4 text-sm text-ink-2">Select one to see this KPI for it alone.</p>
+							<div class="mb-4 flex items-start gap-3">
+								<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-wash text-accent"><Icon name="layers" size={17} /></span>
+								<div>
+									<h2 id="units-heading" class="text-md font-semibold">By {wordFor(breakdown.units.map((r) => r.unit), false)}, {breakdown.period_label}</h2>
+									<p class="text-sm text-ink-2">Click one to see this KPI for it alone.</p>
+								</div>
+							</div>
 							<BreakdownBars rows={breakdown.units} {kpi} hrefFor={unitHref} />
 						</section>
 					{:else}
 						<div></div>
 					{/if}
 
-					<aside class="panel h-fit min-w-0 p-5 sm:p-6" aria-labelledby="about-heading">
-						<h2 id="about-heading" class="text-md font-semibold">How it's calculated</h2>
-						{#if kpi.description}<p class="mt-2 text-ink-2">{kpi.description}</p>{/if}
-						<dl class="mt-4 space-y-3 text-sm">
-							<div>
-								<dt class="text-ink-2">Reported</dt>
-								<dd class="mt-0.5">
-									{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, by each ${kpi.applies_to_kind.toLowerCase()}` : `, by each ${term.one}`}{kpi.scope_unit_ids.length
-										? ` in ${kpi.scope_unit_ids.map((id) => units.get(id)?.name ?? '?').join(', ')}`
-										: ''}
-								</dd>
-							</div>
-							<div>
-								<dt class="text-ink-2">Combined</dt>
-								<dd class="mt-0.5">{describeRules(kpi, weight?.name.toLowerCase(), term.many)}</dd>
-							</div>
-							<div>
-								<dt class="text-ink-2">Status</dt>
-								<dd class="mt-0.5">
-									{#if kpi.direction === 'none'}
-										Tracked without a status.
-									{:else}
-										{kpi.direction === 'higher_is_better' ? 'Higher is better.' : 'Lower is better.'} Within {kpi.tolerance_pct}% of target counts as close.
-									{/if}
-								</dd>
-							</div>
-						</dl>
-					</aside>
+					<KpiAbout {kpi} weightName={weight?.name} target={current.target} />
 				</div>
 
 				<ChangeHistory {kpi} {unitId} showUnit={!isLeaf} />

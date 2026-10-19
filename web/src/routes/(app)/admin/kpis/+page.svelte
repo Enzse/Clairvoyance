@@ -29,13 +29,16 @@
 	let fresh = $state<number | null>(null);
 	let query = $state('');
 	// Arriving to add one: the introduction can wait for the next visit
-	let touring = $state(!tourSeen('kpis') && !page.url.searchParams.has('new'));
+	let touring = $state(!tourSeen('kpis') && !page.url.searchParams.has('new') && !page.url.searchParams.has('kpi'));
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 
 	// The getting-started guide links here with ?new to open the guide straight away
 	onMount(async () => {
 		await load();
 		if (page.url.searchParams.has('new')) creating = true;
+		// A KPI's page links here with ?kpi to open its details
+		const open = Number(page.url.searchParams.get('kpi'));
+		if (kpis.some((k) => k.id === open)) selectedId = open;
 	});
 	async function load() {
 		kpis = await api.kpis(true);
