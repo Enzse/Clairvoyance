@@ -4,6 +4,7 @@
 	import { iconFor, UNIT_ICONS } from '$lib/unit-icons';
 	import Icon from '../Icon.svelte';
 	import Popover from '../Popover.svelte';
+	import Tooltip from '../Tooltip.svelte';
 	import { problem, saveUnit } from './save';
 
 	/** The unit's icon tile; clicking it opens a grid of icons to choose from. */
@@ -24,6 +25,7 @@
 	}
 </script>
 
+<Tooltip text="Change icon">
 <Popover
 	label="Choose an icon for {unit.name}"
 	width={252}
@@ -56,3 +58,4 @@
 		</div>
 	{/snippet}
 </Popover>
+</Tooltip>

@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { session } from '$lib/session.svelte';
-	import { term } from '$lib/terms.svelte';
 
 	let { children } = $props();
 
 	const tabs = $derived([
-		{ href: '/admin/units', label: 'Structure', hint: `${term.Many} and how they're grouped` },
+		{ href: '/admin/units', label: 'Structure', hint: 'Your units and how they’re grouped' },
 		{ href: '/admin/kpis', label: 'KPIs', hint: 'What you measure, and targets' },
 		{ href: '/admin/users', label: 'People', hint: 'Who can see and enter what' },
 		{ href: '/admin/settings', label: 'Settings', hint: 'Name, wording, deleting' }

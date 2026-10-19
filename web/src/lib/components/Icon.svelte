@@ -18,6 +18,8 @@
 		mail: ['M3 6h18v12H3z', 'm3 7 9 6 9-6'],
 		history: ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5', 'M12 7v5l3 2'],
 		move: ['M5 12h14', 'm13 6 6 6-6 6'],
+		help: [circle(12, 12, 9), 'M9.5 9.2a2.5 2.5 0 0 1 4.9.6c0 1.7-2.4 2.2-2.4 3.7', 'M12 17v.01'],
+		'arrow-right': ['M5 12h14', 'm12 5 7 7-7 7'],
 		sliders: ['M4 6h10', 'M18 6h2', circle(16, 6, 2), 'M4 18h4', 'M12 18h8', circle(10, 18, 2), 'M4 12h2', 'M10 12h10', circle(8, 12, 2)],
 		// Choosable unit icons (see unit-icons.ts)
 		building: ['M4 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17', 'M15 9h4a1 1 0 0 1 1 1v11', 'M3 21h18', 'M8 7h3', 'M8 11h3', 'M8 15h3'],

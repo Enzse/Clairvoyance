@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { toast } from '$lib/toast.svelte';
+	import Tooltip from '../Tooltip.svelte';
 	import { problem } from './save';
 
 	/**
@@ -13,6 +14,8 @@
 		label,
 		placeholder = '',
 		optional = false,
+		tip,
+		tipSide = 'top',
 		class: className = '',
 		inputClass = ''
 	}: {
@@ -21,6 +24,9 @@
 		label: string;
 		placeholder?: string;
 		optional?: boolean;
+		/** Tooltip, e.g. "Rename" */
+		tip: string;
+		tipSide?: 'top' | 'bottom' | 'right';
 		class?: string;
 		inputClass?: string;
 	} = $props();
@@ -82,13 +88,14 @@
 		onclick={(e) => e.stopPropagation()}
 	/>
 {:else}
+	<Tooltip text={tip} side={tipSide} class="-mx-1">
 	<button
 		type="button"
-		class="-mx-1 max-w-full cursor-text truncate rounded px-1 text-left hover:bg-accent-wash {value ? '' : 'text-muted'} {className}"
-		title="Click to change"
+		class="max-w-full cursor-text truncate rounded px-1 text-left hover:bg-accent-wash {value ? '' : 'text-muted'} {className}"
 		aria-label="{label}: {value || 'not set'}. Click to change"
 		onclick={start}
 	>
 		{value || placeholder}
 	</button>
+	</Tooltip>
 {/if}

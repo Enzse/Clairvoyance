@@ -3,7 +3,10 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
 	import Icon from '$lib/components/Icon.svelte';
+	import HelpButton from '$lib/components/HelpButton.svelte';
 	import StructureNode from '$lib/components/structure/StructureNode.svelte';
+	import StructureTour from '$lib/components/structure/StructureTour.svelte';
+	import { markTourSeen, tourSeen } from '$lib/components/Tour.svelte';
 	import type { Tree } from '$lib/components/structure/tree';
 	import UnitPanel from '$lib/components/structure/UnitPanel.svelte';
 	import { plural } from '$lib/format';
@@ -29,6 +32,9 @@
 	const empty = $derived(!!root && units.children(root.id).length === 0);
 	const locked = $derived(!!root && root.has_values && empty);
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
+
+	// The introduction opens on the first visit; the help button brings it back
+	let touring = $state(!tourSeen('structure'));
 
 	// Nothing set up yet: open the add box straight away
 	let opened = false;
@@ -109,11 +115,11 @@
 		<div class="min-w-0">
 			<h2 class="text-lg font-semibold">Structure</h2>
 			<p class="mt-1 max-w-[68ch] text-ink-2">
+				Each part of {root?.name} is a <strong class="font-medium text-ink">unit</strong>: {term.many} that report figures, and groups that add them up.
 				{#if reporting.length}
-					{plural(reporting.length, term.one, term.many)} report figures{groupCount ? `, in ${plural(groupCount, 'group')}` : ''}. Click a name to rename it,
-					or a row for more.
+					{plural(reporting.length, term.one, term.many)} report now{groupCount ? `, in ${plural(groupCount, 'group')}` : ''}.
 				{:else}
-					Add the {term.many} that report figures. You can group them later, for example by region.
+					Start by adding your {term.many}.
 				{/if}
 			</p>
 		</div>
@@ -150,4 +156,9 @@
 	>
 		<UnitPanel unit={selected} gatherFirst={gatherNext} onClose={close} onDeleted={(parentId) => (selectedId = parentId)} />
 	</aside>
+{/if}
+
+<StructureTour bind:open={touring} onClose={() => markTourSeen('structure')} />
+{#if !selected}
+	<HelpButton label="How Structure works" onclick={() => (touring = true)} />
 {/if}

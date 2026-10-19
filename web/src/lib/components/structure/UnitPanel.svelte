@@ -7,6 +7,7 @@
 	import { units } from '$lib/units.svelte';
 	import { slide } from 'svelte/transition';
 	import Icon from '../Icon.svelte';
+	import Tooltip from '../Tooltip.svelte';
 	import IconPicker from './IconPicker.svelte';
 	import InlineEdit from './InlineEdit.svelte';
 	import { problem, saveUnit } from './save';
@@ -114,8 +115,9 @@
 	<header class="flex items-start gap-3 border-b border-line px-5 py-4">
 		<IconPicker {unit} isGroup={kids.length > 0} size="lg" />
 		<div class="min-w-0 flex-1">
+			<p class="text-xs font-semibold tracking-wide text-muted uppercase">{isRoot ? 'Organisation' : kids.length ? 'Group of units' : 'Unit'}</p>
 			<h2 class="text-lg font-semibold tracking-[-0.01em]">
-				<InlineEdit value={unit.name} label="Name" onSave={(name) => saveUnit(unit, { name })} inputClass="w-full" />
+				<InlineEdit value={unit.name} label="Name" tip="Rename" onSave={(name) => saveUnit(unit, { name })} inputClass="w-full" />
 			</h2>
 			<p class="truncate text-sm text-ink-2">
 				{#if isRoot}
@@ -127,20 +129,22 @@
 				{/if}
 			</p>
 		</div>
-		<button class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" onclick={onClose} aria-label="Close">
-			<Icon name="x" size={18} />
-		</button>
+		<Tooltip text="Close" side="bottom">
+			<button class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" onclick={onClose} aria-label="Close">
+				<Icon name="x" size={18} />
+			</button>
+		</Tooltip>
 	</header>
 
 	<div class="flex-1 space-y-5 overflow-y-auto px-5 py-5">
 		<dl class="space-y-4">
-			<div class="flex items-center justify-between gap-4">
-				<dt class="text-sm text-ink-2">What it is</dt>
-				<dd class="min-w-0 flex-1 text-right text-sm font-medium">
-					<InlineEdit value={unit.kind} label="What it is" placeholder="Add a kind" optional onSave={(kind) => saveUnit(unit, { kind: kind || null })} />
-				</dd>
-			</div>
 			{#if !isRoot}
+				<div class="flex items-center justify-between gap-4">
+					<dt class="text-sm text-ink-2">Term <span class="block text-xs text-muted">What you call it, e.g. Branch or Region</span></dt>
+					<dd class="min-w-0 flex-1 text-right text-sm font-medium">
+						<InlineEdit value={unit.kind} label="Term" tip="Change term" placeholder="Add a term" optional onSave={(kind) => saveUnit(unit, { kind: kind || null })} />
+					</dd>
+				</div>
 				<div>
 					<dt><label class="text-sm text-ink-2" for="u-parent">Inside</label></dt>
 					<dd class="mt-1.5">
