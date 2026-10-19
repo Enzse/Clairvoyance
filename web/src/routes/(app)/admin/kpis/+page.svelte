@@ -7,7 +7,7 @@
 	import { describeRules, formatValue } from '$lib/format';
 	import { align, FREQUENCIES, GRAIN_NAMES } from '$lib/period';
 	import { toast } from '$lib/toast.svelte';
-	import type { Kpi, Target } from '$lib/types';
+	import type { Kpi, Target, Unit } from '$lib/types';
 	import { units } from '$lib/units.svelte';
 
 	let kpis = $state<Kpi[]>([]);
@@ -21,13 +21,44 @@
 
 	const leafKinds = $derived([...new Set(units.list.filter((u) => u.is_leaf && u.kind).map((u) => u.kind!))].sort());
 
+	/** Every unit below the organisation, depth-first, for the "Reported by" picker. */
+	const scopeChoices = $derived.by(() => {
+		const out: { unit: Unit; depth: number }[] = [];
+		const walk = (id: number, depth: number) => {
+			for (const u of units.children(id)) {
+				if (!u.is_active) continue;
+				out.push({ unit: u, depth });
+				walk(u.id, depth + 1);
+			}
+		};
+		const root = units.home();
+		if (root) walk(root.id, 0);
+		return out;
+	});
+
+	function unitNames(ids: number[]): string {
+		return ids.map((id) => units.get(id)?.name ?? '?').join(', ');
+	}
+
 	// ---- Editor
 	type Form = Omit<Kpi, 'id' | 'description' | 'applies_to_kind' | 'weight_kpi_id'> & { description: string; applies_to_kind: string; weight_kpi_id: number | '' };
 
 	const blank = (): Form => ({
 		code: '', name: '', description: '', frequency: 'monthly', time_aggregation: 'sum', unit_aggregation: 'sum',
-		weight_kpi_id: '', direction: 'higher_is_better', tolerance_pct: 10, applies_to_kind: '', decimals: 0, prefix: '', suffix: '', is_active: true
+		weight_kpi_id: '', direction: 'higher_is_better', tolerance_pct: 10, applies_to_kind: '', scope_unit_ids: [], decimals: 0, prefix: '', suffix: '', is_active: true
 	});
+
+	// "Only some units" stays selected even before a unit is ticked
+	let limited = $state(false);
+
+	function setLimited(value: boolean) {
+		limited = value;
+		if (!value) form.scope_unit_ids = [];
+	}
+
+	function toggleScope(id: number) {
+		form.scope_unit_ids = form.scope_unit_ids.includes(id) ? form.scope_unit_ids.filter((x) => x !== id) : [...form.scope_unit_ids, id];
+	}
 
 	let open = $state(false);
 	let editing = $state<Kpi | null>(null);
@@ -41,6 +72,7 @@
 	function startNew() {
 		editing = null;
 		form = blank();
+		limited = false;
 		codeTouched = false;
 		targets = [];
 		error = null;
@@ -50,6 +82,7 @@
 	async function startEdit(kpi: Kpi) {
 		editing = kpi;
 		form = { ...kpi, description: kpi.description ?? '', applies_to_kind: kpi.applies_to_kind ?? '', weight_kpi_id: kpi.weight_kpi_id ?? '' };
+		limited = kpi.scope_unit_ids.length > 0;
 		codeTouched = true;
 		error = null;
 		targets = [];
@@ -130,7 +163,7 @@
 							{#if !kpi.is_active}<span class="ml-1.5 rounded bg-surface-2 px-1.5 text-xs ring-1 ring-line">Inactive</span>{/if}
 							<span class="block font-mono text-xs text-muted">{kpi.code}</span>
 						</th>
-						<td class="px-3 py-3 text-sm">{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, ${kpi.applies_to_kind} only` : ''}</td>
+						<td class="px-3 py-3 text-sm">{GRAIN_NAMES[kpi.frequency].adjective}<span class="block text-ink-2">{kpi.scope_unit_ids.length ? `By ${unitNames(kpi.scope_unit_ids)}` : 'By everyone'}{kpi.applies_to_kind ? `, ${kpi.applies_to_kind} only` : ''}</span></td>
 						<td class="max-w-80 px-3 py-3 text-sm text-ink-2">{describeRules(kpi, kpis.find((k) => k.id === kpi.weight_kpi_id)?.name.toLowerCase())}</td>
 						<td class="px-3 py-3 text-sm">
 							{kpi.direction === 'none' ? 'Tracked only' : kpi.direction === 'higher_is_better' ? 'Higher is better' : 'Lower is better'}
@@ -173,14 +206,43 @@
 				</select>
 				{#if fieldError('frequency')}<p class="field-error">{fieldError('frequency')}</p>{/if}
 			</div>
-			<div>
-				<label class="field-label" for="k-kind">By</label>
-				<select id="k-kind" class="input" bind:value={form.applies_to_kind}>
-					<option value="">Every reporting unit</option>
-					{#each leafKinds as k (k)}<option value={k}>Each {k.toLowerCase()} only</option>{/each}
-				</select>
-			</div>
+			{#if leafKinds.length > 1}
+				<div>
+					<label class="field-label" for="k-kind">Of those, only</label>
+					<select id="k-kind" class="input" bind:value={form.applies_to_kind}>
+						<option value="">Any kind of unit</option>
+						{#each leafKinds as k (k)}<option value={k}>Units of kind {k}</option>{/each}
+					</select>
+				</div>
+			{/if}
 		</div>
+
+		{#if scopeChoices.length}
+			<fieldset>
+				<legend class="field-label">Reported by</legend>
+				<div class="flex gap-2">
+					{#each [[false, 'Everyone'], [true, 'Only some units']] as [some, text] (text)}
+						<label class="flex flex-1 cursor-pointer items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1 {limited === some ? 'bg-accent-wash ring-chart' : 'ring-line-strong'}">
+							<input type="radio" name="scope-mode" checked={limited === some} onchange={() => setLimited(some as boolean)} class="accent-[var(--accent)]" /> {text}
+						</label>
+					{/each}
+				</div>
+				{#if limited}
+					<div class="mt-2 max-h-60 overflow-y-auto rounded-lg py-1 ring-1 ring-line-strong {fieldError('scope_unit_ids') ? 'ring-bad' : ''}">
+						{#each scopeChoices as { unit, depth } (unit.id)}
+							<label class="flex cursor-pointer items-center gap-2.5 py-1.5 pr-3 hover:bg-surface-2" style:padding-left="{12 + depth * 18}px">
+								<input type="checkbox" class="size-4 accent-[var(--accent)]" checked={form.scope_unit_ids.includes(unit.id)} onchange={() => toggleScope(unit.id)} />
+								{unit.name}
+								{#if unit.kind}<span class="text-sm text-muted">{unit.kind}</span>{/if}
+							</label>
+						{/each}
+					</div>
+					<p class={fieldError('scope_unit_ids') ? 'field-error' : 'field-hint'}>
+						{fieldError('scope_unit_ids') ?? 'Ticking a unit includes everything inside it. Other units never see this KPI as missing.'}
+					</p>
+				{/if}
+			</fieldset>
+		{/if}
 
 		<ChoiceGroup
 			name="time"

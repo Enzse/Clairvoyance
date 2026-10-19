@@ -1,22 +1,23 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '$lib/api';
+	import { href } from '$lib/nav';
 	import { login } from '$lib/session.svelte';
 
-	let email = $state('');
+	let email = $state(page.url.searchParams.get('email') ?? '');
 	let password = $state('');
 	let error = $state('');
 	let busy = $state(false);
 
+	const next = $derived(page.url.searchParams.get('next'));
+
+	// The (auth) layout moves on as soon as the session has a user
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
 		error = '';
 		try {
 			await login(email, password);
-			const next = page.url.searchParams.get('next');
-			goto(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replaceState: true });
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Sign-in failed';
 		} finally {
@@ -28,7 +29,7 @@
 <svelte:head><title>Sign in | Clairvoyance</title></svelte:head>
 
 <h1 class="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>
-<p class="mt-2 text-ink-2">Use the email your administrator registered for you.</p>
+<p class="mt-2 text-ink-2">Welcome back.</p>
 
 <form class="mt-8 space-y-5" onsubmit={submit}>
 	<div>
@@ -46,5 +47,5 @@
 </form>
 
 <p class="mt-8 text-sm text-ink-2">
-	New here? <a class="font-medium text-accent hover:underline" href="/register">Create an account</a>
+	New to Clairvoyance? <a class="font-medium text-accent hover:underline" href={href('/register', { next, email: email || null })}>Create an account</a>
 </p>

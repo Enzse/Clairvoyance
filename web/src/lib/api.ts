@@ -5,10 +5,16 @@ import type {
 	ImportMapping,
 	ImportPreview,
 	ImportResult,
+	Invitation,
+	InvitationLookup,
 	Kpi,
+	Me,
+	Member,
 	Membership,
+	Role,
 	Scorecard,
 	Series,
+	Setup,
 	Target,
 	Unit,
 	User
@@ -69,11 +75,32 @@ async function request<T>(method: string, path: string, options: { query?: Query
 }
 
 export const api = {
-	// Session
-	me: () => request<User>('GET', '/auth/me'),
-	login: (email: string, password: string) => request<User>('POST', '/auth/login', { body: { email, password } }),
-	register: (body: { email: string; password: string; name?: string }) => request<User>('POST', '/auth/register', { body }),
+	// Session and account
+	me: () => request<Me>('GET', '/auth/me'),
+	login: (email: string, password: string) => request<Me>('POST', '/auth/login', { body: { email, password } }),
+	register: (body: { email: string; password: string; name?: string }) => request<Me>('POST', '/auth/register', { body }),
 	logout: () => request<[]>('POST', '/auth/logout'),
+	updateAccount: (body: { name?: string | null; current_password?: string; new_password?: string }) =>
+		request<User>('PUT', '/auth/me', { body }),
+
+	// Organisations
+	createOrganization: (name: string) => request<Me>('POST', '/organizations', { body: { name } }),
+	selectOrganization: (organizationId: number) => request<Me>('POST', '/organizations/select', { body: { organization_id: organizationId } }),
+	renameOrganization: (name: string) => request<Me>('PUT', '/organization', { body: { name } }),
+	setup: () => request<Setup>('GET', '/organization/setup'),
+	dismissSetup: () => request<Setup>('POST', '/organization/setup/dismiss'),
+
+	// People (admin)
+	members: () => request<Member[]>('GET', '/members'),
+	setMemberRole: (userId: number, role: Role) => request<Member[]>('PUT', `/members/${userId}`, { body: { role } }),
+	removeMember: (userId: number) => request<[]>('DELETE', `/members/${userId}`),
+	saveMemberships: (userId: number, memberships: Membership[]) =>
+		request<Membership[]>('PUT', `/members/${userId}/memberships`, { body: { memberships } }),
+	invitations: () => request<Invitation[]>('GET', '/invitations'),
+	invite: (body: { email: string; role: Role; access: Membership[] }) => request<Invitation>('POST', '/invitations', { body }),
+	revokeInvitation: (id: number) => request<[]>('DELETE', `/invitations/${id}`),
+	lookupInvitation: (token: string) => request<InvitationLookup>('GET', '/invitations/lookup', { query: { token } }),
+	acceptInvitation: (token: string) => request<Me>('POST', '/invitations/accept', { body: { token } }),
 
 	// Organisation
 	units: () => request<Unit[]>('GET', '/units'),
@@ -108,15 +135,12 @@ export const api = {
 	commitImport: (file: File, mapping: ImportMapping, skipInvalid: boolean) =>
 		request<ImportResult>('POST', '/imports', { form: importForm(file, mapping, skipInvalid) }),
 
-	// Users (admin)
-	users: () => request<User[]>('GET', '/users'),
-	createUser: (body: { email: string; password: string; name?: string; role: User['role'] }) => request<User>('POST', '/users', { body }),
-	updateUser: (id: number, body: { name?: string | null; role?: User['role']; password?: string }) =>
-		request<User>('PUT', `/users/${id}`, { body }),
-	deleteUser: (id: number) => request<[]>('DELETE', `/users/${id}`),
-	saveMemberships: (userId: number, memberships: Membership[]) =>
-		request<Membership[]>('PUT', `/users/${userId}/memberships`, { body: { memberships } })
 };
+
+/** The link an invited person opens. */
+export function invitationLink(token: string): string {
+	return `${location.origin}/invite/${token}`;
+}
 
 function importForm(file: File, mapping: ImportMapping, skipInvalid = false): FormData {
 	const form = new FormData();

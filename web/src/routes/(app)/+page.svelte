@@ -6,6 +6,7 @@
 	import Masthead from '$lib/components/Masthead.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import SetupChecklist from '$lib/components/SetupChecklist.svelte';
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
@@ -24,6 +25,7 @@
 	let cells = $state(new Map<string, Result>());
 	let loading = $state(true);
 	let error = $state('');
+	let checklistShown = $state(false);
 	let request = 0;
 
 	$effect(() => {
@@ -89,7 +91,8 @@
 		{:else if card}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
 				<!-- Report card -->
-				<section class="panel -mt-5 overflow-hidden" aria-labelledby="kpis-heading">
+				{#if session.user?.organization?.role === 'admin'}<SetupChecklist bind:shown={checklistShown} />{/if}
+				<section class="panel overflow-hidden {checklistShown ? '' : '-mt-5'}" aria-labelledby="kpis-heading">
 					<div class="flex items-center justify-between gap-4 px-5 pt-5 pb-3">
 						<h2 id="kpis-heading" class="text-md font-semibold">KPIs</h2>
 						{#if canEnter}
@@ -101,7 +104,7 @@
 					{#if card.kpis.length === 0}
 						<p class="px-5 pb-6 text-ink-2">
 							No KPIs are defined yet.
-							{#if session.user?.role === 'admin'}<a class="text-accent hover:underline" href="/admin/kpis">Define the first KPI</a>.{/if}
+							{#if session.user?.organization?.role === 'admin'}<a class="text-accent hover:underline" href="/admin/kpis">Define the first KPI</a>.{/if}
 						</p>
 					{:else}
 						<div class="overflow-x-auto">

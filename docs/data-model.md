@@ -1,12 +1,13 @@
 # Clairvoyance data model (v3 rebuild)
 
-Status: **steps 1 and 2 implemented**: the backend and the web app. Step 3 is future work.
+Status: **steps 1 and 2 implemented**, and the app is multi-tenant (SaaS): anyone can sign up
+and create an organisation. Step 3 is future work.
 
 ## What the product is
 
-A scorecard for organisations with many units — branches, stores, schools, clinics,
-departments — that report the same KPIs on a schedule. The questions it must answer at a
-glance:
+A KPI scorecard for organisations whose parts (branches, stores, departments, teams, regions)
+record their figures on a schedule. Each organisation is a separate tenant. The questions it
+must answer at a glance:
 
 1. Are we on target this period? (overall, and for any unit)
 2. Is it getting better or worse than last period?
@@ -31,8 +32,9 @@ Everything is keyed on **KPI × unit × period**.
 
 | Concept | Meaning |
 |---|---|
-| Unit | A node in the organisation tree (Org › Region › Division › School). Data is entered only at **leaf** units; parents are roll-ups. Model an HQ's own figures as a leaf such as "HQ Office". |
-| KPI | An organisation-wide definition (admins create them, not individual users). |
+| Organisation | A tenant. Owns its unit tree, KPIs, figures and imports; people join it with a role (admin or member). One person can belong to several. |
+| Unit | A node in the organisation's tree (Company › Region › Branch, or Company › Sales › North team). The root carries the organisation's name. Data is entered only at **leaf** units; parents are roll-ups. Model an HQ's own figures as a leaf such as "HQ Office". |
+| KPI | A definition owned by the organisation (admins create them). By default every leaf unit reports it; it can be **scoped** to some units, e.g. revenue for the Sales department only, and optionally to one kind of unit. |
 | Frequency | How often the KPI is reported: daily, weekly (ISO, Monday start), monthly, quarterly, yearly. |
 | Period | Identified by its start date, aligned to the KPI's frequency (`2025-06-01` for June). |
 | Grain | The period length you view at (≥ frequency): a monthly KPI can be viewed monthly, quarterly or yearly. |
@@ -106,37 +108,77 @@ This replaces `rag_red` / `rag_amber`, whose meaning the frontend and backend di
 
 ## Schema (MariaDB 10.4)
 
-Abridged; the source of truth is `api/migrations/001_baseline.sql`, which also seeds the root
-unit ("Organization").
+Abridged; the source of truth is `api/migrations/` (`001_baseline.sql`, then
+`002_organizations.sql`, which adds tenancy). Nothing is seeded: an organisation's root unit is
+created together with the organisation.
 
 ```sql
 CREATE TABLE users (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   email       VARCHAR(255) NOT NULL UNIQUE,
   name        VARCHAR(255) NULL,
-  password    VARCHAR(255) NOT NULL,
-  role        ENUM('admin','member') NOT NULL DEFAULT 'member',
+  password    VARCHAR(255) NOT NULL,              -- roles live on organisation membership
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Organisation tree. Subtrees are read with WITH RECURSIVE (small trees, no path column to maintain).
+-- Tenants. Every unit, KPI and import belongs to exactly one.
+CREATE TABLE organizations (
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  name                VARCHAR(255) NOT NULL,
+  setup_dismissed_at  TIMESTAMP NULL,              -- hides the getting-started checklist
+  created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE organization_users (
+  organization_id  INT NOT NULL,
+  user_id          INT NOT NULL,
+  role             ENUM('admin','member') NOT NULL,  -- an organisation always keeps one admin
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (organization_id, user_id),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id)         REFERENCES users(id)         ON DELETE CASCADE
+);
+
+-- An invitation link. Only the SHA-256 of the token is stored; the link is shown once.
+CREATE TABLE invitations (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  organization_id  INT NOT NULL,
+  email            VARCHAR(255) NOT NULL,          -- must match the account that accepts
+  role             ENUM('admin','member') NOT NULL,
+  access           TEXT NULL,                      -- JSON [{unit_id, role}] granted on accept
+  token_hash       CHAR(64) NOT NULL UNIQUE,
+  invited_by       INT NULL,
+  expires_at       DATETIME NOT NULL,              -- 14 days
+  accepted_at      DATETIME NULL,                  -- single use
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (invited_by)      REFERENCES users(id)         ON DELETE SET NULL
+);
+
+-- Organisation tree, one root per organisation (it carries the organisation's name).
+-- Subtrees are read with WITH RECURSIVE (small trees, no path column to maintain).
 CREATE TABLE units (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  parent_id   INT NULL,
-  name        VARCHAR(255) NOT NULL,
-  code        VARCHAR(64) NULL UNIQUE,          -- optional; used to match CSV rows
-  kind        VARCHAR(64) NULL,                 -- label: Region, Division, School, Branch…
-  is_active   TINYINT(1) NOT NULL DEFAULT 1,    -- deactivate instead of deleting units with data
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  organization_id  INT NOT NULL,
+  parent_id        INT NULL,
+  name             VARCHAR(255) NOT NULL,
+  code             VARCHAR(64) NULL,               -- optional; matches CSV rows; unique per organisation
+  kind             VARCHAR(64) NULL,               -- label: Region, Branch, Department, Team…
+  is_active        TINYINT(1) NOT NULL DEFAULT 1,  -- deactivate instead of deleting units with data
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_unit_sibling (parent_id, name),
+  UNIQUE KEY uq_unit_code (organization_id, code),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_id) REFERENCES units(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE kpis (
   id                INT AUTO_INCREMENT PRIMARY KEY,
-  code              VARCHAR(64) NOT NULL UNIQUE,  -- stable key for imports, e.g. total_students
+  organization_id   INT NOT NULL,
+  code              VARCHAR(64) NOT NULL,         -- stable key for imports, unique per organisation
   name              VARCHAR(255) NOT NULL,
   description       TEXT NULL,
   frequency         ENUM('daily','weekly','monthly','quarterly','yearly') NOT NULL,
@@ -152,14 +194,27 @@ CREATE TABLE kpis (
   is_active         TINYINT(1) NOT NULL DEFAULT 1,
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_kpi_code (organization_id, code),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (weight_kpi_id) REFERENCES kpis(id) ON DELETE RESTRICT,
   CHECK ((unit_aggregation = 'weighted_average') = (weight_kpi_id IS NOT NULL)),
   CHECK (tolerance_pct >= 0)
 );
 
+-- "Reported by": a KPI applies to the leaf units under these units (and of applies_to_kind,
+-- if set). No rows = the whole organisation. Revenue for Sales only; tickets for Support only.
+CREATE TABLE kpi_scope_units (
+  kpi_id   INT NOT NULL,
+  unit_id  INT NOT NULL,
+  PRIMARY KEY (kpi_id, unit_id),
+  FOREIGN KEY (kpi_id)  REFERENCES kpis(id)  ON DELETE CASCADE,
+  FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+);
+
 CREATE TABLE imports (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  user_id       INT NULL,
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  organization_id  INT NOT NULL,
+  user_id          INT NULL,
   filename      VARCHAR(255) NOT NULL,
   rows_total    INT NOT NULL,
   values_created INT NOT NULL,
@@ -213,20 +268,43 @@ CREATE TABLE unit_memberships (
 );
 ```
 
+Units and values are never deleted in bulk (units with children or data are deactivated), so
+`units.parent_id` and `kpi_values.unit_id` are `RESTRICT`. Deleting a whole organisation
+therefore needs values, then units leaf-first, removed before the organisation row; there is no
+"delete organisation" feature yet.
+
+## Organisations and onboarding
+
+Signing up creates an account and nothing else. The person is then taken through onboarding:
+
+1. **Name** the organisation (and pick a currency for money KPIs). This creates the
+   organisation, its root unit and makes them its admin.
+2. **Structure:** one team, several locations or several departments; names typed one per
+   line become leaf units under the root.
+3. **KPIs** from a starter library (revenue, customer satisfaction, headcount…), each with
+   sensible aggregation rules; with several top-level units, each KPI can be limited to the
+   ones that report it.
+4. **Invite** people by email with a role and unit access. There's no mail server: the app
+   shows a link to copy and send.
+
+Afterwards the scorecard shows a getting-started checklist (targets, first figures, invites)
+until it's complete or dismissed. Someone with an invitation link signs in or registers with
+the invited email and joins that organisation; accepting never demotes an existing member.
+A person can belong to several organisations and switch between them; the session remembers
+the selected one, and every request re-checks that membership.
+
 ## Permissions
 
 | Who | Can |
 |---|---|
-| admin | everything: units, KPIs, targets, users, memberships, any data |
-| contributor on unit U | view U's subtree; enter and import values for leaf units in it |
-| viewer on unit U | view U's subtree |
+| Organisation admin | everything in that organisation: units, KPIs, targets, people, invitations, any data |
+| Member, contributor on unit U | view U's subtree; enter and import values for leaf units in it |
+| Member, viewer on unit U | view U's subtree |
 
-Whole-organisation read access = viewer on the root unit. Per-dashboard sharing and share
-tokens go away; access follows the organisation tree.
-
-The first account registered on a fresh install becomes the admin. Everyone who registers
-after that is a member and sees nothing until an admin grants them access to units.
-`php scripts/set_role.php <email> admin` recovers admin access from the command line.
+Whole-organisation read access = viewer on the root unit. A member without unit access sees an
+empty scorecard. Access follows the organisation tree; there's no per-dashboard sharing. The
+last admin can't be demoted or removed. `php scripts/set_role.php <email> admin [org-id]`
+recovers admin access from the command line.
 
 ## API
 
@@ -238,11 +316,20 @@ as coarse as the KPI's frequency.
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/auth/register`, `/auth/login`, `/auth/logout` | Session-cookie auth |
-| GET | `/auth/me` | Current user with memberships |
-| GET/POST | `/users` | Admin: list / create users |
-| PUT/DELETE | `/users/{id}` | Admin: change name, role or password / delete (not yourself, not the last admin) |
-| GET/PUT | `/users/{id}/memberships` | Admin: read / replace `[{unit_id, role}]` |
-| GET | `/units` | Units visible to the current user, flat, with `parent_id`, `is_leaf` and `access` |
+| GET/PUT | `/auth/me` | Current user, their organisations, the selected one and unit memberships / change name or password (needs `current_password`) |
+| POST | `/organizations` | Create an organisation (you become its admin) and select it |
+| POST | `/organizations/select` | Switch to another organisation you belong to |
+| PUT | `/organization` | Admin: rename (also renames the root unit) |
+| GET | `/organization/setup` | Getting-started checklist facts |
+| POST | `/organization/setup/dismiss` | Admin: hide the checklist |
+| GET | `/members` | Admin: people in the organisation, with role and unit access |
+| PUT/DELETE | `/members/{id}` | Admin: change role / remove from the organisation (not the last admin) |
+| PUT | `/members/{id}/memberships` | Admin: replace unit access `[{unit_id, role}]` |
+| GET/POST | `/invitations` | Admin: pending invitations / create one (the response holds the link token, once) |
+| DELETE | `/invitations/{id}` | Admin: revoke |
+| GET | `/invitations/lookup?token=` | Public: organisation name, inviter and email for an invite page |
+| POST | `/invitations/accept` | Join with `{token}`; the signed-in email must match |
+| GET | `/units` | Units of the selected organisation visible to the current user, flat, with `parent_id`, `is_leaf` and `access` |
 | POST/PUT/DELETE | `/units[/{id}]` | Admin; delete only an empty leaf (otherwise deactivate) |
 | GET | `/kpis` | Active KPI definitions (`?include_inactive=1` for admins) |
 | POST/PUT | `/kpis[/{id}]` | Admin; deactivate with `is_active: false` |
@@ -285,7 +372,7 @@ the frontend wizard).
 | Old | Now |
 |---|---|
 | `kpis`, `kpi_entries` | Replaced by `kpis`, `kpi_values`, `kpi_targets` |
-| `users` | Kept; roles become `admin` / `member` |
+| `users` with a global role | Accounts only; `admin` / `member` is per organisation (`organization_users`) |
 | `dashboards`, `dashboard_access`, `dashboard_share_tokens` | Dropped. The scorecard becomes the home page. Custom dashboards return later as saved views on `/series` (KPI + unit + grain + relative range like "last 12 months"). |
 | Migrations 000–013 | Replaced by one baseline migration; the old files stay in git history. Fixes fresh installs (013 currently fails). |
 | Widget-side aggregation, pie charts, value-bucket charts, screenshot PDF | Removed. Charts become thin renderers of `/series` data. |
@@ -300,5 +387,7 @@ the frontend wizard).
 2. **Frontend — done.** Scorecard home with unit picker and period/grain selector; KPI detail
    (series chart + breakdown); data-entry form (one unit and month, all its KPIs); import
    wizard; admin screens for units, KPIs, targets, people and access. See `web/README.md`.
-3. **Later:** saved dashboards, print-friendly report page, value change history,
+2b. **Multi-tenant — done.** Organisations, sign-up onboarding, invitation links, switching
+   between organisations, KPI scope ("Reported by"), account settings.
+3. **Later:** email delivery for invitations, deleting an organisation, saved dashboards, print-friendly report page, value change history,
    calculated KPIs (ratio of two KPIs), fiscal-year start month, late-submission reminders.

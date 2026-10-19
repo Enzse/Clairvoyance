@@ -26,7 +26,14 @@ export function compact(value: number): string {
 	return value.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 }
 
-export function plural(count: number, one: string, many = `${one}s`): string {
+/** English plural for a noun people type themselves (unit kinds): branch → branches, company → companies. */
+export function pluralize(word: string): string {
+	if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+	if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+	return `${word}s`;
+}
+
+export function plural(count: number, one: string, many = pluralize(one)): string {
 	return `${count.toLocaleString('en-US')} ${count === 1 ? one : many}`;
 }
 

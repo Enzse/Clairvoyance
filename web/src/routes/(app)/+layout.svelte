@@ -14,15 +14,21 @@
 			goto(`/login?next=${encodeURIComponent(page.url.pathname + page.url.search)}`, { replaceState: true });
 			return;
 		}
+		if (!session.user.organization) {
+			goto('/onboarding', { replaceState: true });
+			return;
+		}
 		units.load().catch((e) => (error = e instanceof ApiError ? e.message : 'Could not load your units'));
 	});
 </script>
 
-{#if session.user}
+{#if session.user?.organization}
 	<TopBar />
 	{#if error}
 		<p class="mx-auto max-w-[1240px] px-6 py-10 text-bad-ink" role="alert">{error}</p>
 	{:else if units.loaded}
-		{@render children()}
+		{#key session.user.organization.id}
+			{@render children()}
+		{/key}
 	{/if}
 {/if}

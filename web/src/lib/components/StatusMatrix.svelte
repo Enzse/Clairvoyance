@@ -81,6 +81,10 @@
 						{@const r = cell(unit.id, kpi.id)}
 						{@const empty = !r || r.reported === 0}
 						<td class="p-0">
+							{#if !r}
+								<!-- The KPI belongs to other units: nothing is missing here -->
+								<span class="flex h-12 items-center px-3 text-sm text-muted" aria-label="{unit.name} doesn't report {kpi.name}">–</span>
+							{:else}
 							<a
 								href={cellHref(unit.id, kpi.id)}
 								aria-label={describe(unit, kpi, r)}
@@ -100,6 +104,7 @@
 									{/if}
 								{/if}
 							</a>
+							{/if}
 						</td>
 					{/each}
 				</tr>

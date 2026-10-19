@@ -9,13 +9,58 @@ export interface Membership {
 	role: 'viewer' | 'contributor';
 }
 
+export type Role = 'admin' | 'member';
+
+export interface OrganizationSummary {
+	id: number;
+	name: string;
+	role: Role;
+}
+
 export interface User {
 	id: number;
 	email: string;
 	name: string | null;
-	role: 'admin' | 'member';
 	created_at?: string;
-	memberships?: Membership[];
+}
+
+/** The signed-in person; `organization` null means they still need to create or join one. */
+export interface Me extends User {
+	organizations: OrganizationSummary[];
+	organization: OrganizationSummary | null;
+	memberships: Membership[];
+}
+
+/** Someone in the current organisation, as admins see them. */
+export interface Member extends User {
+	role: Role;
+	joined_at: string;
+	memberships: Membership[];
+}
+
+export interface Invitation {
+	id: number;
+	email: string;
+	role: Role;
+	access: Membership[];
+	invited_by: string | null;
+	expires_at: string;
+	created_at: string;
+	/** Only present in the response that created it */
+	token?: string;
+}
+
+export interface InvitationLookup {
+	organization_name: string;
+	email: string;
+	role: Role;
+	invited_by: string | null;
+	has_account: boolean;
+}
+
+export interface Setup {
+	dismissed: boolean;
+	steps: { structure: boolean; kpis: boolean; targets: boolean; data: boolean; people: boolean };
 }
 
 export interface Unit {
@@ -42,6 +87,8 @@ export interface Kpi {
 	direction: 'higher_is_better' | 'lower_is_better' | 'none';
 	tolerance_pct: number;
 	applies_to_kind: string | null;
+	/** Units whose reporting units report this KPI; empty means everyone */
+	scope_unit_ids: number[];
 	decimals: number;
 	prefix: string;
 	suffix: string;

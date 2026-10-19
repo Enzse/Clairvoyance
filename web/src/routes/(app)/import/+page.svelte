@@ -11,7 +11,7 @@
 
 	const STEPS = ['Choose a file', 'Match columns', 'Check', 'Import'];
 	const FORMATS: DateFormat[] = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM'];
-	const isAdmin = $derived(session.user?.role === 'admin');
+	const isAdmin = $derived(session.user?.organization?.role === 'admin');
 
 	let step = $state(0);
 	let kpis = $state<Kpi[]>([]);

@@ -192,7 +192,11 @@
 						<dl class="mt-4 space-y-3 text-sm">
 							<div>
 								<dt class="text-ink-2">Reported</dt>
-								<dd class="mt-0.5">{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, by each ${kpi.applies_to_kind.toLowerCase()}` : ', by each reporting unit'}</dd>
+								<dd class="mt-0.5">
+									{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, by each ${kpi.applies_to_kind.toLowerCase()}` : ', by each reporting unit'}{kpi.scope_unit_ids.length
+										? ` in ${kpi.scope_unit_ids.map((id) => units.get(id)?.name ?? '?').join(', ')}`
+										: ''}
+								</dd>
 							</div>
 							<div>
 								<dt class="text-ink-2">Combined</dt>

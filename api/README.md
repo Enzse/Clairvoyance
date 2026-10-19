@@ -11,8 +11,9 @@ copy .env.example .env               # then edit if your MySQL isn't root with n
 php scripts/migrate.php              # creates the database and tables
 ```
 
-Open the web app and register: **the first account becomes the admin.** To load the DepEd
-sample (6 KPIs, 14 units, a year of monthly school reports):
+Open the web app and sign up; onboarding creates your organisation with you as its admin.
+Others join through invitation links. To load the DepEd sample (6 KPIs, 14 units, a year of
+monthly school reports) into the organisation you administer:
 
 ```bash
 php scripts/seed_demo.php you@example.com
@@ -25,7 +26,7 @@ php scripts/seed_demo.php you@example.com
 | `php scripts/migrate.php` | Run pending migrations (creates the database if needed) |
 | `php scripts/migrate.php --fresh` | Drop every table first. **Deletes all data.** |
 | `php scripts/seed_demo.php <admin-email>` | Load the DepEd sample; safe to re-run |
-| `php scripts/set_role.php <email> <admin\|member>` | Change a role from the command line (e.g. lost admin) |
+| `php scripts/set_role.php <email> <admin\|member> [organization-id]` | Change someone's role in an organisation (e.g. lost admin); the id is needed only if they belong to several |
 | `php scripts/reset_password.php <email>` | Set and print a new random password for a forgotten one |
 
 ## Tests
@@ -50,7 +51,7 @@ and rebuild themselves. They refuse to run against a database whose name doesn't
 | `services/` | Business rules and access control |
 | `controllers/` | HTTP: read the request, check the role, call a service |
 | `routes.php` | Every endpoint |
-| `migrations/` | `001_baseline.sql` is the whole schema |
+| `migrations/` | `001_baseline.sql` is the schema; `002_organizations.sql` makes it multi-tenant |
 | `demo/` | Sample data |
 
 `.htaccess` routes every request to `index.php`, so no other file in this folder is served or
@@ -62,3 +63,5 @@ executed by Apache.
 - Throw `Core\HttpException` for errors the client should see; anything else is logged and
   returned as a generic 500.
 - Database errors propagate; repositories never swallow them.
+- Every repository method that reads tenant data takes the organisation id explicitly;
+  services get it from `Auth::organizationId()`, which re-checks membership on each request.

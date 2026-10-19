@@ -17,7 +17,7 @@ The API must be running under XAMPP. By default the app calls
 
 ```bash
 npm run check        # type-check
-npm test             # unit tests (period maths, chart helpers, CSV detection)
+npm test             # unit tests (period maths, chart helpers, CSV detection, formatting)
 npm run build        # static build in build/, served by any web server with an index.html fallback
 ```
 
@@ -29,8 +29,11 @@ npm run build        # static build in build/, served by any web server with an 
 | `src/routes/(app)/kpis/[id]` | One KPI: trend, by-unit breakdown, how it's calculated |
 | `src/routes/(app)/enter` | Data entry for one unit and month |
 | `src/routes/(app)/import` | CSV import wizard |
-| `src/routes/(app)/admin` | Organisation tree, KPI definitions and targets, people and access |
+| `src/routes/(app)/admin` | Organisation tree, KPI definitions and targets, people, access and invitations |
+| `src/routes/(app)/account` | Your name and password |
 | `src/routes/(auth)` | Sign in and create account |
+| `src/routes/onboarding` | After sign-up: name, structure, starter KPIs (`src/lib/starter-kpis.ts`), invites |
+| `src/routes/invite/[token]` | Accept an invitation link |
 | `src/lib/api.ts` | Typed API client |
 | `src/lib/components` | UI pieces; charts are hand-drawn SVG (`TrendChart`, `Sparkline`, `BreakdownBars`, `StatusMatrix`) |
 | `src/app.css` | Design tokens (light and dark) and base component styles |

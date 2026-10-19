@@ -33,7 +33,7 @@
 </section>
 
 <main class="mx-auto max-w-[1240px] px-4 py-8 sm:px-6">
-	{#if session.user?.role === 'admin'}
+	{#if session.user?.organization?.role === 'admin'}
 		{@render children()}
 	{:else}
 		<p class="text-ink-2">Only administrators can change the organisation, KPIs and people.</p>
