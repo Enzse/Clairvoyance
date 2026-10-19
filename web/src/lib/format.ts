@@ -30,7 +30,7 @@ export function plural(count: number, one: string, many = `${one}s`): string {
 	return `${count.toLocaleString('en-US')} ${count === 1 ? one : many}`;
 }
 
-/** "Doña Carmen High School and 2 others" style list joining. */
+/** "North Branch, South Branch and 2 others" style list joining. */
 export function joinNames(names: string[], max = 2): string {
 	if (names.length <= max) {
 		return names.length === 2 ? `${names[0]} and ${names[1]}` : names.join(', ');

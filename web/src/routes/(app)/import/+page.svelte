@@ -195,7 +195,7 @@
 			<div class="mt-7 grid gap-8 lg:grid-cols-2">
 				<fieldset>
 					<legend class="text-md font-semibold">Which unit is each row for?</legend>
-					<p class="mt-1 text-sm text-ink-2">Tick the columns that name the unit. Several columns make a path, like Region, then Division, then School.</p>
+					<p class="mt-1 text-sm text-ink-2">Tick the columns that name the unit. Several columns make a path, like Region, then Branch.</p>
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#each headers.filter((h) => h !== dateColumn) as h (h)}
 							{@const on = unitColumns.includes(h)}

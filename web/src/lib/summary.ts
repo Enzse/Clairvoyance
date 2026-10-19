@@ -3,8 +3,8 @@ import type { ScorecardRow } from './types';
 
 /**
  * The masthead's one-line reading of a scorecard, e.g.
- * "On target for 4 of 5 KPIs with a target in Q2 2025. Behind on Teacher absences. Some figures are
- * still missing for Attendance rate."
+ * "On target for 4 of 5 KPIs with a target in Q2 2025. Behind on Customer churn. Some figures are
+ * still missing for Net revenue."
  */
 export function summarize(rows: ScorecardRow[]): string {
 	if (!rows.length) return 'No KPIs are set up yet.';

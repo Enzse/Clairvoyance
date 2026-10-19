@@ -166,7 +166,7 @@
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div>
 				<label class="field-label" for="u-kind">Kind</label>
-				<input id="u-kind" class="input" list="unit-kinds" placeholder="Region, School, Branch…" bind:value={form.kind} />
+				<input id="u-kind" class="input" list="unit-kinds" placeholder="Region, Branch, Department…" bind:value={form.kind} />
 				<datalist id="unit-kinds">{#each kinds as k (k)}<option value={k}></option>{/each}</datalist>
 			</div>
 			<div>

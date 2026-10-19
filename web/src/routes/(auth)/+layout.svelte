@@ -14,10 +14,10 @@
 	<aside class="relative hidden flex-col justify-between overflow-hidden bg-navy p-12 text-navy-ink lg:flex">
 		<Logo onNavy />
 		<div class="relative max-w-md">
-			<p class="text-2xl font-semibold tracking-[-0.02em] text-balance">Every unit's numbers, against target, in one place.</p>
+			<p class="text-2xl font-semibold tracking-[-0.02em] text-balance">Your organisation's KPIs, against target, in one place.</p>
 			<p class="mt-4 text-md text-navy-ink-2">
-				Schools, branches and departments report the same KPIs each period. Clairvoyance rolls them up and shows who is on
-				target, who is behind, and who hasn't reported yet.
+				Branches, departments and teams record their figures each period. Clairvoyance adds them up the right way and shows
+				what's on target, what's behind, and who hasn't reported yet.
 			</p>
 		</div>
 		<!-- A quiet echo of the status matrix: three rows of reports coming in -->

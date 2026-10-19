@@ -188,8 +188,8 @@
 			bind:value={form.time_aggregation}
 			options={[
 				{ value: 'sum', label: 'Added up', hint: 'Things that accumulate: sales, absences, visits.' },
-				{ value: 'average', label: 'Averaged', hint: 'Rates and scores: attendance %, satisfaction.' },
-				{ value: 'last', label: 'The latest one', hint: 'Counts at a point in time: headcount, stock, enrolment.' }
+				{ value: 'average', label: 'Averaged', hint: 'Rates and scores: conversion rate, customer satisfaction.' },
+				{ value: 'last', label: 'The latest one', hint: 'Counts at a point in time: headcount, open tickets, inventory.' }
 			]}
 		/>
 
@@ -200,9 +200,9 @@
 				bind:value={form.unit_aggregation}
 				error={fieldError('weight_kpi_id')}
 				options={[
-					{ value: 'sum', label: 'Added up', hint: 'A region’s total is the sum of its schools.' },
+					{ value: 'sum', label: 'Added up', hint: 'The company total is the sum of its branches or teams.' },
 					{ value: 'average', label: 'Averaged, each unit counting equally', hint: 'A small branch counts as much as a large one.' },
-					{ value: 'weighted_average', label: 'Averaged, weighted by another KPI', hint: 'Bigger units count more, e.g. attendance weighted by enrolment.' }
+					{ value: 'weighted_average', label: 'Averaged, weighted by another KPI', hint: 'Bigger units count more, e.g. satisfaction weighted by number of customers.' }
 				]}
 			/>
 			{#if form.unit_aggregation === 'weighted_average'}
@@ -259,7 +259,7 @@
 		<section class="border-t border-line pt-6" aria-labelledby="targets-heading">
 			<h3 id="targets-heading" class="font-semibold">Targets</h3>
 			<p class="mt-1 text-sm text-ink-2">
-				Set per {unitWord} per {GRAIN_NAMES[form.frequency].noun.toLowerCase()}. Regions and longer periods combine targets the same way as the
+				Set per {unitWord} per {GRAIN_NAMES[form.frequency].noun.toLowerCase()}. Parent units and longer periods combine targets the same way as the
 				figures. A target applies from its start date until a later one replaces it.
 			</p>
 			{#each [null, 'unit'] as scope (scope)}
