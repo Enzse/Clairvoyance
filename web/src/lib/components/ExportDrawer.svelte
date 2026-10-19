@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, ApiError } from '$lib/api';
-	import { exportRows, writeCsv } from '$lib/csv';
+	import { exportRows } from '$lib/csv';
+	import { downloadCsv } from '$lib/download';
 	import { plural } from '$lib/format';
 	import { shift } from '$lib/period';
 	import { session } from '$lib/session.svelte';
@@ -46,12 +47,7 @@
 				return;
 			}
 			const rows = exportRows(data);
-			const blob = new Blob([writeCsv(rows)], { type: 'text/csv;charset=utf-8' });
-			const link = document.createElement('a');
-			link.href = URL.createObjectURL(blob);
-			link.download = `${[session.user?.organization?.name, unitName === session.user?.organization?.name ? null : unitName, from, to].filter(Boolean).join(' ')}.csv`;
-			link.click();
-			URL.revokeObjectURL(link.href);
+			downloadCsv(rows, `${[session.user?.organization?.name, unitName === session.user?.organization?.name ? null : unitName, from, to].filter(Boolean).join(' ')}.csv`);
 			toast(`Downloaded ${plural(rows.length - 1, 'row')} with ${plural(data.values.length, 'figure')}`);
 			open = false;
 		} catch (e) {
