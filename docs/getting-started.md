@@ -58,7 +58,8 @@ Open http://localhost:5173.
 
 ## 5. Make your account
 
-1. Click **Create account**. Nothing is emailed locally, so there's no confirmation step.
+1. Click **Create account** and type your password twice. Nothing is emailed locally, so
+   there's no confirmation step.
 2. Follow the short setup: name your organisation, add its branches or departments, pick a
    few KPIs, and skip inviting people for now.
 
@@ -85,14 +86,17 @@ own organisation, and running the script again only refreshes the figures.
   are behind. Switch between Month, Quarter and Year to see figures add up over time.
 - **A KPI's page:** click any KPI for its chart, the breakdown by region or school, and the
   history of every change.
-- **Add data:** type in a month's figures, or upload a spreadsheet (try editing
-  `api/demo/deped.csv`).
-- **Manage › Structure:** the tree of regions, divisions and schools. The **?** button
-  explains it.
+- **Add data:** see which schools still have figures to enter this month, open one, type in
+  its figures (add a note to any of them), then go on to the next. Or upload a spreadsheet:
+  Excel or CSV, or download a ready template (try editing `api/demo/deped.csv`). A file with
+  the same columns as last time is matched automatically.
+- **Manage › Structure:** the tree of regions, divisions and schools. Click a name to rename
+  it, or open a school to see and change who has access to it. The **?** button explains it.
 - **Manage › KPIs:** how each KPI adds up. A rate like attendance is *weighted by the number
   of students*, not simply averaged, so the totals come out right.
-- **Manage › People:** invite a second account (use another email). It gets a link; open it
-  in a private window to see what a member sees.
+- **Manage › People:** invite a second account (use another email) and give it one school.
+  It gets a link; open it in a private window to see what a member sees.
+- **The theme:** the moon button in the top bar switches to dark.
 
 ## 8. Run the tests
 

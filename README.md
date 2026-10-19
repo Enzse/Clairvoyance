@@ -4,6 +4,8 @@ A KPI scorecard for organisations whose branches, departments or teams record th
 on a schedule. It answers: are we on target, is it getting better or worse, and which units
 are behind or haven't reported? Anyone can sign up and set up their own organisation.
 
+Live at https://clairvoyance.solutions.
+
 - **Design:** [docs/data-model.md](docs/data-model.md): concepts, aggregation rules, schema, API
 - **Backend:** [api/](api/README.md): PHP 8.2 + MariaDB on XAMPP
 - **Frontend:** [web/](web/README.md): SvelteKit + Tailwind
@@ -19,7 +21,8 @@ Windows with XAMPP, including the sample data. In short:
 2. `cd api`, then `php scripts/migrate.php`.
 3. `cd web`, then `npm install` and `npm run dev`, and open http://localhost:5173.
 4. Create an account. Onboarding walks you through naming your organisation, its branches
-   or departments, starter KPIs and invitations; you're its admin.
+   or departments, starter KPIs and invitations; you're its admin. Each Manage tab has a
+   short tutorial (the **?** button brings it back).
 5. Optional sample data: `php api/scripts/seed_demo.php <your-email>` adds a separate
    "DepEd sample" organisation with a year of school figures.
 

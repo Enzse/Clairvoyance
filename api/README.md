@@ -55,7 +55,7 @@ and rebuild themselves. They refuse to run against a database whose name doesn't
 | `services/` | Business rules and access control |
 | `controllers/` | HTTP: read the request, check the role, call a service |
 | `routes.php` | Every endpoint |
-| `migrations/` | `001_baseline.sql` is the schema; `002_organizations.sql` makes it multi-tenant; `003_production.sql` adds email links, throttling and change history |
+| `migrations/` | `001_baseline.sql` is the schema; `002_organizations.sql` makes it multi-tenant; `003_production.sql` adds email links, throttling and change history; `004` the organisation's word for units; `005` skipped getting-started steps; `006` unit icons |
 | `demo/` | Sample data |
 
 `.htaccess` routes every request to `index.php`, so no other file in this folder is served or
