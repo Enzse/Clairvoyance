@@ -1,367 +1,134 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { cubicOut } from 'svelte/easing';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fly } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { page } from '$app/state';
-	import { api, ApiError } from '$lib/api';
-	import ChoiceGroup from '$lib/components/ChoiceGroup.svelte';
-	import Drawer from '$lib/components/Drawer.svelte';
+	import { api } from '$lib/api';
+	import HelpButton from '$lib/components/HelpButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { describeRules, formatValue, pluralize } from '$lib/format';
+	import KpiCard from '$lib/components/kpis/KpiCard.svelte';
+	import KpiPanel from '$lib/components/kpis/KpiPanel.svelte';
+	import KpiTour from '$lib/components/kpis/KpiTour.svelte';
+	import NewKpi from '$lib/components/kpis/NewKpi.svelte';
+	import { markTourSeen, tourSeen } from '$lib/components/Tour.svelte';
+	import { plural } from '$lib/format';
 	import { term } from '$lib/terms.svelte';
-	import { align, FREQUENCIES, GRAIN_NAMES } from '$lib/period';
 	import { toast } from '$lib/toast.svelte';
-	import type { Kpi, Target, Unit } from '$lib/types';
-	import { units } from '$lib/units.svelte';
+	import type { Kpi } from '$lib/types';
 
+	/**
+	 * The organisation's KPIs as cards. "New KPI" walks through making one; clicking a card
+	 * slides in everything about it.
+	 */
 	let kpis = $state<Kpi[]>([]);
 	let loaded = $state(false);
+	let creating = $state(false);
+	let selectedId = $state<number | null>(null);
+	let fresh = $state<number | null>(null);
+	let query = $state('');
+	let touring = $state(!tourSeen('kpis'));
+	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 
-	// The getting-started guide links here with ?new to open the form straight away
+	// The getting-started guide links here with ?new to open the guide straight away
 	onMount(async () => {
 		await load();
-		if (page.url.searchParams.has('new')) startNew();
+		if (page.url.searchParams.has('new')) creating = true;
 	});
 	async function load() {
 		kpis = await api.kpis(true);
 		loaded = true;
 	}
 
-	const leafKinds = $derived([...new Set(units.list.filter((u) => u.is_leaf && u.kind).map((u) => u.kind!))].sort());
+	const selected = $derived(kpis.find((k) => k.id === selectedId));
+	const shown = $derived(query.trim() ? kpis.filter((k) => k.name.toLowerCase().includes(query.trim().toLowerCase())) : kpis);
+	const active = $derived(shown.filter((k) => k.is_active));
+	const paused = $derived(shown.filter((k) => !k.is_active));
+	const activeCount = $derived(kpis.filter((k) => k.is_active).length);
 
-	/** Every unit below the organisation, depth-first, for the "Reported by" picker. */
-	const scopeChoices = $derived.by(() => {
-		const out: { unit: Unit; depth: number }[] = [];
-		const walk = (id: number, depth: number) => {
-			for (const u of units.children(id)) {
-				if (!u.is_active) continue;
-				out.push({ unit: u, depth });
-				walk(u.id, depth + 1);
-			}
-		};
-		const root = units.home();
-		if (root) walk(root.id, 0);
-		return out;
-	});
-
-	function unitNames(ids: number[]): string {
-		return ids.map((id) => units.get(id)?.name ?? '?').join(', ');
+	async function created(kpi: Kpi) {
+		toast(`Added ${kpi.name}`);
+		query = '';
+		await load();
+		fresh = kpi.id;
+		setTimeout(() => (fresh = null), 1800);
 	}
 
-	// ---- Editor
-	type Form = Omit<Kpi, 'id' | 'description' | 'applies_to_kind' | 'weight_kpi_id'> & { description: string; applies_to_kind: string; weight_kpi_id: number | '' };
-
-	const blank = (): Form => ({
-		code: '', name: '', description: '', frequency: 'monthly', time_aggregation: 'sum', unit_aggregation: 'sum',
-		weight_kpi_id: '', direction: 'higher_is_better', tolerance_pct: 10, applies_to_kind: '', scope_unit_ids: [], decimals: 0, prefix: '', suffix: '', is_active: true
-	});
-
-	// "Only some units" stays selected even before a unit is ticked
-	let limited = $state(false);
-
-	function setLimited(value: boolean) {
-		limited = value;
-		if (!value) form.scope_unit_ids = [];
-	}
-
-	function toggleScope(id: number) {
-		form.scope_unit_ids = form.scope_unit_ids.includes(id) ? form.scope_unit_ids.filter((x) => x !== id) : [...form.scope_unit_ids, id];
-	}
-
-	let open = $state(false);
-	let editing = $state<Kpi | null>(null);
-	let form = $state<Form>(blank());
-	let codeTouched = $state(false);
-	let targets = $state<(Target & { key: number })[]>([]);
-	let error = $state<ApiError | null>(null);
-	let busy = $state(false);
-	let keySeq = 0;
-
-	function startNew() {
-		editing = null;
-		form = blank();
-		limited = false;
-		codeTouched = false;
-		targets = [];
-		error = null;
-		open = true;
-	}
-
-	async function startEdit(kpi: Kpi) {
-		editing = kpi;
-		form = { ...kpi, description: kpi.description ?? '', applies_to_kind: kpi.applies_to_kind ?? '', weight_kpi_id: kpi.weight_kpi_id ?? '' };
-		limited = kpi.scope_unit_ids.length > 0;
-		codeTouched = true;
-		error = null;
-		targets = [];
-		open = true;
-		targets = (await api.targets(kpi.id)).map((t) => ({ ...t, key: keySeq++ }));
-	}
-
-	$effect(() => {
-		if (!codeTouched) form.code = form.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').replace(/^(\d)/, 'k_$1').slice(0, 64);
-	});
-
-	const weightChoices = $derived(kpis.filter((k) => k.id !== editing?.id && k.is_active && k.frequency === form.frequency && k.unit_aggregation !== 'weighted_average'));
-
-	function addTarget(unitId: number | null) {
-		targets = [...targets, { key: keySeq++, unit_id: unitId, effective_from: align(new Date().toISOString().slice(0, 10), 'yearly'), value: 0 }];
-	}
-
-	async function save(event: SubmitEvent) {
-		event.preventDefault();
-		busy = true;
-		error = null;
-		const body: Partial<Kpi> = {
-			...form,
-			description: form.description || null,
-			applies_to_kind: form.applies_to_kind || null,
-			weight_kpi_id: form.unit_aggregation === 'weighted_average' && form.weight_kpi_id !== '' ? Number(form.weight_kpi_id) : null
-		};
-		try {
-			const saved = editing ? await api.updateKpi(editing.id, body) : await api.createKpi(body);
-			try {
-				await api.saveTargets(saved.id, targets.map(({ unit_id, effective_from, value }) => ({ unit_id, effective_from, value: Number(value) })));
-			} catch (e) {
-				editing = saved;
-				throw e;
-			}
-			toast(`Saved ${saved.name}`);
-			open = false;
-			await load();
-		} catch (e) {
-			error = e instanceof ApiError ? e : new ApiError(0, 'Could not save');
-		} finally {
-			busy = false;
-		}
-	}
-
-	const sampleValue = $derived(formatValue({ decimals: form.decimals, prefix: form.prefix, suffix: form.suffix }, 1234.5678));
-	const unitWord = $derived(form.applies_to_kind ? form.applies_to_kind.toLowerCase() : term.one);
-	const fieldError = (name: string) => (error?.field(name) ? `This ${error.field(name)}` : undefined);
+	const select = (id: number) => (selectedId = selectedId === id ? null : id);
 </script>
 
 <svelte:head><title>KPIs | Clairvoyance</title></svelte:head>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && !creating && (selectedId = null)} />
 
-<div class="flex flex-wrap items-end justify-between gap-4">
-	<div>
-		<h2 class="text-lg font-semibold">KPIs</h2>
-		<p class="mt-1 max-w-[70ch] text-ink-2">Each KPI decides once how its figures combine over time and across {term.many}, so it shows the same number everywhere.</p>
-	</div>
-	<button class="btn btn-primary" onclick={startNew}><Icon name="plus" size={15} /> New KPI</button>
+{#snippet grid(list: Kpi[])}
+	<ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+		{#each list as kpi (kpi.id)}
+			<li animate:flip={{ duration: 250 * move }} in:fly={{ y: 12 * move, duration: 250, easing: cubicOut }}>
+				<KpiCard {kpi} {kpis} selected={kpi.id === selectedId} fresh={kpi.id === fresh} onclick={() => select(kpi.id)} />
+			</li>
+		{/each}
+	</ul>
+{/snippet}
+
+<div class="transition-[padding] duration-300 {selected ? 'lg:pr-[max(0px,calc(584px-(100vw-1240px)/2))]' : ''}">
+	{#if loaded && kpis.length}
+		<div class="flex flex-wrap items-end justify-between gap-4">
+			<div class="min-w-0">
+				<h2 class="text-lg font-semibold">KPIs</h2>
+				<p class="mt-1 max-w-[68ch] text-ink-2">
+					The numbers your {term.many} report. {plural(activeCount, 'KPI')} in use{paused.length && !query ? `, ${paused.length} paused` : ''}. Click one to change it.
+				</p>
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#if kpis.length > 6}
+					<label class="relative">
+						<span class="sr-only">Find a KPI</span>
+						<Icon name="search" size={15} class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
+						<input class="input h-10 w-52 pl-9" type="search" placeholder="Find a KPI" bind:value={query} />
+					</label>
+				{/if}
+				<button class="btn btn-primary" onclick={() => (creating = true)}><Icon name="plus" size={15} /> New KPI</button>
+			</div>
+		</div>
+
+		<section class="mt-5" aria-label="KPIs in use">
+			{@render grid(active)}
+		</section>
+		{#if paused.length}
+			<section class="mt-8" aria-labelledby="paused-h">
+				<h3 id="paused-h" class="mb-3 text-sm font-semibold text-ink-2">Paused <span class="font-normal text-muted">· not on the scorecard or in data entry</span></h3>
+				{@render grid(paused)}
+			</section>
+		{/if}
+		{#if !shown.length}
+			<p class="mt-8 text-center text-ink-2">No KPI is called “{query}”.</p>
+		{/if}
+	{:else if loaded}
+		<div class="mx-auto flex max-w-md flex-col items-center py-16 text-center" in:fly={{ y: 12 * move, duration: 300, easing: cubicOut }}>
+			<span class="grid size-14 place-items-center rounded-2xl bg-accent-wash text-accent"><Icon name="chart" size={26} /></span>
+			<h2 class="mt-4 text-xl font-semibold tracking-[-0.015em]">No KPIs yet</h2>
+			<p class="mt-2 text-ink-2">A KPI is a number your {term.many} report, like sales or attendance. Add the first one; it takes about a minute.</p>
+			<div class="mt-6 flex flex-wrap justify-center gap-2">
+				<button class="btn btn-primary" onclick={() => (creating = true)}><Icon name="plus" size={15} /> New KPI</button>
+				<button class="btn btn-ghost" onclick={() => (touring = true)}>How KPIs work</button>
+			</div>
+		</div>
+	{/if}
 </div>
 
-{#if loaded}
-	<div class="panel mt-5 overflow-x-auto">
-		<table class="w-full min-w-[760px] text-left">
-			<thead class="bg-surface-2 text-sm text-ink-2">
-				<tr class="border-b border-line">
-					<th scope="col" class="px-5 py-2.5 font-medium">KPI</th>
-					<th scope="col" class="px-3 py-2.5 font-medium">Reported</th>
-					<th scope="col" class="px-3 py-2.5 font-medium">Combined</th>
-					<th scope="col" class="px-3 py-2.5 font-medium">Judged</th>
-					<th scope="col" class="px-5 py-2.5"><span class="sr-only">Actions</span></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each kpis as kpi (kpi.id)}
-					<tr class="border-b border-line align-top last:border-b-0 hover:bg-surface-2 {kpi.is_active ? '' : 'text-muted'}">
-						<th scope="row" class="px-5 py-3 font-normal">
-							<span class="font-semibold">{kpi.name}</span>
-							{#if !kpi.is_active}<span class="ml-1.5 rounded bg-surface-2 px-1.5 text-xs ring-1 ring-line">Inactive</span>{/if}
-							<span class="block font-mono text-xs text-muted">{kpi.code}</span>
-						</th>
-						<td class="px-3 py-3 text-sm">{GRAIN_NAMES[kpi.frequency].adjective}<span class="block text-ink-2">{kpi.scope_unit_ids.length ? `By ${unitNames(kpi.scope_unit_ids)}` : 'By everyone'}{kpi.applies_to_kind ? `, ${kpi.applies_to_kind} only` : ''}</span></td>
-						<td class="max-w-80 px-3 py-3 text-sm text-ink-2">{describeRules(kpi, kpis.find((k) => k.id === kpi.weight_kpi_id)?.name.toLowerCase(), term.many)}</td>
-						<td class="px-3 py-3 text-sm">
-							{kpi.direction === 'none' ? 'Tracked only' : kpi.direction === 'higher_is_better' ? 'Higher is better' : 'Lower is better'}
-							{#if kpi.direction !== 'none'}<span class="block text-ink-2">Close within {kpi.tolerance_pct}%</span>{/if}
-						</td>
-						<td class="px-5 py-3 text-right"><button class="btn btn-ghost btn-sm" onclick={() => startEdit(kpi)}>Edit</button></td>
-					</tr>
-				{:else}
-					<tr><td colspan="5" class="px-5 py-10 text-center text-ink-2">No KPIs yet. Define the first one to start collecting figures.</td></tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+{#if selected}
+	<aside
+		class="fixed inset-y-0 right-0 z-40 w-full max-w-[560px] border-l border-line bg-surface shadow-pop"
+		aria-label="{selected.name} details"
+		transition:fly={{ x: 580 * move, duration: 280, easing: cubicOut, opacity: 1 }}
+	>
+		<KpiPanel kpi={selected} {kpis} onClose={() => (selectedId = null)} onSaved={load} />
+	</aside>
 {/if}
 
-<Drawer bind:open title={editing ? `Edit ${editing.name}` : 'New KPI'} width={620}>
-	<form id="kpi-form" class="space-y-6" onsubmit={save}>
-		<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
-			<div>
-				<label class="field-label" for="k-name">Name</label>
-				<input id="k-name" class="input" required bind:value={form.name} aria-invalid={!!fieldError('name')} />
-				{#if fieldError('name')}<p class="field-error">{fieldError('name')}</p>{/if}
-			</div>
-			<div>
-				<label class="field-label" for="k-code">Code</label>
-				<input id="k-code" class="input font-mono" required bind:value={form.code} oninput={() => (codeTouched = true)} aria-invalid={!!fieldError('code')} />
-				<p class={fieldError('code') ? 'field-error' : 'field-hint'}>{fieldError('code') ?? 'Matches spreadsheet columns on import.'}</p>
-			</div>
-		</div>
-		<div>
-			<label class="field-label" for="k-desc">What it measures <span class="font-normal text-muted">(optional)</span></label>
-			<textarea id="k-desc" class="input" rows="2" bind:value={form.description}></textarea>
-		</div>
-
-		<div class="grid gap-4 sm:grid-cols-2">
-			<div>
-				<label class="field-label" for="k-freq">Reported</label>
-				<select id="k-freq" class="input" bind:value={form.frequency} aria-invalid={!!fieldError('frequency')}>
-					{#each FREQUENCIES as f (f)}<option value={f}>{GRAIN_NAMES[f].adjective}</option>{/each}
-				</select>
-				{#if fieldError('frequency')}<p class="field-error">{fieldError('frequency')}</p>{/if}
-			</div>
-			{#if leafKinds.length > 1}
-				<div>
-					<label class="field-label" for="k-kind">Of those, only</label>
-					<select id="k-kind" class="input" bind:value={form.applies_to_kind}>
-						<option value="">Any kind</option>
-						{#each leafKinds as k (k)}<option value={k}>{pluralize(k)}</option>{/each}
-					</select>
-				</div>
-			{/if}
-		</div>
-
-		{#if scopeChoices.length}
-			<fieldset>
-				<legend class="field-label">Reported by</legend>
-				<div class="flex gap-2">
-					{#each [[false, 'Everyone'], [true, `Only some ${term.many}`]] as [some, text] (text)}
-						<label class="flex flex-1 cursor-pointer items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1 {limited === some ? 'bg-accent-wash ring-chart' : 'ring-line-strong'}">
-							<input type="radio" name="scope-mode" checked={limited === some} onchange={() => setLimited(some as boolean)} class="accent-[var(--accent)]" /> {text}
-						</label>
-					{/each}
-				</div>
-				{#if limited}
-					<div class="mt-2 max-h-60 overflow-y-auto rounded-lg py-1 ring-1 ring-line-strong {fieldError('scope_unit_ids') ? 'ring-bad' : ''}">
-						{#each scopeChoices as { unit, depth } (unit.id)}
-							<label class="flex cursor-pointer items-center gap-2.5 py-1.5 pr-3 hover:bg-surface-2" style:padding-left="{12 + depth * 18}px">
-								<input type="checkbox" class="size-4 accent-[var(--accent)]" checked={form.scope_unit_ids.includes(unit.id)} onchange={() => toggleScope(unit.id)} />
-								{unit.name}
-								{#if unit.kind}<span class="text-sm text-muted">{unit.kind}</span>{/if}
-							</label>
-						{/each}
-					</div>
-					<p class={fieldError('scope_unit_ids') ? 'field-error' : 'field-hint'}>
-						{fieldError('scope_unit_ids') ?? 'Ticking one includes everything inside it. The others never see this KPI as missing.'}
-					</p>
-				{/if}
-			</fieldset>
-		{/if}
-
-		<ChoiceGroup
-			name="time"
-			legend="For a longer period, the {GRAIN_NAMES[form.frequency].adjective.toLowerCase()} figures are…"
-			bind:value={form.time_aggregation}
-			options={[
-				{ value: 'sum', label: 'Added up', hint: 'Things that accumulate: sales, absences, visits.' },
-				{ value: 'average', label: 'Averaged', hint: 'Rates and scores: conversion rate, customer satisfaction.' },
-				{ value: 'last', label: 'The latest one', hint: 'Counts at a point in time: headcount, open tickets, inventory.' }
-			]}
-		/>
-
-		<div>
-			<ChoiceGroup
-				name="units"
-				legend="Across {term.many}, figures are…"
-				bind:value={form.unit_aggregation}
-				error={fieldError('weight_kpi_id')}
-				options={[
-					{ value: 'sum', label: 'Added up', hint: 'The company total is the sum of its branches or teams.' },
-					{ value: 'average', label: `Averaged, each ${term.one} counting equally`, hint: 'A small branch counts as much as a large one.' },
-					{ value: 'weighted_average', label: 'Averaged, weighted by another KPI', hint: `Bigger ${term.many} count more, e.g. satisfaction weighted by number of customers.` }
-				]}
-			/>
-			{#if form.unit_aggregation === 'weighted_average'}
-				<label class="mt-3 block pl-7">
-					<span class="field-label">Weighted by</span>
-					<select class="input" bind:value={form.weight_kpi_id}>
-						<option value="">Choose a {GRAIN_NAMES[form.frequency].adjective.toLowerCase()} KPI…</option>
-						{#each weightChoices as k (k.id)}<option value={k.id}>{k.name}</option>{/each}
-					</select>
-				</label>
-			{/if}
-		</div>
-
-		<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_160px]">
-			<ChoiceGroup
-				name="direction"
-				legend="Against its target"
-				bind:value={form.direction}
-				options={[
-					{ value: 'higher_is_better', label: 'Higher is better', hint: 'On target at or above it.' },
-					{ value: 'lower_is_better', label: 'Lower is better', hint: 'On target at or below it.' },
-					{ value: 'none', label: 'Track only', hint: 'Show the figure without a status.' }
-				]}
-			/>
-			{#if form.direction !== 'none'}
-				<div>
-					<label class="field-label" for="k-tol">Close means within</label>
-					<div class="relative">
-						<input id="k-tol" class="input num pr-8" type="number" min="0" step="0.5" bind:value={form.tolerance_pct} />
-						<span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted">%</span>
-					</div>
-					<p class="field-hint">of the target</p>
-				</div>
-			{/if}
-		</div>
-
-		<fieldset>
-			<legend class="field-label">Shown as</legend>
-			<div class="grid grid-cols-3 gap-3">
-				<label><span class="mb-1 block text-sm text-ink-2">Before</span><input class="input" maxlength="10" placeholder="₱" bind:value={form.prefix} /></label>
-				<label><span class="mb-1 block text-sm text-ink-2">After</span><input class="input" maxlength="10" placeholder="%" bind:value={form.suffix} /></label>
-				<label><span class="mb-1 block text-sm text-ink-2">Decimals</span><input class="input num" type="number" min="0" max="6" bind:value={form.decimals} /></label>
-			</div>
-			<p class="field-hint">Looks like {sampleValue}</p>
-		</fieldset>
-
-		{#if editing}
-			<label class="flex items-start gap-2.5">
-				<input type="checkbox" class="mt-0.5 size-4 accent-[var(--accent)]" bind:checked={form.is_active} />
-				<span><span class="font-medium">Active</span><span class="block text-sm text-ink-2">Inactive KPIs leave the scorecard and data entry. Their figures are kept.</span></span>
-			</label>
-		{/if}
-
-		<section class="border-t border-line pt-6" aria-labelledby="targets-heading">
-			<h3 id="targets-heading" class="font-semibold">Targets</h3>
-			<p class="mt-1 text-sm text-ink-2">
-				Set per {unitWord} per {GRAIN_NAMES[form.frequency].noun.toLowerCase()}. Groups above them and longer periods combine targets the same way as the
-				figures. A target applies from its start date until a later one replaces it.
-			</p>
-			{#each [null, 'unit'] as scope (scope)}
-				{@const list = targets.filter((t) => (scope === null ? t.unit_id === null : t.unit_id !== null))}
-				<div class="mt-4">
-					<p class="text-sm font-medium">{scope === null ? `Every ${unitWord}` : `Specific ${term.many}`}</p>
-					{#each list as t (t.key)}
-						<div class="mt-2 flex items-center gap-2">
-							{#if scope !== null}
-								<select class="input min-w-0 flex-1" bind:value={t.unit_id} aria-label={term.One}>
-									{#each units.list.filter((u) => u.is_active) as u (u.id)}<option value={u.id}>{u.name}</option>{/each}
-								</select>
-							{/if}
-							<label class="flex items-center gap-2 text-sm text-ink-2">From <input class="input w-40" type="date" bind:value={t.effective_from} /></label>
-							<input class="input num w-28 text-right" type="number" step="any" bind:value={t.value} aria-label="Target value" />
-							<button type="button" class="rounded p-1.5 text-muted hover:bg-bad-wash hover:text-bad-ink" aria-label="Remove target" onclick={() => (targets = targets.filter((x) => x.key !== t.key))}>
-								<Icon name="x" size={15} />
-							</button>
-						</div>
-					{/each}
-					<button type="button" class="btn btn-ghost btn-sm mt-2 -ml-2.5" onclick={() => addTarget(scope === null ? null : (units.list.find((u) => u.is_leaf)?.id ?? null))}>
-						<Icon name="plus" size={14} /> Add {scope === null ? 'a target' : `a target for one ${term.one}`}
-					</button>
-				</div>
-			{/each}
-			{#if error && Object.keys(error.details).some((k) => k.startsWith('targets'))}
-				<p class="field-error">{Object.entries(error.details).filter(([k]) => k.startsWith('targets')).map(([k, m]) => `Row ${Number(k.split('.')[1]) + 1}: ${m}`).join(' ')}</p>
-			{/if}
-		</section>
-
-		{#if error && !Object.keys(error.details).length}<p class="text-sm text-bad-ink" role="alert">{error.message}</p>{/if}
-	</form>
-	{#snippet footer()}
-		<button class="btn btn-secondary" type="button" onclick={() => (open = false)}>Cancel</button>
-		<button class="btn btn-primary" form="kpi-form" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Create KPI'}</button>
-	{/snippet}
-</Drawer>
+<NewKpi bind:open={creating} {kpis} onCreated={created} />
+<KpiTour bind:open={touring} onClose={() => markTourSeen('kpis')} />
+{#if !selected}
+	<HelpButton label="How KPIs work" onclick={() => (touring = true)} />
+{/if}

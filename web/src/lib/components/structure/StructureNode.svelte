@@ -8,7 +8,7 @@
 	import { units } from '$lib/units.svelte';
 	import Icon from '../Icon.svelte';
 	import IconPicker from './IconPicker.svelte';
-	import InlineEdit from './InlineEdit.svelte';
+	import InlineEdit from '../InlineEdit.svelte';
 	import QuickAdd from './QuickAdd.svelte';
 	import Tooltip from '../Tooltip.svelte';
 	import { saveUnit } from './save';

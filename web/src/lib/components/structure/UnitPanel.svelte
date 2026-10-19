@@ -9,7 +9,7 @@
 	import Icon from '../Icon.svelte';
 	import Tooltip from '../Tooltip.svelte';
 	import IconPicker from './IconPicker.svelte';
-	import InlineEdit from './InlineEdit.svelte';
+	import InlineEdit from '../InlineEdit.svelte';
 	import { problem, saveUnit } from './save';
 
 	/**

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { toast } from '$lib/toast.svelte';
-	import Tooltip from '../Tooltip.svelte';
-	import { problem } from './save';
+	import Tooltip from './Tooltip.svelte';
+	import { problem } from '$lib/problem';
 
 	/**
 	 * Text that turns into a field when clicked. Enter or clicking away saves, Escape cancels.

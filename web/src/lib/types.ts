@@ -112,6 +112,9 @@ export interface Kpi {
 	prefix: string;
 	suffix: string;
 	is_active: boolean;
+	/** In lists only: the target for every unit in force today, and how many per-unit targets there are */
+	target?: number | null;
+	unit_target_count?: number;
 }
 
 export interface Result {
