@@ -13,6 +13,7 @@
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
+	import { align, label, today } from '$lib/period';
 	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
@@ -62,6 +63,10 @@
 	const periodHref = (date: string, grain: Frequency) => href('/', contextParams({ unit: unitId, date, grain }));
 	const kpiHref = (kpiId: number, unit = unitId) => href(`/kpis/${kpiId}`, contextParams({ unit, date: card?.date, grain: ctx.grain }));
 
+	// Figures are added for this month, unless a period was picked on purpose (e.g. to correct it).
+	// Without one, the scorecard shows the latest period with data, which may be long finished.
+	const entryMonth = $derived(align(ctx.date && card ? card.date : today(), 'monthly'));
+
 	// Something here or below that this person can enter figures for
 	const canEnter = $derived(unitId !== null && units.enterable().some((u) => units.path(u.id).some((p) => p.id === unitId)));
 </script>
@@ -106,8 +111,8 @@
 								<button class="btn btn-secondary btn-sm" onclick={() => (exporting = true)}><Icon name="download" size={14} /> Export</button>
 							{/if}
 							{#if canEnter}
-								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: card.date })}>
-									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
+								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: entryMonth })}>
+									<Icon name="pencil" size={14} /> Add {label(entryMonth, 'monthly')} data
 								</a>
 							{/if}
 						</div>
