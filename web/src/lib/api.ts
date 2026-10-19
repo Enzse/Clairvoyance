@@ -1,6 +1,7 @@
 import type {
 	Breakdown,
 	EntryForm,
+	EntryProgress,
 	ExportData,
 	Frequency,
 	ImportMapping,
@@ -142,6 +143,7 @@ export const api = {
 
 	// Data entry
 	entryForm: (unit: number, date: string) => request<EntryForm>('GET', '/values', { query: { unit, date } }),
+	entryProgress: (date: string) => request<EntryProgress>('GET', '/values/progress', { query: { date } }),
 	saveValues: (values: { kpi_id: number; unit_id: number; period: string; value: number | null; note: string | null }[]) =>
 		request<{ created: number; updated: number; unchanged: number; deleted: number }>('PUT', '/values', { body: { values } }),
 

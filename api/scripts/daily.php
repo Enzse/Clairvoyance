@@ -5,14 +5,14 @@
  * Run once a day by cron. Backs up the database to storage/backups (keeping the newest 14)
  * and deletes expired sign-in links and old throttling counters. Exits non-zero on failure,
  * so the cron job's email reports it.
- *
- * Needs mysqldump on the PATH; set MYSQLDUMP in .env to use another path
- * (e.g. C:\xampp\mysql\bin\mysqldump.exe).
  */
 
 if (PHP_SAPI !== 'cli') {
     exit('Command line only.');
 }
+
+// Hosts often hide errors on the command line too, which would make a failed run silent
+ini_set('display_errors', 'stderr');
 
 require_once __DIR__ . '/../autoload.php';
 
@@ -29,39 +29,26 @@ if (!is_dir($dir)) {
 }
 $name = $env->get('DB_NAME');
 $file = "{$dir}/{$name}-" . gmdate('Y-m-d') . '.sql.gz';
-// Credentials go in a private options file, never on the command line where other users can see them
-$options = tempnam($dir, 'my');
-chmod($options, 0600);
-$quote = fn(?string $value) => '"' . addcslashes((string)$value, '"\\') . '"';
-file_put_contents($options, "[client]\nhost={$quote($env->get('DB_HOST'))}\nuser={$quote($env->get('DB_USER'))}\npassword={$quote($env->get('DB_PASS'))}\n");
-
-$dump = proc_open(
-    [$env->get('MYSQLDUMP', 'mysqldump'), "--defaults-extra-file={$options}", '--single-transaction', '--no-tablespaces', '--routines', $name],
-    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-    $pipes
-);
-if (!is_resource($dump)) {
-    fwrite(STDERR, "Backup failed: could not run mysqldump\n");
-    $failed = true;
-} else {
+try {
     $gz = gzopen("{$file}.part", 'wb6');
-    while (!feof($pipes[1])) {
-        gzwrite($gz, fread($pipes[1], 1 << 16));
+    if ($gz === false) {
+        throw new RuntimeException("could not create {$file}.part");
     }
-    gzclose($gz);
-    $errors = stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    if (proc_close($dump) !== 0) {
-        fwrite(STDERR, "Backup failed: {$errors}\n");
-        unlink("{$file}.part");
-        $failed = true;
-    } else {
-        rename("{$file}.part", $file);
-        echo 'Backed up to ' . basename($file) . ' (' . round(filesize($file) / 1024) . " KB)\n";
+    (new Core\Backup(Core\Database::connect($env)))->dump(function (string $sql) use ($gz): void {
+        if (gzwrite($gz, $sql) !== strlen($sql)) {
+            throw new RuntimeException('could not write the file (is the disk full?)');
+        }
+    });
+    if (!gzclose($gz)) {
+        throw new RuntimeException('could not finish writing the file');
     }
+    rename("{$file}.part", $file);
+    echo 'Backed up to ' . basename($file) . ' (' . round(filesize($file) / 1024) . " KB)\n";
+} catch (Throwable $e) {
+    @unlink("{$file}.part");
+    fwrite(STDERR, "Backup failed: {$e->getMessage()}\n");
+    $failed = true;
 }
-unlink($options);
 
 $backups = glob("{$dir}/{$name}-*.sql.gz");
 rsort($backups);

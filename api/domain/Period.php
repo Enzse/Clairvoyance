@@ -101,6 +101,19 @@ final class Period
         return $periods;
     }
 
+    /**
+     * The periods a KPI is reported for in a month, as shown on the data-entry form: each week
+     * or day that starts in the month (up to $today), otherwise the one period containing it.
+     * @return string[]
+     */
+    public static function inMonth(string $monthStart, string $frequency, string $today): array
+    {
+        if ($frequency !== 'daily' && $frequency !== 'weekly') {
+            return [self::align($monthStart, $frequency)];
+        }
+        return array_values(array_filter(self::periodsWithin($monthStart, 'monthly', $frequency), fn($p) => $p <= $today));
+    }
+
     /** Human label, e.g. "Jun 2025", "Q2 2025", "W23 2025". */
     public static function label(string $start, string $frequency): string
     {

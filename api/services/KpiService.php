@@ -32,9 +32,27 @@ class KpiService
         $this->access = $access;
     }
 
+    /**
+     * The organisation's KPIs, each with `target` (the target for every unit in force today,
+     * or null) and `unit_target_count` (how many targets are set for particular units).
+     */
     public function list(bool $includeInactive): array
     {
-        return $this->kpis->all($this->auth->organizationId(), !$includeInactive);
+        $kpis = $this->kpis->all($this->auth->organizationId(), !$includeInactive);
+        $targets = $this->targets->forKpis(array_column($kpis, 'id'));
+        $today = date('Y-m-d');
+        return array_map(function (array $kpi) use ($targets, $today) {
+            $current = null;
+            $perUnit = 0;
+            foreach ($targets[$kpi['id']] as $t) {
+                if ($t['unit_id'] !== null) {
+                    $perUnit++;
+                } elseif ($t['effective_from'] <= $today) {
+                    $current = $t['value']; // ordered by start date, so the last one wins
+                }
+            }
+            return $kpi + ['target' => $current, 'unit_target_count' => $perUnit];
+        }, $kpis);
     }
 
     public function get(int $id): array

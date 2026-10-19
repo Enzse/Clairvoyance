@@ -59,6 +59,9 @@ class SetupGuideTest extends ApiTestCase
         $setup = $this->ok('GET', '/organization/setup');
         $this->assertSame(true, $setup['steps']['targets']);
         $this->assertSame(['structure'], $setup['skipped'], 'targets is done now, not skipped');
+        // The KPI list shows the target in force
+        $listed = $this->ok('GET', '/kpis')[0];
+        $this->assertSame([10.0, 0], [(float)$listed['target'], $listed['unit_target_count']]);
     }
 
     public function test5HidingAndShowingAgain(): void

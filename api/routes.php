@@ -68,6 +68,7 @@ return function (Router $r): void {
     $r->add('GET', '/kpis/{id}/history', [ValueController::class, 'history']);
 
     $r->add('GET', '/values', [ValueController::class, 'form']);
+    $r->add('GET', '/values/progress', [ValueController::class, 'progress']);
     $r->add('PUT', '/values', [ValueController::class, 'save']);
 
     $r->add('GET', '/imports', [ImportController::class, 'list']);

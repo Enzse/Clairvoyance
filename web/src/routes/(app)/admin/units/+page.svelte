@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
@@ -10,6 +11,7 @@
 	import type { Tree } from '$lib/components/structure/tree';
 	import UnitPanel from '$lib/components/structure/UnitPanel.svelte';
 	import { plural } from '$lib/format';
+	import { members } from '$lib/members.svelte';
 	import { term } from '$lib/terms.svelte';
 	import { units } from '$lib/units.svelte';
 
@@ -98,8 +100,12 @@
 			}
 		},
 		// New ones take the kind of what's already there, otherwise the organisation's word
-		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One))
+		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One)),
+		assigned: (id) => members.assignedTo(id),
+		get showAccess() { return members.anyAssigned; }
 	};
+
+	onMount(() => members.load());
 
 	// Clicking empty space in the tree closes the details
 	function onTreeClick(event: MouseEvent) {
@@ -108,7 +114,8 @@
 </script>
 
 <svelte:head><title>Structure | Clairvoyance</title></svelte:head>
-<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && close()} />
+<!-- Escape in a dialog over the panel closes only the dialog -->
+<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && !document.querySelector('dialog[open]') && close()} />
 
 <div class="transition-[padding] duration-300 {selected ? 'lg:pr-[max(0px,calc(444px-(100vw-1240px)/2))]' : ''}">
 	<div class="flex flex-wrap items-end justify-between gap-4">
@@ -154,7 +161,7 @@
 		aria-label="{selected.name} details"
 		transition:fly={{ x: 440 * move, duration: 280, easing: cubicOut, opacity: 1 }}
 	>
-		<UnitPanel unit={selected} gatherFirst={gatherNext} onClose={close} onDeleted={(parentId) => (selectedId = parentId)} />
+		<UnitPanel unit={selected} gatherFirst={gatherNext} onClose={close} onDeleted={(parentId) => (selectedId = parentId)} onSelect={(id) => (selectedId = id)} />
 	</aside>
 {/if}
 

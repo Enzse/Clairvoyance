@@ -13,8 +13,8 @@ use Repositories\KpiRepository;
 use Repositories\ValueRepository;
 
 /**
- * Manual data entry: one unit, one date, every KPI that applies to the unit. The date is
- * moved to each KPI's period start, so a monthly and a weekly KPI can share one form.
+ * Manual data entry: one unit, one month, every KPI that applies to the unit. Weekly and daily
+ * KPIs list each week or day in the month; longer ones the period the month is in.
  */
 class ValueService
 {
@@ -39,25 +39,35 @@ class ValueService
         if (!$this->access->tree()->isLeaf($unitId)) {
             throw HttpException::badRequest("{$unit['name']} adds up the " . Words::plural($this->auth->organization()['unit_label']) . ' under it; enter figures for those instead');
         }
-        if (!Period::isValidDate($date)) {
-            throw HttpException::badRequest('date must be YYYY-MM-DD');
-        }
+        $month = $this->month($date);
+        $today = date('Y-m-d');
 
-        $kpis = array_values(array_filter($this->kpis->all($this->auth->organizationId(), true), fn($k) => $this->appliesTo($k, $unit)));
-        $periods = array_map(fn($k) => Period::align($date, $k['frequency']), $kpis);
-        $stored = $this->values->forUnit($unitId, $periods);
+        // Every period of every KPI in the month, with the one before it for comparison
+        $wanted = [];
+        foreach ($this->kpis->all($this->auth->organizationId(), true) as $kpi) {
+            if (!$this->appliesTo($kpi, $unit)) {
+                continue;
+            }
+            foreach (Period::inMonth($month, $kpi['frequency'], $today) as $period) {
+                $wanted[] = [$kpi, $period, Period::previous($period, $kpi['frequency'])];
+            }
+        }
+        $stored = $this->values->forUnit($unitId, array_merge(array_column($wanted, 1), array_column($wanted, 2)));
 
         $rows = [];
-        foreach ($kpis as $i => $kpi) {
-            $value = $stored[$kpi['id'] . '|' . $periods[$i]] ?? null;
+        foreach ($wanted as [$kpi, $period, $previous]) {
+            $value = $stored[$kpi['id'] . '|' . $period] ?? null;
+            $before = $stored[$kpi['id'] . '|' . $previous] ?? null;
             $rows[] = [
                 'kpi' => $kpi,
-                'period_start' => $periods[$i],
-                'period_label' => Period::label($periods[$i], $kpi['frequency']),
+                'period_start' => $period,
+                'period_label' => Period::label($period, $kpi['frequency']),
                 'value' => $value ? (float)$value['value'] : null,
                 'note' => $value['note'] ?? null,
                 'updated_at' => $value['updated_at'] ?? null,
                 'updated_by' => $value['updated_by'] ?? null,
+                'previous_label' => Period::label($previous, $kpi['frequency']),
+                'previous_value' => $before ? (float)$before['value'] : null,
             ];
         }
 
@@ -67,6 +77,45 @@ class ValueService
             'can_edit' => $unit['is_active'] && in_array($role, ['contributor', 'admin'], true),
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * For each unit the user can enter figures for: how many figures the month needs (every
+     * period of every KPI that applies, as on the form) and how many are in.
+     */
+    public function progress(string $date): array
+    {
+        $month = $this->month($date);
+        $today = date('Y-m-d');
+        $kpis = $this->kpis->all($this->auth->organizationId(), true);
+        $units = array_values(array_filter(
+            $this->access->visibleUnits(),
+            fn($u) => $u['is_leaf'] && $u['is_active'] && in_array($u['access'], ['contributor', 'admin'], true)
+        ));
+
+        $periods = [];
+        foreach ($kpis as $kpi) {
+            $periods[$kpi['id']] = Period::inMonth($month, $kpi['frequency'], $today);
+        }
+        $starts = array_merge([$month], ...array_values($periods));
+        $grid = $this->values->grid(array_column($kpis, 'id'), array_column($units, 'id'), min($starts), Period::next(max($starts), 'daily'));
+
+        $out = [];
+        foreach ($units as $unit) {
+            $expected = 0;
+            $entered = 0;
+            foreach ($kpis as $kpi) {
+                if (!$this->appliesTo($kpi, $unit)) {
+                    continue;
+                }
+                foreach ($periods[$kpi['id']] as $period) {
+                    $expected++;
+                    $entered += isset($grid[$kpi['id']][$unit['id']][$period]) ? 1 : 0;
+                }
+            }
+            $out[] = ['unit_id' => (int)$unit['id'], 'expected' => $expected, 'entered' => $entered];
+        }
+        return ['month' => $month, 'label' => Period::label($month, 'monthly'), 'units' => $out];
     }
 
     /**
@@ -171,6 +220,14 @@ class ValueService
             return "{$unit['name']} doesn't report {$kpi['name']}";
         }
         return null;
+    }
+
+    private function month(string $date): string
+    {
+        if (!Period::isValidDate($date)) {
+            throw HttpException::badRequest('date must be YYYY-MM-DD');
+        }
+        return Period::align($date, 'monthly');
     }
 
     private function appliesTo(array $kpi, array $unit): bool

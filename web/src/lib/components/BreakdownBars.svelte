@@ -66,9 +66,10 @@
 			{#each sorted as r (r.unit.id)}
 				{@const zero = pct(Math.max(scale.min, Math.min(0, scale.max)))}
 				{@const at = r.value === null ? null : pct(r.value)}
-				<tr class="group border-b border-line last:border-b-0 hover:bg-surface-2">
+				<!-- The whole row opens the unit: its link covers the row -->
+				<tr class="group relative cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2">
 					<th scope="row" class="py-2.5 pr-4 font-normal">
-						<a class="font-medium group-hover:text-accent hover:underline" href={hrefFor(r.unit.id)}>{r.unit.name}</a>
+						<a class="font-medium group-hover:text-accent group-hover:underline after:absolute after:inset-0" href={hrefFor(r.unit.id)}>{r.unit.name}</a>
 						{#if r.unit.kind}<span class="block text-xs text-muted">{r.unit.kind}</span>{/if}
 					</th>
 					<td class="py-2.5 pr-6">

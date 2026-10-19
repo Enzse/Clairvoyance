@@ -5,16 +5,23 @@
 	import type { Invitation, Membership, Role } from '$lib/types';
 	import { units } from '$lib/units.svelte';
 	import Icon from './Icon.svelte';
+	import LevelSwitch from './people/LevelSwitch.svelte';
 
 	/**
 	 * Invite people by email with one level of access each. The server emails the link when it
 	 * can; the link is always shown too, to send another way.
 	 */
-	let { onCreated }: { onCreated?: (count: number) => void } = $props();
+	let { onCreated, preset }: { onCreated?: (count: number) => void; preset?: Membership } = $props();
 
-	type Row = { key: number; email: string; access: string; error?: string };
+	/** Each person: an administrator, or a member who views or enters data for one part of the organisation. */
+	type Row = { key: number; email: string; target: number | 'admin'; level: Membership['role']; error?: string };
 	let seq = 0;
-	const blank = (): Row => ({ key: seq++, email: '', access: units.home() ? `view:${units.home()!.id}` : 'admin' });
+	const blank = (): Row => ({
+		key: seq++,
+		email: '',
+		target: preset?.unit_id ?? units.home()?.id ?? 'admin',
+		level: preset?.role ?? 'viewer'
+	});
 
 	let rows = $state<Row[]>([blank()]);
 	type Sent = { email: string; link: string; copied: boolean; emailed: boolean; problem: Invitation['email_problem'] };
@@ -27,10 +34,8 @@
 	const root = $derived(units.home());
 	const others = $derived(units.list.filter((u) => u.parent_id !== null && u.is_active));
 
-	function decode(access: string): { role: Role; access: Membership[] } {
-		if (access === 'admin') return { role: 'admin', access: [] };
-		const [mode, id] = access.split(':');
-		return { role: 'member', access: [{ unit_id: Number(id), role: mode === 'enter' ? 'contributor' : 'viewer' }] };
+	function decode(row: Row): { role: Role; access: Membership[] } {
+		return row.target === 'admin' ? { role: 'admin', access: [] } : { role: 'member', access: [{ unit_id: row.target, role: row.level }] };
 	}
 
 	async function submit(event: SubmitEvent) {
@@ -40,7 +45,7 @@
 		for (const row of rows.filter((r) => r.email.trim())) {
 			row.error = undefined;
 			try {
-				const invite = await api.invite({ email: row.email.trim(), ...decode(row.access) });
+				const invite = await api.invite({ email: row.email.trim(), ...decode(row) });
 				links.push({
 					email: invite.email,
 					link: invitationLink(invite.token!),
@@ -71,28 +76,19 @@
 		<div>
 			<div class="flex flex-wrap items-center gap-2">
 				<input
-					class="input min-w-0 flex-1 basis-56"
+					class="input min-w-0 flex-1 basis-44"
 					type="email"
 					placeholder="name@company.com"
 					aria-label="Email {i + 1}"
 					bind:value={row.email}
 					aria-invalid={!!row.error}
 				/>
-				<select class="input w-auto max-w-full flex-1 basis-56" bind:value={row.access} aria-label="Access for person {i + 1}">
-					<option value="admin">Administrator: sets everything up</option>
-					{#if root}
-						<option value="view:{root.id}">Can view everything</option>
-						<option value="enter:{root.id}">Can enter data everywhere</option>
-					{/if}
-					{#if others.length}
-						<optgroup label="Enters data for">
-							{#each others as u (u.id)}<option value="enter:{u.id}">{u.name}</option>{/each}
-						</optgroup>
-						<optgroup label="Views">
-							{#each others as u (u.id)}<option value="view:{u.id}">{u.name}</option>{/each}
-						</optgroup>
-					{/if}
+				<select class="input w-auto max-w-full min-w-0 flex-1 basis-40" bind:value={row.target} aria-label="Access for person {i + 1}">
+					<option value="admin">Administrator: sees and changes everything</option>
+					{#if root}<option value={root.id}>{root.name}: all of it</option>{/if}
+					{#each others as u (u.id)}<option value={u.id}>{units.pathLabel(u.id) ? `${units.pathLabel(u.id)} › ` : ''}{u.name}</option>{/each}
 				</select>
+				{#if row.target !== 'admin'}<LevelSwitch value={row.level} onchange={(level) => (row.level = level)} />{/if}
 				{#if rows.length > 1}
 					<button type="button" class="rounded p-1.5 text-muted hover:bg-bad-wash hover:text-bad-ink" aria-label="Remove row" onclick={() => (rows = rows.filter((r) => r.key !== row.key))}>
 						<Icon name="x" size={15} />

@@ -112,6 +112,9 @@ export interface Kpi {
 	prefix: string;
 	suffix: string;
 	is_active: boolean;
+	/** In lists only: the target for every unit in force today, and how many per-unit targets there are */
+	target?: number | null;
+	unit_target_count?: number;
 }
 
 export interface Result {
@@ -186,6 +189,16 @@ export interface EntryRow {
 	note: string | null;
 	updated_at: string | null;
 	updated_by: string | null;
+	/** The period before, for comparison */
+	previous_label: string;
+	previous_value: number | null;
+}
+
+/** How far each unit the user can enter data for has got with a month's figures. */
+export interface EntryProgress {
+	month: string;
+	label: string;
+	units: { unit_id: number; expected: number; entered: number }[];
 }
 
 export interface EntryForm {
