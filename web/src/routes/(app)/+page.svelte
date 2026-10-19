@@ -2,16 +2,18 @@
 	import { page } from '$app/state';
 	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
+	import ChangeCell from '$lib/components/ChangeCell.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ExportDialog from '$lib/components/ExportDialog.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
-	import KpiTable from '$lib/components/scorecard/KpiTable.svelte';
-	import ScoreSummary from '$lib/components/scorecard/ScoreSummary.svelte';
+	import Sparkline from '$lib/components/Sparkline.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import GettingStarted from '$lib/components/GettingStarted.svelte';
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
+	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
-	import { filterRows, summarize, type RowFilter } from '$lib/summary';
+	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
 	import { cap, term, wordFor } from '$lib/terms.svelte';
@@ -29,7 +31,6 @@
 	let error = $state('');
 	let checklistShown = $state(false);
 	let exporting = $state(false);
-	let filter = $state<RowFilter>('all');
 	let request = 0;
 
 	$effect(() => {
@@ -50,8 +51,6 @@
 			if (seq !== request) return;
 			card = next;
 			cells = map;
-			// A filter that matches nothing in the new period would leave an empty list
-			if (!filterRows(next.kpis, filter).length) filter = 'all';
 		} catch (e) {
 			if (seq === request) error = e instanceof ApiError ? e.message : 'Could not load the scorecard';
 		} finally {
@@ -97,27 +96,26 @@
 			</div>
 		{:else if card}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
+				<!-- Report card -->
 				{#if session.user?.organization?.role === 'admin'}<GettingStarted bind:shown={checklistShown} />{/if}
-
-				{#if card.kpis.length}
-					<div class={checklistShown ? 'mt-6' : '-mt-5'}><ScoreSummary rows={card.kpis} bind:filter /></div>
-					<section class="panel mt-4 overflow-hidden" aria-labelledby="kpis-heading">
-						<KpiTable rows={card.kpis} bind:filter kpiHref={(id) => kpiHref(id)}>
-							{#snippet actions()}
+				<section class="panel overflow-hidden {checklistShown ? '' : '-mt-5'}" aria-labelledby="kpis-heading">
+					<div class="flex items-center justify-between gap-4 px-5 pt-5 pb-3">
+						<h2 id="kpis-heading" class="text-md font-semibold">KPIs</h2>
+						<div class="flex flex-wrap justify-end gap-2">
+							{#if card.kpis.length}
 								<button class="btn btn-secondary btn-sm" onclick={() => (exporting = true)}><Icon name="download" size={14} /> Export</button>
-								{#if canEnter}
-									<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: card!.date })}>
-										<Icon name="pencil" size={14} /> Add {card!.kpis[0].period_label} data
-									</a>
-								{/if}
-							{/snippet}
-						</KpiTable>
-					</section>
-				{:else}
-					<section class="panel overflow-hidden {checklistShown ? 'mt-6' : '-mt-5'}" aria-labelledby="kpis-heading">
-						<div class="flex flex-col items-center px-6 py-14 text-center" in:fade={{ duration: 250 }}>
+							{/if}
+							{#if canEnter}
+								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: card.date })}>
+									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
+								</a>
+							{/if}
+						</div>
+					</div>
+					{#if card.kpis.length === 0}
+						<div class="flex flex-col items-center border-t border-line px-6 py-14 text-center" in:fade={{ duration: 250 }}>
 							<span class="grid size-14 place-items-center rounded-2xl bg-accent-wash text-accent"><Icon name="chart" size={26} /></span>
-							<h2 id="kpis-heading" class="mt-4 text-lg font-semibold tracking-[-0.01em]">No KPIs yet</h2>
+							<h3 class="mt-4 text-lg font-semibold tracking-[-0.01em]">No KPIs yet</h3>
 							{#if session.user?.organization?.role === 'admin'}
 								<p class="mt-1.5 max-w-[46ch] text-ink-2">
 									KPIs are what you measure, like revenue or customer satisfaction. Add the first one and this scorecard comes to life.
@@ -127,19 +125,57 @@
 								<p class="mt-1.5 max-w-[46ch] text-ink-2">Once an administrator adds the KPIs {session.user?.organization?.name} tracks, they appear here.</p>
 							{/if}
 						</div>
-					</section>
-				{/if}
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="w-full text-left">
+								<thead class="text-sm text-ink-2">
+									<tr class="border-y border-line bg-surface-2">
+										<th scope="col" class="py-2.5 pr-3 pl-5 font-medium">KPI</th>
+										<th scope="col" class="px-3 py-2.5 font-medium">Status</th>
+										<th scope="col" class="px-3 py-2.5 text-right font-medium">Value</th>
+										<th scope="col" class="hidden px-3 py-2.5 text-right font-medium sm:table-cell">Target</th>
+										<th scope="col" class="hidden px-3 py-2.5 font-medium md:table-cell">Change</th>
+										<th scope="col" class="hidden px-3 py-2.5 font-medium lg:table-cell">Last 12 periods</th>
+										<th scope="col" class="hidden py-2.5 pr-5 pl-3 text-right font-medium sm:table-cell">Reports</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each card.kpis as row (row.kpi.id)}
+										<!-- The whole row opens the KPI: its link covers the row -->
+										<tr class="group relative cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2">
+											<th scope="row" class="py-3.5 pr-3 pl-5 font-normal">
+												<a class="font-semibold text-ink group-hover:text-accent group-hover:underline after:absolute after:inset-0" href={kpiHref(row.kpi.id)}>{row.kpi.name}</a>
+												<span class="block text-sm text-muted">{row.period_label}</span>
+											</th>
+											<td class="px-3 py-3.5">
+												{#if row.kpi.direction === 'none'}
+													<span class="text-sm text-muted">Tracked only</span>
+												{:else}
+													<StatusBadge status={row.value === null ? null : row.status} empty={row.value === null ? 'No data' : 'No target'} />
+												{/if}
+											</td>
+											<td class="px-3 py-3.5 text-right text-lg font-semibold whitespace-nowrap">{formatValue(row.kpi, row.value)}</td>
+											<td class="num hidden px-3 sm:table-cell py-3.5 text-right whitespace-nowrap text-ink-2">{formatValue(row.kpi, row.target)}</td>
+											<td class="hidden px-3 md:table-cell py-3.5 text-sm whitespace-nowrap"><span class="relative z-10"><ChangeCell {row} /></span></td>
+											<td class="hidden px-3 py-3.5 lg:table-cell">
+												<Sparkline values={row.sparkline.map((p) => p.value)} label="{row.kpi.name}, last {row.sparkline.length} periods" />
+											</td>
+											<td class="num hidden py-3.5 sm:table-cell pr-5 pl-3 text-right whitespace-nowrap {row.reported < row.expected ? 'text-ink' : 'text-muted'}">
+												{row.reported}/{row.expected}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				</section>
 
 				<!-- Units × KPIs -->
 				{#if !isLeaf && childUnits.length && card.kpis.length}
-					<section class="panel mt-6 p-5 sm:p-6" aria-labelledby="units-heading">
-						<div class="mb-4 flex items-start gap-3">
-							<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-wash text-accent"><Icon name="layers" size={17} /></span>
-							<div>
-								<h2 id="units-heading" class="font-semibold">{cap(wordFor(childUnits))} in {unit?.name}</h2>
-								<p class="text-sm text-ink-2">Each one's own figure for {card.kpis[0].period_label}. Click a name to open its scorecard, or a cell for that KPI's detail.</p>
-							</div>
-						</div>
+					<section class="panel mt-6 p-5" aria-labelledby="units-heading">
+						<h2 id="units-heading" class="text-md font-semibold">{cap(wordFor(childUnits))} in {unit?.name}</h2>
+						<p class="mt-1 mb-4 text-sm text-ink-2">Each one's own figure for {card.kpis[0].period_label}. Select a name to open its scorecard, or a cell for that KPI's detail.</p>
 						<StatusMatrix
 							rows={childUnits}
 							kpis={card.kpis.map((r) => r.kpi)}
@@ -148,6 +184,8 @@
 							cellHref={(u, k) => kpiHref(k, u)}
 						/>
 					</section>
+				{:else if isLeaf && !canEnter}
+					<p class="mt-6 text-sm text-ink-2">{unit?.name} reports its own figures; there are no units under it.</p>
 				{/if}
 			</div>
 		{/if}
