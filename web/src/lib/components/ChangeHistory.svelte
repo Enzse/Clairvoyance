@@ -56,7 +56,7 @@
 							{:else if c.new_value === null}
 								deleted <s class="num text-ink-2">{formatValue(kpi, c.old_value)}</s>
 							{:else if c.old_value === c.new_value}
-								changed the note
+								{c.new_note ? 'noted' : 'removed the note on'} <span class="num">{formatValue(kpi, c.new_value)}</span>
 							{:else}
 								changed <span class="num text-ink-2">{formatValue(kpi, c.old_value)}</span> <span class="text-muted" aria-label="to">→</span> <strong class="num font-semibold">{formatValue(kpi, c.new_value)}</strong>
 							{/if}
@@ -64,6 +64,9 @@
 						<p class="text-xs text-muted">
 							{showUnit ? `${c.unit_name} · ` : ''}{c.period_label}{c.import_file ? ` · from ${c.import_file}` : ''}
 						</p>
+						{#if c.new_note && c.new_note !== c.old_note}
+							<p class="mt-1 flex items-start gap-1.5 text-sm text-ink-2"><Icon name="note" size={13} class="mt-0.5 shrink-0 text-muted" />{c.new_note}</p>
+						{/if}
 					</div>
 					<time class="shrink-0 text-xs text-muted" datetime={c.changed_at.replace(' ', 'T')} title={exact(c.changed_at)}>{timeAgo(c.changed_at)}</time>
 				</li>

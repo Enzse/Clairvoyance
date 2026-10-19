@@ -5,7 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { api, ApiError } from '$lib/api';
 	import AccountOrganizations from '$lib/components/account/AccountOrganizations.svelte';
-	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
+	import PasswordInput, { mismatched } from '$lib/components/auth/PasswordInput.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import InlineEdit from '$lib/components/InlineEdit.svelte';
 	import PageBand, { WIDTH } from '$lib/components/PageBand.svelte';
@@ -16,6 +16,7 @@
 	/** Your name, password and organisations, and deleting the account. */
 	let current = $state('');
 	let next = $state('');
+	let repeat = $state('');
 	let passwordBusy = $state(false);
 	let passwordError = $state<ApiError | null>(null);
 	let deleting = $state(false);
@@ -34,11 +35,12 @@
 
 	async function savePassword(event: SubmitEvent) {
 		event.preventDefault();
+		if (next !== repeat) return;
 		passwordBusy = true;
 		passwordError = null;
 		try {
 			await api.updateAccount({ current_password: current, new_password: next });
-			current = next = '';
+			current = next = repeat = '';
 			toast('Password changed. Other devices have been signed out');
 		} catch (e) {
 			passwordError = e instanceof ApiError ? e : new ApiError(0, 'Could not change the password');
@@ -88,9 +90,13 @@
 					<label class="field-label" for="new-password">New password</label>
 					<PasswordInput id="new-password" bind:value={next} autocomplete="new-password" rule error={passwordError?.field('new_password') ? `Password ${passwordError.field('new_password')}` : ''} />
 				</div>
+				<div class="sm:col-start-2">
+					<label class="field-label" for="repeat-password">Confirm new password</label>
+					<PasswordInput id="repeat-password" bind:value={repeat} autocomplete="new-password" error={mismatched(next, repeat) ? "The passwords don't match" : ''} />
+				</div>
 			</div>
 			<div class="mt-5 flex justify-end">
-				<button class="btn btn-secondary" disabled={passwordBusy || !current || next.length < 8}>{passwordBusy ? 'Changing…' : 'Change password'}</button>
+				<button class="btn btn-secondary" disabled={passwordBusy || !current || next.length < 8 || next !== repeat}>{passwordBusy ? 'Changing…' : 'Change password'}</button>
 			</div>
 		</form>
 

@@ -18,6 +18,7 @@
 
 	let form = $state<EntryForm | null>(null);
 	let inputs = $state<Record<string, string>>({});
+	let notes = $state<Record<string, string>>({});
 	let errors = $state<Record<string, string>>({});
 	let loading = $state(true);
 	let saving = $state(false);
@@ -37,6 +38,7 @@
 			if (seq !== request) return;
 			form = current;
 			inputs = Object.fromEntries(current.rows.map((r) => [rowKey(r), r.value === null ? '' : String(r.value)]));
+			notes = Object.fromEntries(current.rows.map((r) => [rowKey(r), r.note ?? '']));
 			errors = {};
 		} catch (e) {
 			if (seq === request) error = problem(e, 'Could not load the form');
@@ -45,8 +47,16 @@
 		}
 	}
 
-	const changed = $derived(form ? form.rows.filter((r) => { const v = parseFigure(inputs[rowKey(r)] ?? ''); return v === undefined || v !== r.value; }) : []);
-	const invalid = $derived(changed.filter((r) => parseFigure(inputs[rowKey(r)] ?? '') === undefined));
+	const changed = $derived(
+		form
+			? form.rows.filter((r) => {
+					const v = parseFigure(inputs[rowKey(r)] ?? '');
+					return v === undefined || v !== r.value || (notes[rowKey(r)] ?? '').trim() !== (r.note ?? '');
+				})
+			: []
+	);
+	// Not a number, or a note on a figure left empty
+	const invalid = $derived(changed.filter((r) => { const v = parseFigure(inputs[rowKey(r)] ?? ''); return v === undefined || (v === null && !!notes[rowKey(r)]?.trim()); }));
 	const filled = $derived(form ? form.rows.filter((r) => r.value !== null).length : 0);
 	const total = $derived(form?.rows.length ?? 0);
 	const month = $derived(label(date, 'monthly'));
@@ -59,7 +69,7 @@
 		const rows = changed;
 		try {
 			const result = await api.saveValues(
-				rows.map((r) => ({ kpi_id: r.kpi.id, unit_id: form!.unit.id, period: r.period_start, value: parseFigure(inputs[rowKey(r)]) ?? null, note: r.note }))
+				rows.map((r) => ({ kpi_id: r.kpi.id, unit_id: form!.unit.id, period: r.period_start, value: parseFigure(inputs[rowKey(r)]) ?? null, note: notes[rowKey(r)]?.trim() || null }))
 			);
 			const count = result.created + result.updated + result.deleted;
 			toast(`Saved ${count} ${count === 1 ? 'figure' : 'figures'} for ${form.unit.name}`);
@@ -80,7 +90,10 @@
 	}
 
 	function discard() {
-		if (form) inputs = Object.fromEntries(form.rows.map((r) => [rowKey(r), r.value === null ? '' : String(r.value)]));
+		if (form) {
+			inputs = Object.fromEntries(form.rows.map((r) => [rowKey(r), r.value === null ? '' : String(r.value)]));
+			notes = Object.fromEntries(form.rows.map((r) => [rowKey(r), r.note ?? '']));
+		}
 		errors = {};
 	}
 
@@ -120,7 +133,7 @@
 
 		<div class="divide-y divide-line">
 			{#each byKpi(form.rows) as group (group.kpi.id)}
-				<KpiEntry kpi={group.kpi} rows={group.rows} bind:inputs {errors} canEdit={form.can_edit} />
+				<KpiEntry kpi={group.kpi} rows={group.rows} bind:inputs bind:notes {errors} canEdit={form.can_edit} />
 			{/each}
 		</div>
 

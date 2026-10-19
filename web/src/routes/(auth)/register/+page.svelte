@@ -4,7 +4,7 @@
 	import AuthFooter from '$lib/components/auth/AuthFooter.svelte';
 	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
 	import FormAlert from '$lib/components/auth/FormAlert.svelte';
-	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
+	import PasswordInput, { mismatched } from '$lib/components/auth/PasswordInput.svelte';
 	import { href } from '$lib/nav';
 	import { setMe } from '$lib/session.svelte';
 
@@ -17,8 +17,7 @@
 
 	const next = $derived(page.url.searchParams.get('next'));
 	const joining = $derived(next?.startsWith('/invite/') ?? false);
-	// Said once the second password is as long as the first, so it doesn't complain mid-typing
-	const mismatch = $derived(confirm.length >= password.length && confirm !== password && confirm !== '');
+	const mismatch = $derived(mismatched(password, confirm));
 
 	// The (auth) layout moves on to onboarding (or the invitation) once signed in
 	async function submit(event: SubmitEvent) {

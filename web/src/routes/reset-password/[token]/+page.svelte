@@ -4,19 +4,21 @@
 	import { api, ApiError } from '$lib/api';
 	import AuthHeading from '$lib/components/auth/AuthHeading.svelte';
 	import FormAlert from '$lib/components/auth/FormAlert.svelte';
-	import PasswordInput from '$lib/components/auth/PasswordInput.svelte';
+	import PasswordInput, { mismatched } from '$lib/components/auth/PasswordInput.svelte';
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	import { landingFor, setMe } from '$lib/session.svelte';
 	import { toast } from '$lib/toast.svelte';
 
 	/** Opened from the reset email. Works whether or not someone is signed in on this browser. */
 	let password = $state('');
+	let confirm = $state('');
 	let error = $state('');
 	let expired = $state(false);
 	let busy = $state(false);
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (password !== confirm) return;
 		busy = true;
 		error = '';
 		try {
@@ -46,8 +48,12 @@
 				<label class="field-label" for="password">New password</label>
 				<PasswordInput bind:value={password} autocomplete="new-password" rule />
 			</div>
+			<div>
+				<label class="field-label" for="confirm-password">Confirm new password</label>
+				<PasswordInput id="confirm-password" bind:value={confirm} autocomplete="new-password" error={mismatched(password, confirm) ? "The passwords don't match" : ''} />
+			</div>
 			<FormAlert message={error} />
-			<button class="btn btn-primary w-full" disabled={busy}>{busy ? 'Saving…' : 'Save password and sign in'}</button>
+			<button class="btn btn-primary w-full" disabled={busy || !password || password !== confirm}>{busy ? 'Saving…' : 'Save password and sign in'}</button>
 		</form>
 	{/if}
 </AuthShell>

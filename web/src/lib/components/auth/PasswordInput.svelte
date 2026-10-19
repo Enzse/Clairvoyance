@@ -1,3 +1,10 @@
+<script lang="ts" module>
+	/** Whether a repeated password differs, said once it's as long as the first so typing isn't interrupted. */
+	export function mismatched(password: string, repeat: string): boolean {
+		return repeat !== '' && repeat.length >= password.length && repeat !== password;
+	}
+</script>
+
 <script lang="ts">
 	import Icon from '../Icon.svelte';
 
