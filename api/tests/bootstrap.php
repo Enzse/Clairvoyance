@@ -1,36 +1,33 @@
 <?php
 
 /**
- * Test Bootstrap
- * 
- * This file sets up the testing environment for our model tests.
+ * Test environment. Tests delete data, so they run against a separate database
+ * (override DB_NAME or other settings in api/.env.test) and refuse anything not ending in _test.
  */
 
-// Load Composer autoloader
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../autoload.php';
 
-// Set up test environment
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Set timezone for consistent testing
+ini_set('display_errors', '1');
 date_default_timezone_set('UTC');
 
-// Load environment variables for testing
+// Warnings and notices are bugs: fail the test instead of printing and carrying on
+set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+$env = Core\Environment::getInstance();
+$env->set('DB_NAME', 'clairvoyance_v3_test');
+
 if (file_exists(__DIR__ . '/../.env.test')) {
-    $lines = file(__DIR__ . '/../.env.test', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($key, $value) = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value);
+    foreach (file(__DIR__ . '/../.env.test', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $env->set(trim($key), trim($value));
     }
 }
 
-// Initialize the application
-use Core\Application;
-
-$app = Application::getInstance();
-
-echo "🧪 Test Environment Initialized\n";
-echo "📦 Application loaded successfully\n";
-echo "🔗 Dependency injection container ready\n\n";
+if (substr($env->get('DB_NAME'), -5) !== '_test') {
+    fwrite(STDERR, "Refusing to run: DB_NAME '{$env->get('DB_NAME')}' must end in _test.\n");
+    exit(1);
+}

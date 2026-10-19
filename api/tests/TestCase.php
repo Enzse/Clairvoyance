@@ -1,113 +1,77 @@
 <?php
 
-/**
- * Base Test Case Class
- * 
- * Provides common functionality for all model tests.
- */
+namespace Tests;
 
-class TestCase
+class AssertionFailed extends \Exception
 {
-    protected $app;
-    protected $container;
-    protected $db;
-    
-    public function __construct()
+}
+
+/**
+ * Base class for tests run by tests/run.php. Public methods named test* are run in order,
+ * each on a fresh instance. An optional static setUpBeforeClass() runs once per class.
+ */
+abstract class TestCase
+{
+    protected function setUp(): void
     {
-        $this->app = \Core\Application::getInstance();
-        $this->container = $this->app->getContainer();
-        $this->db = $this->container->resolve(\PDO::class);
     }
-    
-    protected function assertTrue($condition, $message = '')
+
+    public function runTest(string $method): void
     {
-        if (!$condition) {
-            throw new \Exception("Assertion failed: " . $message);
+        $this->setUp();
+        $this->$method();
+    }
+
+    protected function assertTrue($condition, string $message = ''): void
+    {
+        if ($condition !== true) {
+            $this->fail($message ?: 'Expected true, got ' . $this->export($condition));
         }
     }
-    
-    protected function assertFalse($condition, $message = '')
+
+    protected function assertSame($expected, $actual, string $message = ''): void
     {
-        if ($condition) {
-            throw new \Exception("Assertion failed: " . $message);
+        if ($expected !== $actual) {
+            $this->fail(($message ? "{$message}: " : '') . 'expected ' . $this->export($expected) . ', got ' . $this->export($actual));
         }
     }
-    
-    protected function assertEquals($expected, $actual, $message = '')
+
+    protected function assertNull($actual, string $message = ''): void
     {
-        if ($expected != $actual) {
-            throw new \Exception("Assertion failed: Expected '{$expected}', got '{$actual}'. " . $message);
+        $this->assertSame(null, $actual, $message);
+    }
+
+    /** Float comparison, rounded to $decimals places. */
+    protected function assertNear(float $expected, ?float $actual, int $decimals = 4, string $message = ''): void
+    {
+        if ($actual === null || round($expected, $decimals) !== round($actual, $decimals)) {
+            $this->fail(($message ? "{$message}: " : '') . "expected ~{$expected}, got " . $this->export($actual));
         }
     }
-    
-    protected function assertNotNull($value, $message = '')
+
+    protected function assertThrows(callable $fn, string $class, string $messageContains = ''): \Throwable
     {
-        if ($value === null) {
-            throw new \Exception("Assertion failed: Value is null. " . $message);
+        try {
+            $fn();
+        } catch (\Throwable $e) {
+            if (!$e instanceof $class) {
+                $this->fail("Expected {$class}, got " . get_class($e) . ': ' . $e->getMessage());
+            }
+            if ($messageContains !== '' && stripos($e->getMessage(), $messageContains) === false) {
+                $this->fail("Expected message containing '{$messageContains}', got '{$e->getMessage()}'");
+            }
+            return $e;
         }
+        $this->fail("Expected {$class} to be thrown");
     }
-    
-    protected function assertArrayHasKey($key, $array, $message = '')
+
+    protected function fail(string $message): void
     {
-        if (!array_key_exists($key, $array)) {
-            throw new \Exception("Assertion failed: Array does not have key '{$key}'. " . $message);
-        }
+        throw new AssertionFailed($message);
     }
-    
-    protected function cleanupTestData()
+
+    private function export($value): string
     {
-        // Clean up test data in reverse dependency order
-        $this->db->exec("DELETE FROM kpi_entries");
-        $this->db->exec("DELETE FROM kpis");
-        $this->db->exec("DELETE FROM dashboard_share_tokens");
-        $this->db->exec("DELETE FROM dashboard_access");
-        $this->db->exec("DELETE FROM dashboards");
-        $this->db->exec("DELETE FROM users WHERE email LIKE 'test_%'");
-    }
-    
-    protected function createTestUser($email = 'test_user@example.com', $role = 'editor')
-    {
-        $userModel = $this->container->resolve(\Models\User::class);
-        $result = $userModel->create($email, 'test_password', $role);
-        
-        if (!$result['success']) {
-            throw new \Exception("Failed to create test user: " . $result['error']);
-        }
-        
-        return $result['id'];
-    }
-    
-    protected function createTestDashboard($userId, $name = 'Test Dashboard')
-    {
-        $dashboardModel = $this->container->resolve(\Models\Dashboard::class);
-        $layout = json_encode([['id' => 1, 'type' => 'widget', 'title' => 'Test Widget']]);
-        $result = $dashboardModel->create($name, 'Test Description', $layout, $userId);
-        
-        if (!$result['success']) {
-            throw new \Exception("Failed to create test dashboard: " . $result['error']);
-        }
-        
-        return $result['id'];
-    }
-    
-    protected function createTestKpi($userId, $name = 'Test KPI')
-    {
-        $kpiModel = $this->container->resolve(\Models\Kpi::class);
-        $data = [
-            'name' => $name,
-            'direction' => 'higher_is_better',
-            'target' => 100.0,
-            'rag_red' => 50.0,
-            'rag_amber' => 75.0,
-            'format_prefix' => '$',
-            'format_suffix' => ''
-        ];
-        $result = $kpiModel->create($data, $userId);
-        
-        if (!$result['success']) {
-            throw new \Exception("Failed to create test KPI: " . $result['error']);
-        }
-        
-        return $result['id'];
+        return var_export($value, true);
     }
 }

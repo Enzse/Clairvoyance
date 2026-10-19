@@ -2,68 +2,53 @@
 
 namespace Core;
 
+/**
+ * Minimal dependency container. Classes are autowired from their constructor type hints
+ * and shared for the lifetime of the container (one per request).
+ */
 class Container
 {
-    private array $bindings = [];
+    private array $factories = [];
     private array $instances = [];
 
-    public function bind(string $abstract, $concrete): void
+    public function set(string $id, callable $factory): void
     {
-        $this->bindings[$abstract] = $concrete;
+        $this->factories[$id] = $factory;
+        unset($this->instances[$id]);
     }
 
-    public function singleton(string $abstract, $concrete): void
+    public function get(string $id)
     {
-        $this->bindings[$abstract] = $concrete;
-        $this->instances[$abstract] = null;
+        if (array_key_exists($id, $this->instances)) {
+            return $this->instances[$id];
+        }
+
+        $instance = isset($this->factories[$id])
+            ? ($this->factories[$id])($this)
+            : $this->build($id);
+
+        return $this->instances[$id] = $instance;
     }
 
-    public function resolve(string $abstract)
+    private function build(string $class)
     {
-        if (isset($this->instances[$abstract])) {
-            return $this->instances[$abstract];
-        }
-
-        $concrete = $this->bindings[$abstract] ?? $abstract;
-
-        if (is_callable($concrete)) {
-            $instance = $concrete($this);
-        } else {
-            $instance = $this->build($concrete);
-        }
-
-        if (isset($this->instances[$abstract])) {
-            $this->instances[$abstract] = $instance;
-        }
-
-        return $instance;
-    }
-
-    private function build(string $concrete)
-    {
-        $reflection = new \ReflectionClass($concrete);
-        
-        if (!$reflection->isInstantiable()) {
-            throw new \Exception("Class {$concrete} is not instantiable");
-        }
-
+        $reflection = new \ReflectionClass($class);
         $constructor = $reflection->getConstructor();
-        
         if (!$constructor) {
-            return new $concrete();
+            return new $class();
         }
 
-        $dependencies = [];
-        foreach ($constructor->getParameters() as $parameter) {
-            $type = $parameter->getType();
-            
-            if ($type && !$type->isBuiltin()) {
-                $dependencies[] = $this->resolve($type->getName());
+        $args = [];
+        foreach ($constructor->getParameters() as $param) {
+            $type = $param->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $args[] = $this->get($type->getName());
+            } elseif ($param->isDefaultValueAvailable()) {
+                $args[] = $param->getDefaultValue();
             } else {
-                $dependencies[] = $parameter->getDefaultValue();
+                throw new \LogicException("Cannot autowire \${$param->getName()} of {$class}");
             }
         }
-
-        return $reflection->newInstanceArgs($dependencies);
+        return $reflection->newInstanceArgs($args);
     }
 }

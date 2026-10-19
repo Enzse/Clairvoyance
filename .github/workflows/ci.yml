@@ -1,0 +1,108 @@
+# Tests on every push. Deploys when started by hand (Actions > Test and deploy > Run workflow)
+# with the "deploy" box ticked. Deploying needs these repository secrets (docs/deployment.md):
+#   SSH_HOST, SSH_PORT, SSH_USER, SSH_KEY (a private key whose public half is on the server),
+#   REMOTE_DIR (the domain's folder, e.g. /home/u123456789/domains/example.com)
+name: Test and deploy
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to the server after the tests pass
+        type: boolean
+        default: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql
+          coverage: none
+
+      - name: API tests
+        working-directory: api
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/run.php
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Web app checks and tests
+        working-directory: web
+        run: |
+          npm ci
+          npm run check
+          npm test
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on: ubuntu-latest
+    concurrency: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the release
+        run: |
+          (cd web && npm ci)
+          bash scripts/release.sh
+
+      - name: Upload and migrate
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          REMOTE_DIR: ${{ secrets.REMOTE_DIR }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+          ssh_cmd="ssh -i $HOME/.ssh/deploy_key -p $SSH_PORT"
+          target="$SSH_USER@$SSH_HOST:$REMOTE_DIR"
+
+          # The API first, then the pages that call it. The server's own .env, sessions, logs
+          # and backups are never touched; certificate files in .well-known are kept.
+          rsync -rlptz --delete --exclude .env --exclude storage/ -e "$ssh_cmd" release/clairvoyance/ "$target/clairvoyance/"
+          $ssh_cmd "$SSH_USER@$SSH_HOST" "cd '$REMOTE_DIR/clairvoyance' && php scripts/migrate.php"
+          rsync -rlptz --delete --exclude .well-known/ -e "$ssh_cmd" release/public_html/ "$target/public_html/"
+
+      - name: Check the live API
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          REMOTE_DIR: ${{ secrets.REMOTE_DIR }}
+        run: |
+          url=$(ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "grep '^APP_URL=' '$REMOTE_DIR/clairvoyance/.env' | cut -d= -f2-")
+          curl --fail --silent --show-error "$url/api/health"

@@ -1,59 +1,39 @@
 <?php
 
-// Load Composer autoloader
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/autoload.php';
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
+// Log errors to storage/logs/api.log instead of printing them into JSON responses
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+date_default_timezone_set('UTC');
+
+if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
+    $env = Core\Environment::getInstance();
+    $storage = __DIR__ . '/storage';
+    foreach (['sessions', 'logs'] as $dir) {
+        if (!is_dir("{$storage}/{$dir}")) {
+            mkdir("{$storage}/{$dir}", 0700, true);
+        }
+    }
+    ini_set('error_log', "{$storage}/logs/api.log");
+
+    // Sessions live in our own folder: shared hosts clean the system temp folder on their own
+    // schedule, which would sign people out at random. Signed in for up to 7 days.
+    $lifetime = 7 * 86400;
+    ini_set('session.save_path', "{$storage}/sessions");
+    ini_set('session.gc_maxlifetime', (string)$lifetime);
+    ini_set('session.gc_probability', '1');
+    ini_set('session.gc_divisor', '100');
+    ini_set('session.use_strict_mode', '1');
+    session_name('clairvoyance_session');
+    // Keep the cookie away from page scripts and cross-site requests, and off plain HTTP in production
+    session_set_cookie_params([
+        'lifetime' => $lifetime,
+        'path' => '/',
+        'secure' => strncmp($env->get('APP_URL'), 'https://', 8) === 0,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
-}
-
-// Initialize the application
-use Core\Application;
-
-$app = Application::getInstance();
-
-// Set error reporting for development
-$serverName = $_SERVER['SERVER_NAME'] ?? 'localhost';
-if ($serverName === 'localhost' || $serverName === '127.0.0.1') {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-} else {
-    error_reporting(0);
-    ini_set('display_errors', 0);
-}
-
-// Set timezone
-date_default_timezone_set('Asia/Manila');
-
-// Set request timeout
-set_time_limit(1000);
-
-// Handle CORS for API requests
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = [
-    'http://localhost:5173',  // SvelteKit dev server
-    'http://localhost:3000',  // Alternative dev port
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-    'http://localhost',       // XAMPP default
-    'http://127.0.0.1'
-];
-
-if (in_array($origin, $allowedOrigins)) {
-    header("Access-Control-Allow-Origin: $origin");
-    header('Access-Control-Allow-Credentials: true');
-} else {
-    // For development, allow all origins
-    header('Access-Control-Allow-Origin: *');
-}
-
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-header('Access-Control-Max-Age: 86400'); // Cache preflight for 24 hours
-
-// Handle preflight requests
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
 }
