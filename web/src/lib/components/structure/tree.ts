@@ -1,3 +1,5 @@
+import type { Member, Membership } from '$lib/types';
+
 /** What every row of the structure tree shares: selection, folding, adding. */
 export type Tree = {
 	selectedId: number | null;
@@ -11,6 +13,8 @@ export type Tree = {
 	stopAdd: () => void;
 	added: (ids: number[]) => void;
 	kindFor: (parentId: number) => string | null;
-	/** People (not administrators) who can see the unit */
-	accessCount: (id: number) => number;
+	/** People given access on the unit itself */
+	assigned: (id: number) => { member: Member; role: Membership['role'] }[];
+	/** Whether rows keep a column for those people */
+	showAccess: boolean;
 };

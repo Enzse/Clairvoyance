@@ -1,10 +1,9 @@
 import { api } from './api';
-import type { Invitation, Member } from './types';
-import { units } from './units.svelte';
+import type { Invitation, Member, Membership } from './types';
 
 /**
  * The organisation's people and pending invitations, for screens that show who can see what.
- * Changing someone's access through `setAccess` updates every screen using it.
+ * Updating a member's memberships in `list` shows on every screen using it.
  */
 class MemberStore {
 	list = $state<Member[]>([]);
@@ -14,10 +13,16 @@ class MemberStore {
 		[this.list, this.invitations] = await Promise.all([api.members(), api.invitations()]);
 	}
 
-	/** Members (not administrators) who can see the unit, given directly or through a group above. */
-	withAccess(unitId: number): Member[] {
-		const ids = new Set(units.path(unitId).map((u) => u.id));
-		return this.list.filter((m) => m.role === 'member' && m.memberships.some((a) => ids.has(a.unit_id)));
+	/** Members given access on this unit itself (not through a group above), with their level. */
+	assignedTo(unitId: number): { member: Member; role: Membership['role'] }[] {
+		return this.list.flatMap((m) =>
+			m.role === 'member' ? m.memberships.filter((a) => a.unit_id === unitId).map((a) => ({ member: m, role: a.role })) : []
+		);
+	}
+
+	/** Whether anyone has been given access to a particular unit. */
+	get anyAssigned(): boolean {
+		return this.list.some((m) => m.role === 'member' && m.memberships.length > 0);
 	}
 }
 

@@ -101,7 +101,8 @@
 		},
 		// New ones take the kind of what's already there, otherwise the organisation's word
 		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One)),
-		accessCount: (id) => members.withAccess(id).length
+		assigned: (id) => members.assignedTo(id),
+		get showAccess() { return members.anyAssigned; }
 	};
 
 	onMount(() => members.load());

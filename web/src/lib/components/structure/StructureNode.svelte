@@ -11,6 +11,7 @@
 	import InlineEdit from '../InlineEdit.svelte';
 	import QuickAdd from './QuickAdd.svelte';
 	import Tooltip from '../Tooltip.svelte';
+	import Avatar from '../people/Avatar.svelte';
 	import { saveUnit } from './save';
 	import Self from './StructureNode.svelte';
 	import type { Tree } from './tree';
@@ -28,7 +29,12 @@
 	const selected = $derived(tree.selectedId === unit.id);
 	const adding = $derived(tree.addingUnder === unit.id);
 	const reporting = $derived(isGroup ? units.reporting(unit.id) : []);
-	const people = $derived(tree.accessCount(unit.id));
+	const people = $derived(tree.assigned(unit.id));
+	// "Lee enters data, Ana views (and everything inside)"
+	const whoHere = $derived(
+		people.map(({ member, role }) => `${member.name || member.email} ${role === 'contributor' ? 'enters data' : 'views'}`).join(', ') +
+			(isGroup ? ' here and for everything inside' : ' here')
+	);
 	const isFresh = $derived(tree.fresh.has(unit.id));
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 </script>
@@ -80,14 +86,6 @@
 			</span>
 		</span>
 
-		{#if people}
-			<Tooltip text="{plural(people, 'person', 'people')} can see {unit.name}, besides administrators" side="left">
-				<span class="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-2 ring-1 ring-line">
-					<Icon name="users" size={12} class="text-muted" /><span class="num">{people}</span><span class="hidden md:inline">{people === 1 ? 'person' : 'people'}</span>
-				</span>
-			</Tooltip>
-		{/if}
-
 		<span class="flex shrink-0 items-center gap-0.5 {selected || adding ? '' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}">
 			{#if !unit.has_values}
 				<Tooltip text="Add a unit inside">
@@ -102,6 +100,24 @@
 				</button>
 			</Tooltip>
 		</span>
+
+		{#if tree.showAccess}
+			<!-- People given access here, in a column that lines up on every row -->
+			<span class="flex w-[76px] shrink-0 justify-end">
+				{#if people.length}
+					<Tooltip text={whoHere} side="left">
+						<span class="flex -space-x-1.5">
+							{#each people.slice(0, 3) as { member } (member.id)}
+								<Avatar name={member.name} email={member.email} size="sm" class="ring-2 ring-surface" />
+							{/each}
+							{#if people.length > 3}
+								<span class="grid size-7 place-items-center rounded-full bg-surface-2 text-xs font-semibold text-ink-2 ring-2 ring-surface">+{people.length - 3}</span>
+							{/if}
+						</span>
+					</Tooltip>
+				{/if}
+			</span>
+		{/if}
 	</div>
 
 	{#if (isGroup && open) || adding}
