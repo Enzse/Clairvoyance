@@ -5,6 +5,7 @@
 	import { plural } from '$lib/format';
 	import { AREAS, STARTER_KPIS, type StarterKpi } from '$lib/starter-kpis';
 	import type { Kpi } from '$lib/types';
+	import { term } from '$lib/terms.svelte';
 	import { units } from '$lib/units.svelte';
 
 	/**
@@ -101,7 +102,7 @@
 								<span class="min-w-0">
 									<span class="block font-medium">{t.name}{t.money && currency ? ` (${currency})` : t.suffix ? ` (${t.suffix})` : ''}</span>
 									<span class="block text-sm text-ink-2">{t.description}</span>
-									<span class="mt-0.5 block text-xs text-muted">{done ? 'Already added' : t.summary}</span>
+									<span class="mt-0.5 block text-xs text-muted">{done ? 'Already added' : t.summary.replace('{many}', term.many)}</span>
 								</span>
 							</label>
 							{#if on && !done && topUnits.length > 1}

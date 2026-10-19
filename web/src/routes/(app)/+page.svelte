@@ -67,7 +67,7 @@
 
 {#if unitId === null}
 	<main class="mx-auto max-w-[1240px] px-4 py-16 sm:px-6">
-		<div class="panel max-w-xl p-8">
+		<div class="panel mx-auto max-w-xl p-8">
 			<h1 class="text-lg font-semibold">You don't have access to anything yet</h1>
 			<p class="mt-2 text-ink-2">
 				An administrator needs to give {session.user?.email} access to the {term.many} you report for or review. Once they do, your

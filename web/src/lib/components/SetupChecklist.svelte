@@ -23,7 +23,7 @@
 					{ done: setup.steps.structure, text: 'Add your branches, departments or teams', hint: 'Skip this if you report as one team.', links: [['Structure', '/admin/units']] },
 					{ done: setup.steps.kpis, text: 'Choose the KPIs you track', hint: '', links: [['KPIs', '/admin/kpis']] },
 					{ done: setup.steps.targets, text: 'Set targets', hint: 'Status shows on target, close or behind once a KPI has one.', links: [['Targets', '/admin/kpis']] },
-					{ done: setup.steps.data, text: 'Enter or import your first figures', hint: '', links: [['Enter data', '/enter'], ['Import a spreadsheet', '/import']] },
+					{ done: setup.steps.data, text: 'Add your first figures', hint: '', links: [['Type them in', '/enter'], ['Upload a spreadsheet', '/import']] },
 					{ done: setup.steps.people, text: 'Invite your team', hint: 'Each person sees and reports for their own part.', links: [['People', '/admin/users']] }
 				]
 			: []

@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Logo from '$lib/components/Logo.svelte';
+	import { WIDTH } from '$lib/components/PageBand.svelte';
 	import StepInvites from '$lib/components/onboarding/StepInvites.svelte';
 	import StepKpis from '$lib/components/onboarding/StepKpis.svelte';
 	import StepName from '$lib/components/onboarding/StepName.svelte';
@@ -48,6 +49,9 @@
 		}
 	});
 
+	// Each step's heading and card share one centred width: short forms narrow, pickers wide
+	const width = $derived(step === 1 ? 'max-w-[600px]' : step === 4 ? WIDTH.narrow : 'max-w-none');
+
 	const go = (to: number, extra: Record<string, string> = {}) => goto(href('/onboarding', { step: to, cur: currency, ...extra }));
 	const finish = () => goto('/');
 
@@ -73,7 +77,8 @@
 
 	<section class="bg-navy text-navy-ink">
 		<div class="mx-auto max-w-[1080px] px-4 pt-6 pb-12 sm:px-6">
-			<ol class="flex flex-wrap gap-x-6 gap-y-2 border-t border-navy-2 pt-6 text-sm" aria-label="Setup progress">
+			<div class="border-t border-navy-2 pt-6"><div class="mx-auto {width}">
+			<ol class="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Setup progress">
 				{#each STEPS as name, i (name)}
 					{@const n = i + 1}
 					<li class="flex items-center gap-2 {n === step ? 'text-navy-ink' : 'text-navy-ink-2'}" aria-current={n === step ? 'step' : undefined}>
@@ -86,10 +91,11 @@
 			</ol>
 			<h1 class="mt-7 text-2xl font-semibold tracking-[-0.025em] text-balance">{TITLES[step].title}</h1>
 			<p class="mt-2 max-w-[64ch] text-md text-navy-ink-2">{TITLES[step].lead}</p>
+			</div></div>
 		</div>
 	</section>
 
-	<main class="mx-auto max-w-[1080px] px-4 pb-20 sm:px-6">
+	<main class="mx-auto max-w-[1080px] px-4 pb-20 sm:px-6"><div class="mx-auto {width}">
 		{#if ready && session.user}
 			{#if step === 1}
 				<StepName {currency} onDone={(cur) => go(2, { cur })} />
@@ -101,5 +107,5 @@
 				<StepInvites onDone={finish} />
 			{/if}
 		{/if}
-	</main>
+	</div></main>
 </div>

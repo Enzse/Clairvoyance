@@ -114,7 +114,7 @@
 <div class="flex flex-wrap items-end justify-between gap-4">
 	<div>
 		<h2 class="text-lg font-semibold">People</h2>
-		<p class="mt-1 max-w-[70ch] text-ink-2">Access to a {term.one} or group includes everything inside it. People who can enter data can also import it.</p>
+		<p class="mt-1 max-w-[70ch] text-ink-2">Access to a {term.one} or group includes everything inside it. People who can enter data can also upload spreadsheets.</p>
 	</div>
 	<button class="btn btn-primary" onclick={() => (inviting = true)}><Icon name="plus" size={15} /> Invite people</button>
 </div>
