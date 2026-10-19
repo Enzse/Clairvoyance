@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import BreakdownBars from '$lib/components/BreakdownBars.svelte';
+	import ChangeHistory from '$lib/components/ChangeHistory.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -215,6 +216,8 @@
 						</dl>
 					</aside>
 				</div>
+
+				<ChangeHistory {kpi} {unitId} showUnit={!isLeaf} />
 			</div>
 		{/if}
 	</main>

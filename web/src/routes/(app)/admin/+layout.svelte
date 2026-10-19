@@ -7,7 +7,8 @@
 	const tabs = [
 		{ href: '/admin/units', label: 'Organisation', hint: 'Units and how they nest' },
 		{ href: '/admin/kpis', label: 'KPIs', hint: 'Definitions and targets' },
-		{ href: '/admin/users', label: 'People', hint: 'Accounts and access' }
+		{ href: '/admin/users', label: 'People', hint: 'Accounts and access' },
+		{ href: '/admin/settings', label: 'Settings', hint: 'Name, deleting' }
 	];
 </script>
 

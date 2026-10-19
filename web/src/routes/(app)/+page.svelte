@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import ChangeCell from '$lib/components/ChangeCell.svelte';
+	import ExportDrawer from '$lib/components/ExportDrawer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Masthead from '$lib/components/Masthead.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
@@ -26,6 +27,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let checklistShown = $state(false);
+	let exporting = $state(false);
 	let request = 0;
 
 	$effect(() => {
@@ -95,11 +97,16 @@
 				<section class="panel overflow-hidden {checklistShown ? '' : '-mt-5'}" aria-labelledby="kpis-heading">
 					<div class="flex items-center justify-between gap-4 px-5 pt-5 pb-3">
 						<h2 id="kpis-heading" class="text-md font-semibold">KPIs</h2>
-						{#if canEnter}
-							<a class="btn btn-primary btn-sm" href={href('/enter', { unit: unitId, date: card.date })}>
-								<Icon name="pencil" size={14} /> Enter {card.kpis[0]?.period_label ?? ''} data
-							</a>
-						{/if}
+						<div class="flex flex-wrap justify-end gap-2">
+							{#if card.kpis.length}
+								<button class="btn btn-secondary btn-sm" onclick={() => (exporting = true)}><Icon name="download" size={14} /> Export</button>
+							{/if}
+							{#if canEnter}
+								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: unitId, date: card.date })}>
+									<Icon name="pencil" size={14} /> Enter {card.kpis[0]?.period_label ?? ''} data
+								</a>
+							{/if}
+						</div>
 					</div>
 					{#if card.kpis.length === 0}
 						<p class="px-5 pb-6 text-ink-2">
@@ -170,4 +177,8 @@
 			</div>
 		{/if}
 	</main>
+
+	{#if card && unit}
+		<ExportDrawer bind:open={exporting} unitId={unitId} unitName={unit.name} date={card.date} />
+	{/if}
 {/if}

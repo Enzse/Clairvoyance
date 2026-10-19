@@ -207,3 +207,26 @@ export interface ImportResult {
 	units_created: number;
 	skipped_errors: number;
 }
+
+/** One change to a stored figure; null old_value = first entry, null new_value = deleted. */
+export interface ValueChange {
+	id: number;
+	unit_id: number;
+	unit_name: string;
+	period_start: string;
+	period_label: string;
+	old_value: number | null;
+	new_value: number | null;
+	old_note: string | null;
+	new_note: string | null;
+	changed_at: string;
+	changed_by: string | null;
+	import_file: string | null;
+}
+
+/** Figures for a subtree, to be written out as a CSV the importer reads back. */
+export interface ExportData {
+	kpis: { id: number; code: string; name: string; decimals: number }[];
+	units: { id: number; name: string; code: string | null; path: string[] }[];
+	values: { kpi_id: number; unit_id: number; period_start: string; value: number }[];
+}

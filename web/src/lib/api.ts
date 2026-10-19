@@ -1,6 +1,7 @@
 import type {
 	Breakdown,
 	EntryForm,
+	ExportData,
 	Frequency,
 	ImportMapping,
 	ImportPreview,
@@ -17,7 +18,8 @@ import type {
 	Setup,
 	Target,
 	Unit,
-	User
+	User,
+	ValueChange
 } from './types';
 
 /** Absolute in development (the API runs under XAMPP); "/api" in production, on the same origin. */
@@ -83,6 +85,7 @@ export const api = {
 	logout: () => request<[]>('POST', '/auth/logout'),
 	updateAccount: (body: { name?: string | null; current_password?: string; new_password?: string }) =>
 		request<User>('PUT', '/auth/me', { body }),
+	deleteAccount: (password: string) => request<[]>('DELETE', '/auth/me', { body: { password } }),
 	verifyEmail: (token: string) => request<Me | []>('POST', '/auth/verify-email', { body: { token } }),
 	resendVerification: () => request<[]>('POST', '/auth/verify-email/resend'),
 	forgotPassword: (email: string) => request<[]>('POST', '/auth/forgot-password', { body: { email } }),
@@ -92,6 +95,8 @@ export const api = {
 	createOrganization: (name: string) => request<Me>('POST', '/organizations', { body: { name } }),
 	selectOrganization: (organizationId: number) => request<Me>('POST', '/organizations/select', { body: { organization_id: organizationId } }),
 	renameOrganization: (name: string) => request<Me>('PUT', '/organization', { body: { name } }),
+	leaveOrganization: () => request<Me>('POST', '/organization/leave'),
+	deleteOrganization: (name: string, password: string) => request<Me>('DELETE', '/organization', { body: { name, password } }),
 	setup: () => request<Setup>('GET', '/organization/setup'),
 	dismissSetup: () => request<Setup>('POST', '/organization/setup/dismiss'),
 
@@ -129,6 +134,9 @@ export const api = {
 		request<Series>('GET', `/kpis/${kpiId}/series`, { query: { unit, grain, to, from } }),
 	breakdown: (kpiId: number, unit: number, grain: Frequency, date?: string | null) =>
 		request<Breakdown>('GET', `/kpis/${kpiId}/breakdown`, { query: { unit, grain, date } }),
+	history: (kpiId: number, unit: number, date?: string | null) =>
+		request<ValueChange[]>('GET', `/kpis/${kpiId}/history`, { query: { unit, date } }),
+	exportValues: (unit: number, from: string, to: string) => request<ExportData>('GET', '/exports/values', { query: { unit, from, to } }),
 
 	// Data entry
 	entryForm: (unit: number, date: string) => request<EntryForm>('GET', '/values', { query: { unit, date } }),
