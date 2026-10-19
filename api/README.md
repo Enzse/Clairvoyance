@@ -27,7 +27,11 @@ php scripts/seed_demo.php you@example.com
 | `php scripts/migrate.php --fresh` | Drop every table first. **Deletes all data.** |
 | `php scripts/seed_demo.php <admin-email>` | Load the DepEd sample; safe to re-run |
 | `php scripts/set_role.php <email> <admin\|member> [organization-id]` | Change someone's role in an organisation (e.g. lost admin); the id is needed only if they belong to several |
-| `php scripts/reset_password.php <email>` | Set and print a new random password for a forgotten one |
+| `php scripts/reset_password.php <email>` | Set and print a new random password (for when email isn't set up) |
+| `php scripts/daily.php` | Daily cron job: database backup to `storage/backups` (keeps 14) and cleanup of expired links and counters |
+
+Runtime files (sessions, `logs/api.log`, backups) live in `storage/`, which is created on first
+use and never committed.
 
 ## Tests
 
@@ -51,7 +55,7 @@ and rebuild themselves. They refuse to run against a database whose name doesn't
 | `services/` | Business rules and access control |
 | `controllers/` | HTTP: read the request, check the role, call a service |
 | `routes.php` | Every endpoint |
-| `migrations/` | `001_baseline.sql` is the schema; `002_organizations.sql` makes it multi-tenant |
+| `migrations/` | `001_baseline.sql` is the schema; `002_organizations.sql` makes it multi-tenant; `003_production.sql` adds email links, throttling and change history |
 | `demo/` | Sample data |
 
 `.htaccess` routes every request to `index.php`, so no other file in this folder is served or

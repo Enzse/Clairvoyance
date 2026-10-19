@@ -108,9 +108,14 @@ This replaces `rag_red` / `rag_amber`, whose meaning the frontend and backend di
 
 ## Schema (MariaDB 10.4)
 
-Abridged; the source of truth is `api/migrations/` (`001_baseline.sql`, then
-`002_organizations.sql`, which adds tenancy). Nothing is seeded: an organisation's root unit is
-created together with the organisation.
+Abridged; the source of truth is `api/migrations/`:
+
+- `001_baseline.sql`;
+- `002_organizations.sql`, which adds tenancy;
+- `003_production.sql`, which adds what running on the internet needs, described after the
+  schema.
+
+Nothing is seeded: an organisation's root unit is created together with the organisation.
 
 ```sql
 CREATE TABLE users (
@@ -268,10 +273,53 @@ CREATE TABLE unit_memberships (
 );
 ```
 
-Units and values are never deleted in bulk (units with children or data are deactivated), so
-`units.parent_id` and `kpi_values.unit_id` are `RESTRICT`. Deleting a whole organisation
-therefore needs values, then units leaf-first, removed before the organisation row; there is no
-"delete organisation" feature yet.
+`003_production.sql` adds:
+
+| Table / column | Holds |
+|---|---|
+| `users.email_verified_at` | When the address was confirmed (accounts from before 003 count as confirmed) |
+| `users.session_version` | Sessions remember it; a password reset or change bumps it, signing out the other sessions |
+| `user_tokens` | One-time links: `verify_email` (48 h) and `reset_password` (1 h). Only SHA-256 hashes are stored; a new link replaces the old one |
+| `invitations.emailed_at` | Whether the invitation was emailed; accepting an emailed one confirms the address |
+| `rate_limits` | Attempt counters per bucket (`login:<email hash>`, `login-ip:<ip>`, …) in fixed windows |
+| `kpi_value_changes` | Every change to a figure: old and new value and note (NULL = absent), who, which import, when |
+
+Single units with children or data are deactivated rather than deleted, so `units.parent_id`
+and `kpi_values.unit_id` are `RESTRICT`. Deleting a whole organisation therefore runs in order
+(`OrganizationRepository::deleteWithData`):
+
+1. delete its figures;
+2. unlink weighted KPIs from their weights;
+3. detach units from their parents;
+4. delete the organisation, which cascades to the rest.
+
+## Running on the internet
+
+- **Email** (SMTP, configured with `MAIL_*` in `api/.env`):
+  - **Confirmation:** a link is sent on sign-up.
+  - **Password reset:** "forgot password" sends a reset link. The answer is the same whether or
+    not the account exists.
+  - **Invitations:** emailed automatically, but only once the inviter's own address is
+    confirmed, so nobody can use the app to email strangers from an unconfirmed account.
+    Until then, invitation links are copied by hand as before.
+  - **Without `MAIL_HOST`:** nothing is emailed, addresses count as confirmed, and a forgotten
+    password needs `scripts/reset_password.php`.
+- **Throttling:**
+  - **Sign-in:** 5 wrong passwords lock that email for 15 minutes, and 30 failures from one
+    address lock that address for 15 minutes.
+  - **Sign-up:** 10 per hour per address.
+  - **Password resets:** 3 per hour per email and 10 per hour per address.
+  - **Other:** 3 confirmation resends per hour; 100 invitation emails per organisation per
+    day.
+- **Sessions:**
+  - stored in `api/storage/sessions` and last 7 days;
+  - the cookie is HttpOnly, SameSite=Lax, and Secure when `APP_URL` is https.
+- **History:** `ValueRepository` writes `kpi_value_changes` for every insert, update or delete
+  of a figure, from data entry and imports alike. Writes that change nothing aren't recorded.
+- **Export:** returns the leaf figures of a subtree. The web app writes them as a wide CSV
+  (unit, period, one column per KPI) that the import wizard reads back unchanged.
+- **Operations:** deployment, backups and monitoring are in
+  [deployment.md](deployment.md).
 
 ## Organisations and onboarding
 
@@ -284,8 +332,8 @@ Signing up creates an account and nothing else. The person is then taken through
 3. **KPIs** from a starter library (revenue, customer satisfaction, headcount…), each with
    sensible aggregation rules; with several top-level units, each KPI can be limited to the
    ones that report it.
-4. **Invite** people by email with a role and unit access. There's no mail server: the app
-   shows a link to copy and send.
+4. **Invite** people by email with a role and unit access. The link is emailed once the
+   founder has confirmed their address, and is always shown to copy as well.
 
 Afterwards the scorecard shows a getting-started checklist (targets, first figures, invites)
 until it's complete or dismissed. Someone with an invitation link signs in or registers with
@@ -303,8 +351,11 @@ the selected one, and every request re-checks that membership.
 
 Whole-organisation read access = viewer on the root unit. A member without unit access sees an
 empty scorecard. Access follows the organisation tree; there's no per-dashboard sharing. The
-last admin can't be demoted or removed. `php scripts/set_role.php <email> admin [org-id]`
-recovers admin access from the command line.
+last admin can't be demoted, removed or leave. Anyone can leave an organisation or delete their
+account. Deleting an account takes along organisations where you're the only person, and it's
+refused while you're the only admin of one that has others. Only an admin can delete an
+organisation, by typing its name and their password. `php scripts/set_role.php <email> admin
+[org-id]` recovers admin access from the command line.
 
 ## API
 
@@ -316,10 +367,16 @@ as coarse as the KPI's frequency.
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/auth/register`, `/auth/login`, `/auth/logout` | Session-cookie auth |
-| GET/PUT | `/auth/me` | Current user, their organisations, the selected one and unit memberships / change name or password (needs `current_password`) |
+| GET/PUT | `/auth/me` | Current user (with `email_verified`, `email_delivery`), their organisations, the selected one and unit memberships / change name or password (needs `current_password`) |
+| DELETE | `/auth/me` | Delete your account `{password}` |
+| POST | `/auth/verify-email`, `/auth/verify-email/resend` | Confirm an address `{token}` (works signed out) / send a new link |
+| POST | `/auth/forgot-password`, `/auth/reset-password` | Email a reset link `{email}` / set a new password `{token, password}` and sign in |
+| GET | `/health` | `{ok: true}` when PHP and the database work, for uptime monitoring |
 | POST | `/organizations` | Create an organisation (you become its admin) and select it |
 | POST | `/organizations/select` | Switch to another organisation you belong to |
 | PUT | `/organization` | Admin: rename (also renames the root unit) |
+| DELETE | `/organization` | Admin: delete it with everything in it `{name, password}` |
+| POST | `/organization/leave` | Leave the current organisation (not as its last admin) |
 | GET | `/organization/setup` | Getting-started checklist facts |
 | POST | `/organization/setup/dismiss` | Admin: hide the checklist |
 | GET | `/members` | Admin: people in the organisation, with role and unit access |
@@ -342,6 +399,8 @@ as coarse as the KPI's frequency.
 | GET | `/scorecard?unit=[&date=][&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
 | GET | `/kpis/{id}/series?unit=&grain=[&from=][&to=]` | Value, target, status and coverage per period; defaults to the 12 periods ending at the latest data |
 | GET | `/kpis/{id}/breakdown?unit=&grain=[&date=]` | The unit's direct children, each with value, target, status, coverage |
+| GET | `/kpis/{id}/history?unit=[&date=]` | The latest 50 changes to the KPI's figures in the unit's subtree, optionally for one period |
+| GET | `/exports/values?unit=&from=&to=` | Every figure in the unit's subtree with a period start in the range, plus the units and KPIs to label them |
 
 On the report endpoints a missing `date` (or `to`) means the latest period with data for that
 unit, so a view never opens on an empty period.
@@ -389,5 +448,17 @@ the frontend wizard).
    wizard; admin screens for units, KPIs, targets, people and access. See `web/README.md`.
 2b. **Multi-tenant — done.** Organisations, sign-up onboarding, invitation links, switching
    between organisations, KPI scope ("Reported by"), account settings.
-3. **Later:** email delivery for invitations, deleting an organisation, saved dashboards, print-friendly report page, value change history,
-   calculated KPIs (ratio of two KPIs), fiscal-year start month, late-submission reminders.
+2c. **Production — done.**
+   - email (verification, password reset, invitations);
+   - throttling;
+   - change history and CSV export;
+   - leaving and deleting organisations and accounts;
+   - release packaging, CI and deploy, daily backups.
+
+   See [deployment.md](deployment.md).
+3. **Later:**
+   - saved dashboards;
+   - print-friendly report page;
+   - calculated KPIs (ratio of two KPIs);
+   - fiscal-year start month;
+   - late-submission reminders, which can now be emailed.
