@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '$lib/api';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import VerifyBanner from '$lib/components/VerifyBanner.svelte';
 	import { session } from '$lib/session.svelte';
@@ -27,7 +28,12 @@
 	<TopBar />
 	<VerifyBanner />
 	{#if error}
-		<p class="mx-auto max-w-[1240px] px-6 py-10 text-bad-ink" role="alert">{error}</p>
+		<div class="px-4 py-16" role="alert">
+			<EmptyState icon="alert" title="Your organisation didn't load">
+				<p>{error}</p>
+				{#snippet action()}<button class="btn btn-primary" onclick={() => location.reload()}>Try again</button>{/snippet}
+			</EmptyState>
+		</div>
 	{:else if units.loaded}
 		{#key session.user.organization.id}
 			{@render children()}
