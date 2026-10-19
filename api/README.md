@@ -12,8 +12,8 @@ php scripts/migrate.php              # creates the database and tables
 ```
 
 Open the web app and sign up; onboarding creates your organisation with you as its admin.
-Others join through invitation links. To load the DepEd sample (6 KPIs, 14 units, a year of
-monthly school reports) into the organisation you administer:
+Others join through invitation links. To give your account a separate "DepEd sample"
+organisation (6 KPIs, 14 schools, a year of monthly reports):
 
 ```bash
 php scripts/seed_demo.php you@example.com
@@ -25,7 +25,7 @@ php scripts/seed_demo.php you@example.com
 |---|---|
 | `php scripts/migrate.php` | Run pending migrations (creates the database if needed) |
 | `php scripts/migrate.php --fresh` | Drop every table first. **Deletes all data.** |
-| `php scripts/seed_demo.php <admin-email>` | Load the DepEd sample; safe to re-run |
+| `php scripts/seed_demo.php <email>` | Give an account a "DepEd sample" organisation (schools, KPIs, a year of figures); safe to re-run |
 | `php scripts/set_role.php <email> <admin\|member> [organization-id]` | Change someone's role in an organisation (e.g. lost admin); the id is needed only if they belong to several |
 | `php scripts/reset_password.php <email>` | Set and print a new random password (for when email isn't set up) |
 | `php scripts/daily.php` | Daily cron job: database backup to `storage/backups` (keeps 14) and cleanup of expired links and counters |

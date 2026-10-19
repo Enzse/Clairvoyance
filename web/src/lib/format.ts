@@ -48,7 +48,8 @@ export function joinNames(names: string[], max = 2): string {
 const FREQUENCY_NOUN = { daily: 'daily', weekly: 'weekly', monthly: 'monthly', quarterly: 'quarterly', yearly: 'yearly' };
 
 /** The KPI's aggregation rules in two plain sentences. */
-export function describeRules(kpi: Kpi, weightName?: string): string {
+export function describeRules(kpi: Kpi, weightName?: string, many = 'teams'): string {
+	const Many = many.charAt(0).toUpperCase() + many.slice(1);
 	const figures = `${FREQUENCY_NOUN[kpi.frequency]} figures`;
 	const time = {
 		sum: `Longer periods add up the ${figures}.`,
@@ -56,9 +57,9 @@ export function describeRules(kpi: Kpi, weightName?: string): string {
 		last: `Longer periods use the latest of the ${figures}.`
 	}[kpi.time_aggregation];
 	const units = {
-		sum: 'Units are added together.',
-		average: 'Units are averaged, each counting equally.',
-		weighted_average: `Units are averaged, weighted by ${weightName ?? 'another KPI'}.`
+		sum: `${Many} are added together.`,
+		average: `${Many} are averaged, each counting equally.`,
+		weighted_average: `${Many} are averaged, weighted by ${weightName ?? 'another KPI'}.`
 	}[kpi.unit_aggregation];
 	return kpi.frequency === 'yearly' ? units : `${time} ${units}`;
 }

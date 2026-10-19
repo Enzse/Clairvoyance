@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Logo from '$lib/components/Logo.svelte';
+	import { WIDTH } from '$lib/components/PageBand.svelte';
 	import StepInvites from '$lib/components/onboarding/StepInvites.svelte';
 	import StepKpis from '$lib/components/onboarding/StepKpis.svelte';
 	import StepName from '$lib/components/onboarding/StepName.svelte';
@@ -12,6 +13,7 @@
 	import { logout, session } from '$lib/session.svelte';
 	import { guessCurrency } from '$lib/starter-kpis';
 	import { units } from '$lib/units.svelte';
+	import { term } from '$lib/terms.svelte';
 
 	/**
 	 * Four steps after sign-up: name the organisation, describe its structure, pick starter
@@ -47,13 +49,16 @@
 		}
 	});
 
+	// Each step's heading and card share one centred width: short forms narrow, pickers wide
+	const width = $derived(step === 1 ? 'max-w-[600px]' : step === 4 ? WIDTH.narrow : 'max-w-none');
+
 	const go = (to: number, extra: Record<string, string> = {}) => goto(href('/onboarding', { step: to, cur: currency, ...extra }));
 	const finish = () => goto('/');
 
 	const TITLES: Record<number, { title: string; lead: string }> = $derived({
 		1: { title: 'Set up your organisation', lead: 'Name it for the company or team whose KPIs you track. You can change it later.' },
 		2: { title: `How is ${org?.name ?? 'it'} organised?`, lead: 'Figures are entered by each branch, department or team, and add up to the whole organisation.' },
-		3: { title: 'Choose your first KPIs', lead: 'Each one already knows how to add up over time and across units. Targets come next, on your scorecard.' },
+		3: { title: 'Choose your first KPIs', lead: `Each one already knows how to add up over time and across ${term.many}. Targets come next, on your scorecard.` },
 		4: { title: 'Invite your team', lead: 'Give each person access to what they report on or review. You can do this later under Admin.' }
 	});
 </script>
@@ -72,7 +77,8 @@
 
 	<section class="bg-navy text-navy-ink">
 		<div class="mx-auto max-w-[1080px] px-4 pt-6 pb-12 sm:px-6">
-			<ol class="flex flex-wrap gap-x-6 gap-y-2 border-t border-navy-2 pt-6 text-sm" aria-label="Setup progress">
+			<div class="border-t border-navy-2 pt-6"><div class="mx-auto {width}">
+			<ol class="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Setup progress">
 				{#each STEPS as name, i (name)}
 					{@const n = i + 1}
 					<li class="flex items-center gap-2 {n === step ? 'text-navy-ink' : 'text-navy-ink-2'}" aria-current={n === step ? 'step' : undefined}>
@@ -85,10 +91,11 @@
 			</ol>
 			<h1 class="mt-7 text-2xl font-semibold tracking-[-0.025em] text-balance">{TITLES[step].title}</h1>
 			<p class="mt-2 max-w-[64ch] text-md text-navy-ink-2">{TITLES[step].lead}</p>
+			</div></div>
 		</div>
 	</section>
 
-	<main class="mx-auto max-w-[1080px] px-4 pb-20 sm:px-6">
+	<main class="mx-auto max-w-[1080px] px-4 pb-20 sm:px-6"><div class="mx-auto {width}">
 		{#if ready && session.user}
 			{#if step === 1}
 				<StepName {currency} onDone={(cur) => go(2, { cur })} />
@@ -100,5 +107,5 @@
 				<StepInvites onDone={finish} />
 			{/if}
 		{/if}
-	</main>
+	</div></main>
 </div>

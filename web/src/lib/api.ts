@@ -16,6 +16,7 @@ import type {
 	Scorecard,
 	Series,
 	Setup,
+	SetupStep,
 	Target,
 	Unit,
 	User,
@@ -94,11 +95,12 @@ export const api = {
 	// Organisations
 	createOrganization: (name: string) => request<Me>('POST', '/organizations', { body: { name } }),
 	selectOrganization: (organizationId: number) => request<Me>('POST', '/organizations/select', { body: { organization_id: organizationId } }),
-	renameOrganization: (name: string) => request<Me>('PUT', '/organization', { body: { name } }),
+	updateOrganization: (body: { name?: string; unit_label?: string }) => request<Me>('PUT', '/organization', { body }),
 	leaveOrganization: () => request<Me>('POST', '/organization/leave'),
 	deleteOrganization: (name: string, password: string) => request<Me>('DELETE', '/organization', { body: { name, password } }),
 	setup: () => request<Setup>('GET', '/organization/setup'),
-	dismissSetup: () => request<Setup>('POST', '/organization/setup/dismiss'),
+	dismissSetup: (dismissed = true) => request<Setup>('POST', '/organization/setup/dismiss', { body: { dismissed } }),
+	skipSetupStep: (step: SetupStep, skipped = true) => request<Setup>('POST', '/organization/setup/skip', { body: { step, skipped } }),
 
 	// People (admin)
 	members: () => request<Member[]>('GET', '/members'),
@@ -114,9 +116,9 @@ export const api = {
 
 	// Organisation
 	units: () => request<Unit[]>('GET', '/units'),
-	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null }) =>
+	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null; icon?: string | null }) =>
 		request<Unit>('POST', '/units', { body }),
-	updateUnit: (id: number, body: Partial<Pick<Unit, 'name' | 'code' | 'kind' | 'is_active' | 'parent_id'>>) =>
+	updateUnit: (id: number, body: Partial<Pick<Unit, 'name' | 'code' | 'kind' | 'icon' | 'is_active' | 'parent_id'>>) =>
 		request<Unit>('PUT', `/units/${id}`, { body }),
 	deleteUnit: (id: number) => request<[]>('DELETE', `/units/${id}`),
 

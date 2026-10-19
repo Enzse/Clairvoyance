@@ -12,15 +12,23 @@ are behind or haven't reported? Anyone can sign up and set up their own organisa
 
 ## Getting started
 
+New to the project? [docs/getting-started.md](docs/getting-started.md) walks through it on
+Windows with XAMPP, including the sample data. In short:
+
 1. Start Apache and MySQL in XAMPP.
 2. `cd api`, then `php scripts/migrate.php`.
 3. `cd web`, then `npm install` and `npm run dev`, and open http://localhost:5173.
 4. Create an account. Onboarding walks you through naming your organisation, its branches
    or departments, starter KPIs and invitations; you're its admin.
-5. Optional sample data: `php api/scripts/seed_demo.php <your-email>` loads it into the
-   organisation you administer.
+5. Optional sample data: `php api/scripts/seed_demo.php <your-email>` adds a separate
+   "DepEd sample" organisation with a year of school figures.
 
 Locally nothing is emailed unless `MAIL_*` is set in `api/.env`. To try the emails, run
 [Mailpit](https://mailpit.axllent.org) (`mailpit --smtp 127.0.0.1:1025`) and set
 `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` and `MAIL_ENCRYPTION=none`. Messages appear at
 http://localhost:8025.
+
+## License
+
+All rights reserved. The code may be viewed, but using, copying or modifying it needs the
+author's written permission. See [LICENSE](LICENSE).

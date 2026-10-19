@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -9,12 +10,15 @@
 	import { toast } from '$lib/toast.svelte';
 	import type { Invitation, Member, Membership, Role } from '$lib/types';
 	import { units } from '$lib/units.svelte';
+	import { term } from '$lib/terms.svelte';
 
 	let members = $state<Member[]>([]);
 	let invitations = $state<Invitation[]>([]);
 	let loaded = $state(false);
 
 	onMount(load);
+	// The getting-started guide links here with ?invite to open the invite form
+	let inviting = $state(page.url.searchParams.has('invite'));
 	async function load() {
 		[members, invitations] = await Promise.all([api.members(), api.invitations()]);
 		loaded = true;
@@ -23,14 +27,14 @@
 	function accessSummary(role: Role, list: Membership[]): string {
 		if (role === 'admin') return 'Everything';
 		if (!list.length) return 'No access yet';
-		const names = (r: Membership['role']) => list.filter((m) => m.role === r).map((m) => units.get(m.unit_id)?.name ?? 'a removed unit');
+		const names = (r: Membership['role']) => list.filter((m) => m.role === r).map((m) => units.get(m.unit_id)?.name ?? 'something deleted');
 		return [names('contributor').length && `Enters data for ${joinNames(names('contributor'))}`, names('viewer').length && `Views ${joinNames(names('viewer'))}`]
 			.filter(Boolean)
 			.join('. ');
 	}
 
 	// ---- Invite drawer
-	let inviting = $state(false);
+
 
 	// ---- Member drawer
 	let open = $state(false);
@@ -113,7 +117,7 @@
 <div class="flex flex-wrap items-end justify-between gap-4">
 	<div>
 		<h2 class="text-lg font-semibold">People</h2>
-		<p class="mt-1 max-w-[70ch] text-ink-2">Access to a unit includes every unit inside it. People who can enter data can also import it.</p>
+		<p class="mt-1 max-w-[70ch] text-ink-2">Access to a {term.one} or group includes everything inside it. People who can enter data can also upload spreadsheets.</p>
 	</div>
 	<button class="btn btn-primary" onclick={() => (inviting = true)}><Icon name="plus" size={15} /> Invite people</button>
 </div>
@@ -190,7 +194,7 @@
 				<h3 id="access-heading" class="field-label">Access</h3>
 				{#each access as m (m.key)}
 					<div class="mt-2 flex items-center gap-2">
-						<select class="input min-w-0 flex-1" bind:value={m.unit_id} aria-label="Unit">
+						<select class="input min-w-0 flex-1" bind:value={m.unit_id} aria-label={term.One}>
 							{#each unitOptions as u (u.id)}<option value={u.id}>{units.pathLabel(u.id) ? `${units.pathLabel(u.id)} › ` : ''}{u.name}</option>{/each}
 						</select>
 						<select class="input w-40" bind:value={m.role} aria-label="Access level">
@@ -205,7 +209,7 @@
 					<p class="text-sm text-ink-2">No access yet: they'll see an empty scorecard.</p>
 				{/each}
 				<button type="button" class="btn btn-ghost btn-sm mt-2 -ml-2.5" onclick={() => (access = [...access, { key: keySeq++, unit_id: units.home()?.id ?? 0, role: 'viewer' }])}>
-					<Icon name="plus" size={14} /> Give access to a unit
+					<Icon name="plus" size={14} /> Give access to more
 				</button>
 			</section>
 		{/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import ChangeCell from '$lib/components/ChangeCell.svelte';
 	import ExportDrawer from '$lib/components/ExportDrawer.svelte';
@@ -7,13 +8,14 @@
 	import Masthead from '$lib/components/Masthead.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import SetupChecklist from '$lib/components/SetupChecklist.svelte';
+	import GettingStarted from '$lib/components/GettingStarted.svelte';
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
 	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
+	import { cap, term, wordFor } from '$lib/terms.svelte';
 	import { units } from '$lib/units.svelte';
 
 	const ctx = $derived(readContext(page.url));
@@ -66,10 +68,10 @@
 
 {#if unitId === null}
 	<main class="mx-auto max-w-[1240px] px-4 py-16 sm:px-6">
-		<div class="panel max-w-xl p-8">
-			<h1 class="text-lg font-semibold">You don't have access to any units yet</h1>
+		<div class="panel mx-auto max-w-xl p-8">
+			<h1 class="text-lg font-semibold">You don't have access to anything yet</h1>
 			<p class="mt-2 text-ink-2">
-				An administrator needs to give {session.user?.email} access to the units you report for or review. Once they do, your
+				An administrator needs to give {session.user?.email} access to the {term.many} you report for or review. Once they do, your
 				scorecard appears here.
 			</p>
 		</div>
@@ -93,7 +95,7 @@
 		{:else if card}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
 				<!-- Report card -->
-				{#if session.user?.organization?.role === 'admin'}<SetupChecklist bind:shown={checklistShown} />{/if}
+				{#if session.user?.organization?.role === 'admin'}<GettingStarted bind:shown={checklistShown} />{/if}
 				<section class="panel overflow-hidden {checklistShown ? '' : '-mt-5'}" aria-labelledby="kpis-heading">
 					<div class="flex items-center justify-between gap-4 px-5 pt-5 pb-3">
 						<h2 id="kpis-heading" class="text-md font-semibold">KPIs</h2>
@@ -103,16 +105,24 @@
 							{/if}
 							{#if canEnter}
 								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: unitId, date: card.date })}>
-									<Icon name="pencil" size={14} /> Enter {card.kpis[0]?.period_label ?? ''} data
+									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
 								</a>
 							{/if}
 						</div>
 					</div>
 					{#if card.kpis.length === 0}
-						<p class="px-5 pb-6 text-ink-2">
-							No KPIs are defined yet.
-							{#if session.user?.organization?.role === 'admin'}<a class="text-accent hover:underline" href="/admin/kpis">Define the first KPI</a>.{/if}
-						</p>
+						<div class="flex flex-col items-center border-t border-line px-6 py-14 text-center" in:fade={{ duration: 250 }}>
+							<span class="grid size-14 place-items-center rounded-2xl bg-accent-wash text-accent"><Icon name="chart" size={26} /></span>
+							<h3 class="mt-4 text-lg font-semibold tracking-[-0.01em]">No KPIs yet</h3>
+							{#if session.user?.organization?.role === 'admin'}
+								<p class="mt-1.5 max-w-[46ch] text-ink-2">
+									KPIs are what you measure, like revenue or customer satisfaction. Add the first one and this scorecard comes to life.
+								</p>
+								<a class="btn btn-primary mt-5" href="/admin/kpis?new=1"><Icon name="plus" size={15} /> Add your first KPI</a>
+							{:else}
+								<p class="mt-1.5 max-w-[46ch] text-ink-2">Once an administrator adds the KPIs {session.user?.organization?.name} tracks, they appear here.</p>
+							{/if}
+						</div>
 					{:else}
 						<div class="overflow-x-auto">
 							<table class="w-full text-left">
@@ -161,8 +171,8 @@
 				<!-- Units × KPIs -->
 				{#if !isLeaf && childUnits.length && card.kpis.length}
 					<section class="panel mt-6 p-5" aria-labelledby="units-heading">
-						<h2 id="units-heading" class="text-md font-semibold">Units in {unit?.name}</h2>
-						<p class="mt-1 mb-4 text-sm text-ink-2">Each unit's own figure for {card.kpis[0].period_label}. Select a unit to open its scorecard, or a cell for that KPI's detail.</p>
+						<h2 id="units-heading" class="text-md font-semibold">{cap(wordFor(childUnits))} in {unit?.name}</h2>
+						<p class="mt-1 mb-4 text-sm text-ink-2">Each one's own figure for {card.kpis[0].period_label}. Select a name to open its scorecard, or a cell for that KPI's detail.</p>
 						<StatusMatrix
 							rows={childUnits}
 							kpis={card.kpis.map((r) => r.kpi)}

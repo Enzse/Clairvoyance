@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatValue } from '$lib/format';
+	import { cap, wordFor } from '$lib/terms.svelte';
 	import { niceScale, tickFormatter } from '$lib/chart';
 	import type { Breakdown, Kpi } from '$lib/types';
 	import StatusBadge from './StatusBadge.svelte';
@@ -46,7 +47,7 @@
 	<table class="w-full text-left">
 		<thead class="text-sm text-ink-2">
 			<tr class="border-b border-line">
-				<th scope="col" class="w-[28%] py-2 pr-3 font-medium">Unit</th>
+				<th scope="col" class="w-[28%] py-2 pr-3 font-medium">{cap(wordFor(rows.map((r) => r.unit), false))}</th>
 				<th scope="col" class="py-2 pr-6 font-normal">
 					<span class="sr-only">Chart</span>
 					<div class="relative h-4" aria-hidden="true">

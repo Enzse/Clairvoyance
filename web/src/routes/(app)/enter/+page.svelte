@@ -2,10 +2,13 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, ApiError } from '$lib/api';
+	import DataTabs from '$lib/components/DataTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import PageBand, { WIDTH } from '$lib/components/PageBand.svelte';
 	import { formatValue } from '$lib/format';
 	import { href } from '$lib/nav';
 	import { align, label, shift, today } from '$lib/period';
+	import { term } from '$lib/terms.svelte';
 	import { toast } from '$lib/toast.svelte';
 	import type { EntryForm, EntryRow } from '$lib/types';
 	import { units } from '$lib/units.svelte';
@@ -118,11 +121,11 @@
 	const go = (params: { unit?: number | null; date?: string }) => href('/enter', { unit: params.unit ?? unitId, date: params.date ?? date });
 	const nextInFuture = $derived(shift(date, 'monthly', 1) > today());
 
-	// Group the unit picker by where each unit sits
+	// Group the picker by where each one sits
 	const groups = $derived.by(() => {
 		const map = new Map<string, typeof enterable>();
 		for (const u of enterable) {
-			const key = units.pathLabel(u.id) || 'Units';
+			const key = units.pathLabel(u.id) || term.Many;
 			map.set(key, [...(map.get(key) ?? []), u]);
 		}
 		return [...map.entries()];
@@ -130,18 +133,14 @@
 </script>
 
 <svelte:window onbeforeunload={(e) => { if (changed.length) e.preventDefault(); }} />
-<svelte:head><title>Enter data | Clairvoyance</title></svelte:head>
+<svelte:head><title>Add data | Clairvoyance</title></svelte:head>
 
-<section class="bg-navy text-navy-ink">
-	<div class="mx-auto max-w-[1240px] px-4 pt-5 pb-9 sm:px-6">
-		<div class="border-t border-navy-2 pt-6">
-			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Enter data</h1>
-			<p class="mt-2 text-md text-navy-ink-2">Figures for one unit and one month. Leave a field empty if you have no figure for it.</p>
-		</div>
+<PageBand title="Add data" lead="Type in one {term.one}'s figures for a month. Leave a field empty if you don't have that figure." width="form">
+		<DataTabs />
 		{#if unitId !== null}
-			<div class="mt-6 flex max-w-[920px] flex-wrap items-end gap-3">
+			<div class="mt-5 flex flex-wrap items-end gap-3">
 				<label class="min-w-64 flex-1">
-					<span class="mb-1.5 block text-sm text-navy-ink-2">Unit</span>
+					<span class="mb-1.5 block text-sm text-navy-ink-2">{term.One}</span>
 					<select class="input" value={unitId} onchange={(e) => goto(go({ unit: Number(e.currentTarget.value) }))}>
 						{#each groups as [group, list] (group)}
 							<optgroup label={group}>
@@ -168,14 +167,13 @@
 				</div>
 			</div>
 		{/if}
-	</div>
-</section>
+</PageBand>
 
-<main class="mx-auto max-w-[1240px] px-4 pb-28 sm:px-6"><div class="max-w-[920px]">
+<main class="mx-auto max-w-[1240px] px-4 pb-28 sm:px-6"><div class="mx-auto {WIDTH.form}">
 	{#if unitId === null}
 		<div class="panel -mt-5 p-6">
-			<p class="font-semibold">There are no units you can enter data for</p>
-			<p class="mt-1 text-ink-2">An administrator can make you a contributor for the units you report on.</p>
+			<p class="font-semibold">You can't add figures for any {term.many} yet</p>
+			<p class="mt-1 text-ink-2">An administrator can let you enter data for the {term.many} you report for.</p>
 		</div>
 	{:else if error}
 		<div class="panel -mt-5 flex gap-3 p-5 text-bad-ink" role="alert"><Icon name="alert" size={18} class="mt-0.5" />{error}</div>

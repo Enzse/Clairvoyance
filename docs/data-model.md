@@ -32,7 +32,7 @@ Everything is keyed on **KPI × unit × period**.
 
 | Concept | Meaning |
 |---|---|
-| Organisation | A tenant. Owns its unit tree, KPIs, figures and imports; people join it with a role (admin or member). One person can belong to several. |
+| Organisation | A tenant. Owns its unit tree, KPIs, figures and imports; people join it with a role (admin or member). One person can belong to several. It has its own word for its units (`unit_label`: "branch", "department", "team"), which the interface uses instead of "unit". |
 | Unit | A node in the organisation's tree (Company › Region › Branch, or Company › Sales › North team). The root carries the organisation's name. Data is entered only at **leaf** units; parents are roll-ups. Model an HQ's own figures as a leaf such as "HQ Office". |
 | KPI | A definition owned by the organisation (admins create them). By default every leaf unit reports it; it can be **scoped** to some units, e.g. revenue for the Sales department only, and optionally to one kind of unit. |
 | Frequency | How often the KPI is reported: daily, weekly (ISO, Monday start), monthly, quarterly, yearly. |
@@ -130,7 +130,11 @@ Abridged; the source of truth is `api/migrations/`:
 - `001_baseline.sql`;
 - `002_organizations.sql`, which adds tenancy;
 - `003_production.sql`, which adds what running on the internet needs, described after the
-  schema.
+  schema;
+- `004_unit_label.sql`, which adds `organizations.unit_label`, set from the existing units'
+  most common kind.
+- `005_setup_skips.sql` (skipped getting-started steps) and `006_unit_icon.sql`
+  (`units.icon`, a name from the web app's icon set; NULL shows the default).
 
 Nothing is seeded: an organisation's root unit is created together with the organisation.
 
@@ -352,8 +356,10 @@ Signing up creates an account and nothing else. The person is then taken through
 4. **Invite** people by email with a role and unit access. The link is emailed once the
    founder has confirmed their address, and is always shown to copy as well.
 
-Afterwards the scorecard shows a getting-started checklist (targets, first figures, invites)
-until it's complete or dismissed. Someone with an invitation link signs in or registers with
+Afterwards the scorecard shows a step-by-step getting-started guide (structure, KPIs, targets,
+first figures, team). Structure, targets and inviting can be skipped (`organizations.setup_skipped`,
+migration 005); KPIs and figures can't. It ends with an "is ready" card, and can be hidden
+and brought back from Admin › Settings. Someone with an invitation link signs in or registers with
 the invited email and joins that organisation; accepting never demotes an existing member.
 A person can belong to several organisations and switch between them; the session remembers
 the selected one, and every request re-checks that membership.
@@ -391,11 +397,12 @@ as coarse as the KPI's frequency.
 | GET | `/health` | `{ok: true}` when PHP and the database work, for uptime monitoring |
 | POST | `/organizations` | Create an organisation (you become its admin) and select it |
 | POST | `/organizations/select` | Switch to another organisation you belong to |
-| PUT | `/organization` | Admin: rename (also renames the root unit) |
+| PUT | `/organization` | Admin: `{name?, unit_label?}`: rename (also renames the root unit) and/or change the word for units |
 | DELETE | `/organization` | Admin: delete it with everything in it `{name, password}` |
 | POST | `/organization/leave` | Leave the current organisation (not as its last admin) |
-| GET | `/organization/setup` | Getting-started checklist facts |
-| POST | `/organization/setup/dismiss` | Admin: hide the checklist |
+| GET | `/organization/setup` | Admin: the getting-started guide: steps done (worked out from the data), skipped, skippable, `complete`, counts |
+| POST | `/organization/setup/dismiss` | Admin: hide the guide `{dismissed?: true}`, or bring it back with `false` |
+| POST | `/organization/setup/skip` | Admin: skip a step that can wait (structure, targets, people) `{step, skipped?: true}`, or take it back |
 | GET | `/members` | Admin: people in the organisation, with role and unit access |
 | PUT/DELETE | `/members/{id}` | Admin: change role / remove from the organisation (not the last admin) |
 | PUT | `/members/{id}/memberships` | Admin: replace unit access `[{unit_id, role}]` |

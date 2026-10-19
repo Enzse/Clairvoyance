@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, ApiError } from '$lib/api';
 	import { formatValue } from '$lib/format';
+	import { term } from '$lib/terms.svelte';
 	import type { Kpi, ValueChange } from '$lib/types';
 
 	/** Who changed this KPI's figures in the unit and the units inside it, newest first. */
@@ -38,7 +39,7 @@
 				<thead class="text-ink-2">
 					<tr class="border-b border-line">
 						<th scope="col" class="py-2 pr-4 font-medium">When</th>
-						{#if showUnit}<th scope="col" class="py-2 pr-4 font-medium">Unit</th>{/if}
+						{#if showUnit}<th scope="col" class="py-2 pr-4 font-medium">{term.One}</th>{/if}
 						<th scope="col" class="py-2 pr-4 font-medium">Period</th>
 						<th scope="col" class="py-2 pr-4 font-medium">Change</th>
 						<th scope="col" class="py-2 font-medium">By</th>

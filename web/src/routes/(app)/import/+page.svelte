@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, ApiError } from '$lib/api';
+	import DataTabs from '$lib/components/DataTabs.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import PageBand, { WIDTH } from '$lib/components/PageBand.svelte';
 	import { detectDateFormat, parseCsv, profileColumn, suggestKpi, suggestUnitColumns } from '$lib/csv';
 	import { plural } from '$lib/format';
 	import { href } from '$lib/nav';
 	import { session } from '$lib/session.svelte';
+	import { term } from '$lib/terms.svelte';
 	import type { DateFormat, ImportMapping, ImportPreview, ImportResult, Kpi } from '$lib/types';
 	import { units } from '$lib/units.svelte';
 
@@ -84,7 +87,7 @@
 	const mappedCount = $derived(otherColumns.filter((h) => kpiFor[h]).length);
 	const problems = $derived(
 		[
-			!unitColumns.length && 'Choose the column (or columns) that name the unit.',
+			!unitColumns.length && `Choose the column (or columns) that name the ${term.one}.`,
 			!dateColumn && 'Choose the date column.',
 			dateColumn && !dateFormat && 'Choose how dates are written.',
 			!mappedCount && 'Match at least one column to a KPI.'
@@ -145,18 +148,15 @@
 	const parentChoices = $derived(units.list.filter((u) => !u.is_leaf && u.is_active && (u.access === 'admin' || u.access === 'contributor')));
 </script>
 
-<svelte:head><title>Import | Clairvoyance</title></svelte:head>
+<svelte:head><title>Add data | Clairvoyance</title></svelte:head>
 
-<section class="bg-navy text-navy-ink">
-	<div class="mx-auto max-w-[1240px] px-4 pt-5 pb-9 sm:px-6">
-		<div class="border-t border-navy-2 pt-6">
-			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Import from a spreadsheet</h1>
-			<p class="mt-2 max-w-[68ch] text-md text-navy-ink-2">
-				One row per unit and date, one column per KPI, saved as CSV. Importing the same file again updates figures instead of
-				duplicating them.
-			</p>
-		</div>
-		<ol class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+<PageBand
+	title="Add data"
+	lead="Upload a CSV with one row per {term.one} and date, and one column per KPI. Uploading the same file again updates figures instead of duplicating them."
+	width="form"
+>
+		<DataTabs />
+		<ol class="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm">
 			{#each STEPS as name, i (name)}
 				<li class="flex items-center gap-2 {i === step ? 'text-navy-ink' : 'text-navy-ink-2'}" aria-current={i === step ? 'step' : undefined}>
 					<span class="grid size-6 place-items-center rounded-full text-xs font-semibold {i < step ? 'bg-navy-2 text-navy-ink' : i === step ? 'bg-surface text-ink' : 'ring-1 ring-navy-2'}">
@@ -166,10 +166,9 @@
 				</li>
 			{/each}
 		</ol>
-	</div>
-</section>
+</PageBand>
 
-<main class="mx-auto max-w-[1240px] px-4 pb-16 sm:px-6"><div class="max-w-[1040px]">
+<main class="mx-auto max-w-[1240px] px-4 pb-16 sm:px-6"><div class="mx-auto {WIDTH.form}">
 	<div class="panel -mt-5 p-5 sm:p-7">
 		{#if step === 0}
 			<label
@@ -194,8 +193,8 @@
 
 			<div class="mt-7 grid gap-8 lg:grid-cols-2">
 				<fieldset>
-					<legend class="text-md font-semibold">Which unit is each row for?</legend>
-					<p class="mt-1 text-sm text-ink-2">Tick the columns that name the unit. Several columns make a path, like Region, then Branch.</p>
+					<legend class="text-md font-semibold">Which {term.one} is each row for?</legend>
+					<p class="mt-1 text-sm text-ink-2">Tick the columns that name the {term.one}. Several columns make a path, like Region, then Branch.</p>
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#each headers.filter((h) => h !== dateColumn) as h (h)}
 							{@const on = unitColumns.includes(h)}
@@ -211,16 +210,16 @@
 					</div>
 					{#if unitColumns.length === 1}
 						<label class="mt-4 block max-w-xs">
-							<span class="field-label">Match units by</span>
+							<span class="field-label">Match {term.many} by</span>
 							<select class="input" bind:value={unitMatch}>
 								<option value="name">Name</option>
-								<option value="code">Unit code</option>
+								<option value="code">Code</option>
 							</select>
 						</label>
 					{/if}
 					{#if parentChoices.length > 1}
 						<label class="mt-4 block max-w-xs">
-							<span class="field-label">Units are under</span>
+							<span class="field-label">They are all in</span>
 							<select class="input" bind:value={parentUnit}>
 								{#each parentChoices as u (u.id)}<option value={u.id}>{units.pathLabel(u.id) ? `${units.pathLabel(u.id)} › ` : ''}{u.name}</option>{/each}
 							</select>
@@ -230,14 +229,14 @@
 						<label class="mt-4 flex items-start gap-2.5">
 							<input type="checkbox" class="mt-0.5 size-4 accent-[var(--accent)]" bind:checked={createMissing} />
 							<span>
-								<span class="font-medium">Add units that don't exist yet</span>
-								<span class="block text-sm text-ink-2">Otherwise rows for unknown units are reported as problems.</span>
+								<span class="font-medium">Add {term.many} that don't exist yet</span>
+								<span class="block text-sm text-ink-2">Otherwise rows for names the app doesn't know are reported as problems.</span>
 							</span>
 						</label>
 						{#if createMissing}
 							<div class="mt-3 grid gap-3 pl-6 sm:grid-cols-2">
 								{#each unitColumns as c (c)}
-									<label><span class="field-label">New units from {c} are a</span><input class="input" bind:value={unitKinds[c]} /></label>
+									<label><span class="field-label">New names in {c} are a</span><input class="input" bind:value={unitKinds[c]} /></label>
 								{/each}
 							</div>
 						{/if}
@@ -320,7 +319,7 @@
 						: 'Ready to import'}
 			</h2>
 			<dl class="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-line ring-1 ring-line sm:grid-cols-4">
-				{#each [['New figures', preview.will_create], ['Changed figures', preview.will_update], ['Unchanged', preview.unchanged], ['New units', preview.new_units.length]] as [name, count] (name)}
+				{#each [['New figures', preview.will_create], ['Changed figures', preview.will_update], ['Unchanged', preview.unchanged], [`New ${term.many}`, preview.new_units.length]] as [name, count] (name)}
 					<div class="bg-surface px-4 py-3">
 						<dt class="text-sm text-ink-2">{name}</dt>
 						<dd class="mt-0.5 text-xl font-semibold">{Number(count).toLocaleString('en-US')}</dd>
@@ -329,7 +328,7 @@
 			</dl>
 			{#if preview.new_units.length}
 				<details class="mt-4 text-sm">
-					<summary class="cursor-pointer text-ink-2">Units that will be added</summary>
+					<summary class="cursor-pointer text-ink-2">New {term.many} that will be added</summary>
 					<ul class="mt-2 space-y-0.5 pl-5">{#each preview.new_units as u (u)}<li class="list-disc">{u}</li>{/each}</ul>
 				</details>
 			{/if}

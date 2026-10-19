@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, ApiError } from '$lib/api';
+	import PageBand, { WIDTH } from '$lib/components/PageBand.svelte';
 	import { session, setMe } from '$lib/session.svelte';
 	import { toast } from '$lib/toast.svelte';
 	import type { OrganizationSummary } from '$lib/types';
@@ -85,17 +86,10 @@
 
 <svelte:head><title>Account | Clairvoyance</title></svelte:head>
 
-<section class="bg-navy text-navy-ink">
-	<div class="mx-auto max-w-[1240px] px-4 pt-5 pb-12 sm:px-6">
-		<div class="border-t border-navy-2 pt-6">
-			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Your account</h1>
-			<p class="mt-2 text-md text-navy-ink-2">{session.user?.email}</p>
-		</div>
-	</div>
-</section>
+<PageBand title="Your account" lead={session.user?.email} width="narrow" />
 
 <main class="mx-auto max-w-[1240px] px-4 pb-16 sm:px-6">
-	<div class="-mt-6 grid max-w-3xl gap-6">
+	<div class="mx-auto -mt-5 grid gap-6 {WIDTH.narrow}">
 		<form class="panel p-6" onsubmit={saveName}>
 			<h2 class="font-semibold">Name</h2>
 			<p class="mt-1 text-sm text-ink-2">Shown to people in your organisations.</p>

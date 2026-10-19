@@ -1,12 +1,14 @@
 <?php
 
 /**
- * Usage: php scripts/seed_demo.php <admin-email>
+ * Usage: php scripts/seed_demo.php <email>
  *
- * Loads the DepEd sample (demo/deped.csv) into the first organisation the person administers:
- * six school KPIs with targets, and the Region > Division > School units with a year of
- * monthly reports. Runs through the API in-process as that admin, so it gets exactly the same
- * validation as the UI. Safe to run again: existing KPIs are kept and the import is an upsert.
+ * Gives an account a sample organisation to explore: "DepEd sample", with six school KPIs and
+ * targets, Region > Division > School units, and a year of monthly reports from
+ * demo/deped.csv. The person signs up in the app first; the sample is created as a separate
+ * organisation they administer, so it never mixes with their own (switch between them in the
+ * top bar). Runs through the API in-process as that person, with the same validation as the
+ * app. Safe to run again: existing KPIs are kept and the import updates figures in place.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -22,34 +24,52 @@ use Core\Request;
 use Repositories\OrganizationRepository;
 use Repositories\UserRepository;
 
+const SAMPLE_NAME = 'DepEd sample';
+
 $email = $argv[1] ?? null;
 if (!$email) {
-    fwrite(STDERR, "Usage: php scripts/seed_demo.php <admin-email>\n");
+    fwrite(STDERR, "Usage: php scripts/seed_demo.php <email>
+");
     exit(1);
 }
 
 $db = Database::connect(Environment::getInstance());
-$admin = (new UserRepository($db))->findByEmail($email);
-$organization = $admin
-    ? array_values(array_filter((new OrganizationRepository($db))->forUser($admin['id']), fn($o) => $o['role'] === 'admin'))[0] ?? null
-    : null;
-if (!$organization) {
-    fwrite(STDERR, "{$email} is not an administrator of any organisation\n");
+$users = new UserRepository($db);
+$person = $users->findByEmail(mb_strtolower($email));
+if (!$person) {
+    fwrite(STDERR, "No account for {$email}. Sign up in the app first, then run this again.
+");
     exit(1);
 }
-echo "Loading into {$organization['name']}\n";
 
 $app = new App(fn() => $db);
-$_SESSION = ['user_id' => $admin['id'], 'org_id' => $organization['id']];
+$_SESSION = ['user_id' => $person['id'], 'session_version' => $users->sessionVersion($person['id'])];
 
 $call = function (string $method, string $path, array $body = [], array $files = []) use ($app): array {
     $response = $app->handle(new Request($method, $path, [], $body, $files));
     if ($response->status >= 300) {
-        fwrite(STDERR, "{$method} {$path} failed: " . json_encode($response->payload, JSON_PRETTY_PRINT) . "\n");
+        fwrite(STDERR, "{$method} {$path} failed: " . json_encode($response->payload, JSON_PRETTY_PRINT) . "
+");
         exit(1);
     }
     return $response->payload['data'];
 };
+
+// The sample gets its own organisation, reused on later runs
+$sample = array_values(array_filter(
+    (new OrganizationRepository($db))->forUser($person['id']),
+    fn($o) => $o['role'] === 'admin' && $o['name'] === SAMPLE_NAME
+))[0] ?? null;
+if ($sample) {
+    $call('POST', '/organizations/select', ['organization_id' => $sample['id']]);
+    echo "Updating " . SAMPLE_NAME . "
+";
+} else {
+    $call('POST', '/organizations', ['name' => SAMPLE_NAME]);
+    $call('PUT', '/organization', ['unit_label' => 'school']);
+    echo "Created the organisation " . SAMPLE_NAME . " for {$person['email']}
+";
+}
 
 $kpis = [
     ['code' => 'total_students', 'name' => 'Total students', 'description' => 'Enrolled students at month end',

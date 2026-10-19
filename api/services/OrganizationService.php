@@ -53,12 +53,32 @@ class OrganizationService
         return $this->accounts->me();
     }
 
-    public function rename(array $input): array
+    /**
+     * Change the organisation's name and/or the word it uses for the parts that report
+     * figures (unit_label: "branch", "department"…, singular).
+     */
+    public function update(array $input): array
     {
         $organization = $this->auth->requireAdmin();
-        $name = $this->validName($input);
-        $this->organizations->rename($organization['id'], $name);
-        $this->units->renameRoot($organization['id'], $name);
+        $v = new Validator($input);
+        $name = $v->string('name', false, 255);
+        $label = $v->string('unit_label', false, 40);
+        if ($label !== null && !preg_match('/^\p{L}[\p{L} \'-]*$/u', $label)) {
+            $v->addError('unit_label', 'should be a word such as branch, department or team');
+        }
+        if ($name === null && $label === null) {
+            $v->addError('name', 'is required');
+        }
+        $v->check();
+
+        if ($name !== null) {
+            $this->organizations->rename($organization['id'], $name);
+            $this->units->renameRoot($organization['id'], $name);
+        }
+        if ($label !== null) {
+            $this->organizations->setUnitLabel($organization['id'], mb_strtolower($label));
+        }
+        $this->auth->refresh();
         return $this->accounts->me();
     }
 
@@ -69,30 +89,6 @@ class OrganizationService
         $v->check();
         $this->auth->selectOrganization($id);
         return $this->accounts->me();
-    }
-
-    /** What a new organisation has set up so far, for the getting-started checklist. */
-    public function setup(): array
-    {
-        $organization = $this->auth->requireAdmin();
-        $facts = $this->organizations->setupFacts($organization['id']);
-        $dismissed = $this->organizations->find($organization['id'])['setup_dismissed_at'] !== null;
-        return [
-            'dismissed' => $dismissed,
-            'steps' => [
-                'structure' => $facts['units'] > 0,
-                'kpis' => $facts['kpis'] > 0,
-                'targets' => $facts['targets'] > 0,
-                'data' => $facts['kpi_values'] > 0,
-                'people' => $facts['members'] > 1 || $facts['invitations'] > 0,
-            ],
-        ];
-    }
-
-    public function dismissSetup(): array
-    {
-        $this->organizations->dismissSetup($this->auth->requireAdmin()['id']);
-        return $this->setup();
     }
 
     /** Leave the current organisation. Its last administrator has to hand over or delete it. */

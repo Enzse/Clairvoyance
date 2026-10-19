@@ -4,6 +4,7 @@
 	import { plural } from '$lib/format';
 	import { shift } from '$lib/period';
 	import { session } from '$lib/session.svelte';
+	import { term } from '$lib/terms.svelte';
 	import { toast } from '$lib/toast.svelte';
 	import Drawer from './Drawer.svelte';
 	import Icon from './Icon.svelte';
@@ -64,8 +65,8 @@
 <Drawer bind:open title="Export figures">
 	<form onsubmit={download}>
 		<p class="text-ink-2">
-			A CSV of every figure entered for <strong class="text-ink">{unitName}</strong>{unitName === session.user?.organization?.name ? '' : ' and the units inside it'}:
-			one row per unit and period, one column per KPI. Open it in any spreadsheet. You can edit it and import it back.
+			A CSV of every figure entered for <strong class="text-ink">{unitName}</strong>{unitName === session.user?.organization?.name ? '' : ' and everything inside it'}:
+			one row per {term.one} and period, one column per KPI. Open it in any spreadsheet. You can edit it and import it back.
 		</p>
 		<div class="mt-6 grid gap-4 sm:grid-cols-2">
 			<div>

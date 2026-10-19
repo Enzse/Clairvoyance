@@ -9,6 +9,7 @@ use Controllers\KpiController;
 use Controllers\MemberController;
 use Controllers\OrganizationController;
 use Controllers\ReportController;
+use Controllers\SetupController;
 use Controllers\UnitController;
 use Controllers\ValueController;
 use Core\Router;
@@ -28,14 +29,15 @@ return function (Router $r): void {
 
     $r->add('GET', '/health', [HealthController::class, 'check']);
 
-    // Organisations: create, switch, rename the current one, getting-started checklist
+    // Organisations: create, switch, rename, leave or delete the current one; getting-started guide
     $r->add('POST', '/organizations', [OrganizationController::class, 'create']);
     $r->add('POST', '/organizations/select', [OrganizationController::class, 'select']);
     $r->add('PUT', '/organization', [OrganizationController::class, 'rename']);
     $r->add('DELETE', '/organization', [OrganizationController::class, 'delete']);
     $r->add('POST', '/organization/leave', [OrganizationController::class, 'leave']);
-    $r->add('GET', '/organization/setup', [OrganizationController::class, 'setup']);
-    $r->add('POST', '/organization/setup/dismiss', [OrganizationController::class, 'dismissSetup']);
+    $r->add('GET', '/organization/setup', [SetupController::class, 'get']);
+    $r->add('POST', '/organization/setup/dismiss', [SetupController::class, 'dismiss']);
+    $r->add('POST', '/organization/setup/skip', [SetupController::class, 'skip']);
 
     // People in the current organisation
     $r->add('GET', '/members', [MemberController::class, 'list']);

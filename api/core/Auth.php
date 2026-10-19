@@ -78,7 +78,8 @@ class Auth
             return $this->organization = null;
         }
         $_SESSION['org_id'] = $id;
-        return $this->organization = ['id' => $id, 'name' => $this->organizations->find($id)['name'], 'role' => $role];
+        $found = $this->organizations->find($id);
+        return $this->organization = ['id' => $id, 'name' => $found['name'], 'role' => $role, 'unit_label' => $found['unit_label']];
     }
 
     public function requireOrganization(): array

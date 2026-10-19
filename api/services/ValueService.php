@@ -7,6 +7,7 @@ use Core\HttpException;
 use Core\Validator;
 use Domain\KpiScope;
 use Domain\Period;
+use Domain\Words;
 use PDO;
 use Repositories\KpiRepository;
 use Repositories\ValueRepository;
@@ -36,7 +37,7 @@ class ValueService
     {
         $unit = $this->access->requireView($unitId);
         if (!$this->access->tree()->isLeaf($unitId)) {
-            throw HttpException::badRequest('Data is entered for leaf units only; this unit is a roll-up of the units under it');
+            throw HttpException::badRequest("{$unit['name']} adds up the " . Words::plural($this->auth->organization()['unit_label']) . ' under it; enter figures for those instead');
         }
         if (!Period::isValidDate($date)) {
             throw HttpException::badRequest('date must be YYYY-MM-DD');
@@ -158,13 +159,13 @@ class ValueService
             return "KPI {$kpi['name']} is inactive";
         }
         if (!$isLeaf) {
-            return "{$unit['name']} is a roll-up of the units under it; enter data for those instead";
+            return "{$unit['name']} adds up the " . Words::plural($this->auth->organization()['unit_label']) . ' under it; enter figures for those instead';
         }
         if (!$unit['is_active']) {
             return "{$unit['name']} is inactive";
         }
         if ($kpi['applies_to_kind'] !== null && $kpi['applies_to_kind'] !== $unit['kind']) {
-            return "KPI {$kpi['name']} only applies to units of kind {$kpi['applies_to_kind']}";
+            return "{$kpi['name']} is only reported by " . Words::plural(mb_strtolower($kpi['applies_to_kind']));
         }
         if (!KpiScope::covers($this->access->tree(), $kpi, $scopeAnchor)) {
             return "{$unit['name']} doesn't report {$kpi['name']}";

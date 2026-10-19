@@ -314,3 +314,13 @@
 dialog::backdrop {
 	background: rgb(8 20 38 / 0.45);
 }
+
+/* A row that was just added glows briefly */
+@keyframes flash {
+	from {
+		background-color: var(--accent-wash);
+	}
+	to {
+		background-color: transparent;
+	}
+}

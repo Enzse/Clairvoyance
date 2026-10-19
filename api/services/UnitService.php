@@ -14,7 +14,9 @@ use Repositories\UnitRepository;
  */
 class UnitService
 {
-    private const CODE_PATTERN = '/^[A-Za-z0-9_.\-]+$/';
+    private const CODE_PATTERN = '/^[A-Za-z0-9_.-]+$/';
+    /** A name from the web app's icon set */
+    private const ICON_PATTERN = '/^[a-z][a-z0-9-]*$/';
 
     private Auth $auth;
     private UnitRepository $units;
@@ -36,21 +38,22 @@ class UnitService
         $name = $v->string('name', true, 255);
         $code = $v->string('code', false, 64, self::CODE_PATTERN, 'may only use letters, digits, _ . and -');
         $kind = $v->string('kind', false, 64);
+        $icon = $v->string('icon', false, 32, self::ICON_PATTERN, 'is not an icon name');
         $v->check();
 
         $tree = $this->access->tree();
         $parent = $tree->get($parentId);
         if (!$parent) {
-            $v->addError('parent_id', 'unit not found');
+            $v->addError('parent_id', 'not found');
         } elseif ($parent['has_values']) {
-            $v->addError('parent_id', 'already holds values, so it must stay a leaf');
+            $v->addError('parent_id', 'has figures of its own, so nothing can go inside it');
         } elseif ($tree->findChildByName($parentId, $name) !== null) {
-            $v->addError('name', 'is already used by another unit under the same parent');
+            $v->addError('name', 'is already used by another one in the same place');
         }
         $this->checkCode($v, $code, null);
         $v->check();
 
-        $id = $this->units->create($this->auth->organizationId(), $parentId, $name, $code, $kind);
+        $id = $this->units->create($this->auth->organizationId(), $parentId, $name, $code, $kind, $icon);
         return $this->access->refreshTree()->get($id);
     }
 
@@ -65,6 +68,7 @@ class UnitService
             'name' => $v->string('name', $v->has('name'), 255),
             'code' => $v->string('code', false, 64, self::CODE_PATTERN, 'may only use letters, digits, _ . and -'),
             'kind' => $v->string('kind', false, 64),
+            'icon' => $v->string('icon', false, 32, self::ICON_PATTERN, 'is not an icon name'),
             'is_active' => $v->bool('is_active', $v->has('is_active')),
             'parent_id' => $v->int('parent_id', $v->has('parent_id'), 1),
         ];
@@ -78,18 +82,18 @@ class UnitService
         if (isset($fields['parent_id']) && $fields['parent_id'] !== $unit['parent_id']) {
             $newParent = $tree->get($fields['parent_id']);
             if (!$newParent) {
-                $v->addError('parent_id', 'unit not found');
+                $v->addError('parent_id', 'not found');
             } elseif ($tree->isInSubtree($fields['parent_id'], $id)) {
-                $v->addError('parent_id', 'cannot move a unit inside itself');
+                $v->addError('parent_id', "can't be moved inside itself");
             } elseif ($newParent['has_values']) {
-                $v->addError('parent_id', 'already holds values, so it must stay a leaf');
+                $v->addError('parent_id', 'has figures of its own, so nothing can go inside it');
             }
         }
         $name = $fields['name'] ?? $unit['name'];
         if (!$isRoot && $parentId !== null) {
             $sibling = $tree->findChildByName($parentId, $name);
             if ($sibling !== null && $sibling !== $id) {
-                $v->addError('name', 'is already used by another unit under the same parent');
+                $v->addError('name', 'is already used by another one in the same place');
             }
         }
         if (array_key_exists('code', $fields)) {
@@ -116,10 +120,10 @@ class UnitService
             throw HttpException::conflict('The organisation root cannot be deleted');
         }
         if (!$tree->isLeaf($id)) {
-            throw HttpException::conflict('Delete or move the units under it first');
+            throw HttpException::conflict("Delete or move what's under it first");
         }
         if ($unit['has_values']) {
-            throw HttpException::conflict('This unit has data; deactivate it instead');
+            throw HttpException::conflict('This has figures; deactivate it instead, so they stay in the history');
         }
         $this->units->delete($this->auth->organizationId(), $id);
         $this->access->refreshTree();
@@ -132,7 +136,7 @@ class UnitService
         }
         $clash = $this->access->tree()->findByCode($code);
         if ($clash !== null && $clash !== $selfId) {
-            $v->addError('code', 'is already used by another unit');
+            $v->addError('code', 'is already used by another one');
         }
     }
 }

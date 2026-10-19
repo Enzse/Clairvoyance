@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatValue } from '$lib/format';
+	import { cap, wordFor } from '$lib/terms.svelte';
 	import { STATUS } from '$lib/status';
 	import type { Kpi, Result, Unit } from '$lib/types';
 	import StatusMark from './StatusMark.svelte';
@@ -62,7 +63,7 @@
 	<table class="w-full border-separate border-spacing-[3px] text-left">
 		<thead>
 			<tr>
-				<th scope="col" class="sticky left-0 z-10 min-w-44 bg-surface px-2 pb-2 align-bottom text-sm font-medium text-ink-2">Unit</th>
+				<th scope="col" class="sticky left-0 z-10 min-w-44 bg-surface px-2 pb-2 align-bottom text-sm font-medium text-ink-2">{cap(wordFor(rows, false))}</th>
 				{#each kpis as kpi (kpi.id)}
 					<th scope="col" class="min-w-28 px-2 pb-2 align-bottom text-sm leading-tight font-medium text-ink-2">{kpi.name}</th>
 				{/each}

@@ -2,12 +2,14 @@
 	import { api, ApiError } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 	import { plural } from '$lib/format';
+	import { setMe } from '$lib/session.svelte';
 	import { units } from '$lib/units.svelte';
 
 	/**
 	 * One location, several locations, or departments. Names go in one per line; a live preview
 	 * shows the tree that will be created. Deeper trees (regions with branches) are built later
-	 * under Admin › Organisation.
+	 * under Manage › Structure. The kind becomes the organisation's word for them everywhere
+ * ("2 of 3 branches reported").
 	 */
 	let { onDone }: { onDone: () => void } = $props();
 
@@ -41,6 +43,7 @@
 		busy = true;
 		error = '';
 		try {
+			if (kind.trim()) setMe(await api.updateOrganization({ unit_label: kind.trim().toLowerCase() }));
 			for (const name of names.filter((n) => !existing.some((u) => u.name.toLowerCase() === n.toLowerCase()))) {
 				await api.createUnit({ parent_id: root.id, name, kind: kind.trim() || null });
 			}
@@ -89,7 +92,7 @@
 		<div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5">
 			{#if shape !== 'single'}<button type="button" class="btn btn-ghost" onclick={onDone}>Skip for now</button>{/if}
 			<button class="btn btn-primary" disabled={busy || (shape !== 'single' && !names.length)}>
-				{busy ? 'Saving…' : shape === 'single' ? 'Continue' : `Add ${plural(names.length, kind.trim().toLowerCase() || 'unit')}`}
+				{busy ? 'Saving…' : shape === 'single' ? 'Continue' : `Add ${plural(names.length, kind.trim().toLowerCase() || 'team')}`}
 			</button>
 		</div>
 	</div>
@@ -110,7 +113,7 @@
 		<p class="mt-5 text-sm text-ink-2">
 			{shape === 'single'
 				? `Figures are entered for ${root?.name} as a whole.`
-				: `Figures are entered by each ${kind.trim().toLowerCase() || 'unit'} and added up for ${root?.name}.`}
+				: `Figures are entered by each ${kind.trim().toLowerCase() || 'team'} and added up for ${root?.name}.`}
 		</p>
 	</aside>
 </form>

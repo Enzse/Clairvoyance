@@ -96,7 +96,7 @@ class AccessTest extends ApiTestCase
 
         $result = $this->call('PUT', '/values', [], ['values' => [$this->entry(self::$units['a'], 100)]]);
         $this->assertStatus(400, $result);
-        $this->assertTrue(strpos(json_encode($result[1]), 'not enter data') !== false);
+        $this->assertTrue(strpos(json_encode($result[1]), 'not enter them') !== false);
     }
 
     public function testContributorWritesOnlyInsideTheirSubtree(): void

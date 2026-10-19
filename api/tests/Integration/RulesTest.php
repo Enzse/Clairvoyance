@@ -104,7 +104,7 @@ class RulesTest extends ApiTestCase
         $kpi = $this->createKpi(['code' => 'shelf_space', 'name' => 'Shelf space', 'applies_to_kind' => 'Warehouse']);
         $result = $this->call('PUT', '/values', [], ['values' => [['kpi_id' => $kpi['id'], 'unit_id' => self::$store, 'period' => '2025-06-01', 'value' => 1]]]);
         $this->assertStatus(400, $result);
-        $this->assertTrue(strpos($result[1]['details']['values.0'], 'only applies to units of kind Warehouse') !== false);
+        $this->assertTrue(strpos($result[1]['details']['values.0'], 'is only reported by warehouses') !== false);
     }
 
     // ---- Units
@@ -114,7 +114,7 @@ class RulesTest extends ApiTestCase
         $this->save(self::$monthly['id'], '2025-01-01', 1);
         $result = $this->call('POST', '/units', [], ['parent_id' => self::$store, 'name' => 'Sub-store']);
         $this->assertStatus(400, $result);
-        $this->assertSame('already holds values, so it must stay a leaf', $result[1]['details']['parent_id']);
+        $this->assertSame('has figures of its own, so nothing can go inside it', $result[1]['details']['parent_id']);
         $this->assertStatus(409, $this->call('DELETE', '/units/' . self::$store));
     }
 
@@ -153,7 +153,7 @@ class RulesTest extends ApiTestCase
         $this->assertSame(5, $preview['error_count'], json_encode($errors));
         $this->assertSame([3, 4, 5, 6, 7], array_column($preview['errors'], 'row'));
         $this->assertTrue(strpos($errors[0], "'31/02/2025' is not a valid DD/MM/YYYY date") !== false, $errors[0]);
-        $this->assertTrue(strpos($errors[2], 'Duplicates row 2') !== false, $errors[2]);
+        $this->assertTrue(strpos($errors[2], 'Repeats row 2') !== false, $errors[2]);
         $this->assertSame(1, $preview['values_total']);
 
         $before = $this->countValues(self::$monthly['id']);

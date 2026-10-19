@@ -95,7 +95,7 @@ class MemberService
             $unitId = $rv->int('unit_id', true, 1);
             $role = $rv->enum('role', ['viewer', 'contributor'], true);
             if ($unitId !== null && !$this->access->tree()->get($unitId)) {
-                $rv->addError('unit_id', 'unit not found');
+                $rv->addError('unit_id', 'not found');
             }
             if ($unitId !== null && isset($clean[$unitId])) {
                 $rv->addError('unit_id', 'is listed twice');

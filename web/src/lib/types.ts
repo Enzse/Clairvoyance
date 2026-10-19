@@ -15,6 +15,8 @@ export interface OrganizationSummary {
 	id: number;
 	name: string;
 	role: Role;
+	/** Its word for the parts that report ("branch"); present on the current organisation */
+	unit_label?: string;
 }
 
 export interface User {
@@ -65,9 +67,17 @@ export interface InvitationLookup {
 	has_account: boolean;
 }
 
+export type SetupStep = 'structure' | 'kpis' | 'targets' | 'data' | 'people';
+
+/** The getting-started guide: steps done (worked out from the data) and skipped. */
 export interface Setup {
 	dismissed: boolean;
-	steps: { structure: boolean; kpis: boolean; targets: boolean; data: boolean; people: boolean };
+	steps: Record<SetupStep, boolean>;
+	skipped: SetupStep[];
+	skippable: SetupStep[];
+	/** Every step done or skipped */
+	complete: boolean;
+	counts: { units: number; kpis: number; targets: number; values: number; members: number; invitations: number };
 }
 
 export interface Unit {
@@ -76,6 +86,8 @@ export interface Unit {
 	name: string;
 	code: string | null;
 	kind: string | null;
+	/** Chosen icon (see unit-icons.ts); null shows the default */
+	icon: string | null;
 	is_active: boolean;
 	has_values: boolean;
 	is_leaf?: boolean;

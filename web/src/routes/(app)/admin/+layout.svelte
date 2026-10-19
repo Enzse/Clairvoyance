@@ -4,20 +4,20 @@
 
 	let { children } = $props();
 
-	const tabs = [
-		{ href: '/admin/units', label: 'Organisation', hint: 'Units and how they nest' },
-		{ href: '/admin/kpis', label: 'KPIs', hint: 'Definitions and targets' },
-		{ href: '/admin/users', label: 'People', hint: 'Accounts and access' },
-		{ href: '/admin/settings', label: 'Settings', hint: 'Name, deleting' }
-	];
+	const tabs = $derived([
+		{ href: '/admin/units', label: 'Structure', hint: 'Your units and how they’re grouped' },
+		{ href: '/admin/kpis', label: 'KPIs', hint: 'What you measure, and targets' },
+		{ href: '/admin/users', label: 'People', hint: 'Who can see and enter what' },
+		{ href: '/admin/settings', label: 'Settings', hint: 'Name, wording, deleting' }
+	]);
 </script>
 
 <section class="bg-navy text-navy-ink">
 	<div class="mx-auto max-w-[1240px] px-4 pt-5 sm:px-6">
 		<div class="border-t border-navy-2 pt-6">
-			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Administration</h1>
+			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Manage {session.user?.organization?.name}</h1>
 		</div>
-		<nav class="mt-5 flex gap-1 overflow-x-auto" aria-label="Administration">
+		<nav class="mt-5 flex gap-1 overflow-x-auto" aria-label="Manage">
 			{#each tabs as tab (tab.href)}
 				{@const active = page.url.pathname.startsWith(tab.href)}
 				<a

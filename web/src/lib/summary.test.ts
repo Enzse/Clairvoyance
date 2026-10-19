@@ -20,11 +20,11 @@ describe('describeChange', () => {
 	});
 
 	it('says when only some units are compared', () => {
-		expect(describeChange(kpi, change(42500, true), aug, 'monthly')).toBe(' Up $42,500 from Aug 2026 for the 1 of 2 units that reported both months.');
+		expect(describeChange(kpi, change(42500, true), aug, 'monthly', 'branches')).toBe(' Up $42,500 from Aug 2026 for the 1 of 2 branches that reported both months.');
 	});
 
 	it('explains when nothing can be compared, and stays quiet without a previous figure', () => {
-		expect(describeChange(kpi, null, aug, 'quarterly')).toBe(' Not comparable with Aug 2026 yet: no unit has reported both.');
+		expect(describeChange(kpi, null, aug, 'quarterly')).toBe(' Not comparable with Aug 2026 yet: nothing has been reported for both.');
 		expect(describeChange(kpi, null, { period_label: 'Aug 2026', value: null }, 'monthly')).toBe('');
 	});
 });

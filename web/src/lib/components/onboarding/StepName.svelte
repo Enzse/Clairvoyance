@@ -27,7 +27,7 @@
 	}
 </script>
 
-<form class="panel -mt-6 max-w-xl p-6 sm:p-8" onsubmit={submit}>
+<form class="panel -mt-6 p-6 sm:p-8" onsubmit={submit}>
 	<label class="field-label" for="org-name">Organisation name</label>
 	<!-- svelte-ignore a11y_autofocus -->
 	<input id="org-name" class="input text-md" placeholder="e.g. Bean There Coffee" maxlength="255" required autofocus bind:value={name} />
