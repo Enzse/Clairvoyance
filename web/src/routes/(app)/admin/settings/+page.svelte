@@ -55,7 +55,7 @@
 	</section>
 
 	<section class="panel p-5 sm:p-6" in:fly={{ y: 10 * move, duration: 260, delay: 60 * move, easing: cubicOut }}>
-		{@render heading('pin', 'What you call the parts that report', 'The app uses this word everywhere, from the scorecard to data entry.')}
+		{@render heading('pin', 'Your word for units', `Units are the parts of ${current} that report figures, like branches, schools or departments. Choose the word your people use, and the scorecard, data entry and the rest of the app will use it.`)}
 		<div class="mt-4 sm:pl-[3.375rem]"><WordPicker /></div>
 	</section>
 

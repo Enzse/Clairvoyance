@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
 	import { api } from '$lib/api';
 	import { plural } from '$lib/format';
+	import { members } from '$lib/members.svelte';
 	import { problem } from '$lib/problem';
 	import { toast } from '$lib/toast.svelte';
-	import type { Invitation, Member, Membership, Unit } from '$lib/types';
+	import type { Member, Membership, Unit } from '$lib/types';
 	import { units } from '$lib/units.svelte';
 	import Icon from '../Icon.svelte';
 	import Tooltip from '../Tooltip.svelte';
@@ -17,38 +17,31 @@
 
 	/**
 	 * Who can see or enter data for this unit: people given it directly (changeable here),
-	 * people who have it through a group above, and invitations still waiting.
+	 * people who have it through a group above (changeable on that group), and invitations
+	 * still waiting.
 	 */
-	let { unit }: { unit: Unit } = $props();
+	let { unit, onOpen }: { unit: Unit; onOpen: (unitId: number) => void } = $props();
 
-	let members = $state<Member[]>([]);
-	let invitations = $state<Invitation[]>([]);
 	let inviting = $state(false);
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
-
-	onMount(load);
-	async function load() {
-		[members, invitations] = await Promise.all([api.members(), api.invitations()]);
-	}
 
 	const RANK = { viewer: 1, contributor: 2 };
 	const verb = (level: Membership['role']) => (level === 'contributor' ? 'enters data' : 'views');
 	const isGroup = $derived(unit.parent_id === null || units.children(unit.id).length > 0);
 	const above = $derived(units.path(unit.id).slice(0, -1));
-	const people = $derived(members.filter((m) => m.role === 'member'));
-	const admins = $derived(members.length - people.length);
+	const people = $derived(members.list.filter((m) => m.role === 'member'));
+	const admins = $derived(members.list.length - people.length);
 
 	const direct = $derived(people.flatMap((m) => m.memberships.filter((a) => a.unit_id === unit.id).map((access) => ({ member: m, access }))));
 	const inherited = $derived(
 		people.flatMap((m) => {
 			if (direct.some((d) => d.member.id === m.id)) return [];
-			const best = m.memberships
-				.filter((a) => above.some((u) => u.id === a.unit_id))
-				.sort((a, b) => RANK[b.role] - RANK[a.role])[0];
-			return best ? [{ member: m, access: best, via: units.get(best.unit_id) }] : [];
+			const best = m.memberships.filter((a) => above.some((u) => u.id === a.unit_id)).sort((a, b) => RANK[b.role] - RANK[a.role])[0];
+			const via = best && units.get(best.unit_id);
+			return best && via ? [{ member: m, access: best, via }] : [];
 		})
 	);
-	const waiting = $derived(invitations.filter((i) => i.access.some((a) => a.unit_id === unit.id)));
+	const waiting = $derived(members.invitations.filter((i) => i.access.some((a) => a.unit_id === unit.id)));
 	const addable = $derived(people.filter((m) => !direct.some((d) => d.member.id === m.id)));
 
 	async function setAccess(member: Member, level: Membership['role'] | null) {
@@ -94,10 +87,15 @@
 			</li>
 		{/each}
 		{#each inherited as { member, access, via } (member.id)}
-			<li class="flex items-center gap-2.5 px-2 py-1.5">
+			<li class="flex items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-2 py-1.5">
 				<Avatar name={member.name} email={member.email} size="sm" />
 				<span class="min-w-0 flex-1 truncate text-sm">{member.name || member.email}</span>
-				<span class="shrink-0 text-xs text-muted">{access.role === 'contributor' ? 'Enters data' : 'Views'} through {via?.name}</span>
+				<Tooltip text="Their access comes from {via.name}. Change it there" side="left">
+					<button class="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-ink-2 hover:bg-accent-wash hover:text-accent" onclick={() => onOpen(via.id)}>
+						{access.role === 'contributor' ? 'Enters data' : 'Views'} through <span class="font-medium">{via.name}</span>
+						<Icon name="chevron-right" size={12} />
+					</button>
+				</Tooltip>
 			</li>
 		{/each}
 		{#each waiting as invite (invite.id)}
@@ -112,6 +110,9 @@
 	{#if !direct.length && !inherited.length && !waiting.length}
 		<p class="mt-1 rounded-lg border border-dashed border-line-strong px-3 py-2.5 text-sm text-ink-2">Only administrators can see {unit.name} so far.</p>
 	{/if}
+	{#if inherited.length}
+		<p class="mt-2 text-xs text-muted">Access given on a group above is changed on that group. You can also give someone more here.</p>
+	{/if}
 
 	{#if addable.length}
 		<select class="input mt-2 h-9 text-sm" onchange={add} aria-label="Give someone access to {unit.name}">
@@ -121,4 +122,4 @@
 	{/if}
 </section>
 
-<InviteModal bind:open={inviting} onCreated={load} preset={{ unit_id: unit.id, role: isGroup ? 'viewer' : 'contributor' }} />
+<InviteModal bind:open={inviting} onCreated={() => members.load()} preset={{ unit_id: unit.id, role: isGroup ? 'viewer' : 'contributor' }} />

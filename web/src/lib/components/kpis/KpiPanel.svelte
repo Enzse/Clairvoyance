@@ -80,7 +80,7 @@
 		</Tooltip>
 	</header>
 
-	<div class="flex-1 space-y-8 overflow-y-auto px-5 py-5">
+	<div class="flex-1 space-y-8 overflow-x-hidden overflow-y-auto px-5 py-5">
 		<section aria-label="Basics"><KpiBasics bind:form {errors} existing /></section>
 		<section class="border-t border-line pt-6" aria-labelledby="k-rollup">
 			<h3 id="k-rollup" class="mb-4 font-semibold">How it adds up</h3>

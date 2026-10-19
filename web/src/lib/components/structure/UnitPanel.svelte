@@ -22,8 +22,9 @@
 		unit,
 		gatherFirst = false,
 		onClose,
-		onDeleted
-	}: { unit: Unit; gatherFirst?: boolean; onClose: () => void; onDeleted: (parentId: number | null) => void } = $props();
+		onDeleted,
+		onSelect
+	}: { unit: Unit; gatherFirst?: boolean; onClose: () => void; onDeleted: (parentId: number | null) => void; onSelect: (id: number) => void } = $props();
 
 	const isRoot = $derived(unit.parent_id === null);
 	const kids = $derived(units.children(unit.id));
@@ -138,13 +139,13 @@
 		</Tooltip>
 	</header>
 
-	<div class="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+	<div class="flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-5 py-5">
 		<dl class="space-y-4">
 			{#if !isRoot}
 				<div class="flex items-center justify-between gap-4">
 					<dt class="text-sm text-ink-2">Term <span class="block text-xs text-muted">What you call it, e.g. Branch or Region</span></dt>
 					<dd class="min-w-0 flex-1 text-right text-sm font-medium">
-						<InlineEdit value={unit.kind} label="Term" tip="Change term" placeholder="Add a term" optional onSave={(kind) => saveUnit(unit, { kind: kind || null })} />
+						<InlineEdit value={unit.kind} label="Term" tip="Change term" tipSide="left" placeholder="Add a term" optional onSave={(kind) => saveUnit(unit, { kind: kind || null })} />
 					</dd>
 				</div>
 				<div>
@@ -204,7 +205,7 @@
 			</label>
 		{/if}
 
-		<UnitAccess {unit} />
+		<UnitAccess {unit} onOpen={onSelect} />
 
 		{#if candidates.length}
 			<section class="border-t border-line pt-5">

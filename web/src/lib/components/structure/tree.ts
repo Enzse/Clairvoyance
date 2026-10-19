@@ -11,4 +11,6 @@ export type Tree = {
 	stopAdd: () => void;
 	added: (ids: number[]) => void;
 	kindFor: (parentId: number) => string | null;
+	/** People (not administrators) who can see the unit */
+	accessCount: (id: number) => number;
 };

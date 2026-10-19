@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
@@ -10,6 +11,7 @@
 	import type { Tree } from '$lib/components/structure/tree';
 	import UnitPanel from '$lib/components/structure/UnitPanel.svelte';
 	import { plural } from '$lib/format';
+	import { members } from '$lib/members.svelte';
 	import { term } from '$lib/terms.svelte';
 	import { units } from '$lib/units.svelte';
 
@@ -98,8 +100,11 @@
 			}
 		},
 		// New ones take the kind of what's already there, otherwise the organisation's word
-		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One))
+		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One)),
+		accessCount: (id) => members.withAccess(id).length
 	};
+
+	onMount(() => members.load());
 
 	// Clicking empty space in the tree closes the details
 	function onTreeClick(event: MouseEvent) {
@@ -155,7 +160,7 @@
 		aria-label="{selected.name} details"
 		transition:fly={{ x: 440 * move, duration: 280, easing: cubicOut, opacity: 1 }}
 	>
-		<UnitPanel unit={selected} gatherFirst={gatherNext} onClose={close} onDeleted={(parentId) => (selectedId = parentId)} />
+		<UnitPanel unit={selected} gatherFirst={gatherNext} onClose={close} onDeleted={(parentId) => (selectedId = parentId)} onSelect={(id) => (selectedId = id)} />
 	</aside>
 {/if}
 

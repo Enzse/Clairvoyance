@@ -83,7 +83,7 @@
 		</Tooltip>
 	</header>
 
-	<div class="flex-1 space-y-8 overflow-y-auto px-5 py-5">
+	<div class="flex-1 space-y-8 overflow-x-hidden overflow-y-auto px-5 py-5">
 		{#if isSelf}
 			<div class="flex items-start gap-3 rounded-xl bg-surface-2 px-4 py-3 text-sm ring-1 ring-line">
 				<Icon name="shield" size={18} class="mt-0.5 shrink-0 text-accent" />

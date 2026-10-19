@@ -139,9 +139,10 @@
 								</thead>
 								<tbody>
 									{#each card.kpis as row (row.kpi.id)}
-										<tr class="group border-b border-line last:border-b-0 hover:bg-surface-2">
+										<!-- The whole row opens the KPI: its link covers the row -->
+										<tr class="group relative cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2">
 											<th scope="row" class="py-3.5 pr-3 pl-5 font-normal">
-												<a class="font-semibold text-ink group-hover:text-accent hover:underline" href={kpiHref(row.kpi.id)}>{row.kpi.name}</a>
+												<a class="font-semibold text-ink group-hover:text-accent group-hover:underline after:absolute after:inset-0" href={kpiHref(row.kpi.id)}>{row.kpi.name}</a>
 												<span class="block text-sm text-muted">{row.period_label}</span>
 											</th>
 											<td class="px-3 py-3.5">
@@ -153,7 +154,7 @@
 											</td>
 											<td class="px-3 py-3.5 text-right text-lg font-semibold whitespace-nowrap">{formatValue(row.kpi, row.value)}</td>
 											<td class="num hidden px-3 sm:table-cell py-3.5 text-right whitespace-nowrap text-ink-2">{formatValue(row.kpi, row.target)}</td>
-											<td class="hidden px-3 md:table-cell py-3.5 text-sm whitespace-nowrap"><ChangeCell {row} /></td>
+											<td class="hidden px-3 md:table-cell py-3.5 text-sm whitespace-nowrap"><span class="relative z-10"><ChangeCell {row} /></span></td>
 											<td class="hidden px-3 py-3.5 lg:table-cell">
 												<Sparkline values={row.sparkline.map((p) => p.value)} label="{row.kpi.name}, last {row.sparkline.length} periods" />
 											</td>

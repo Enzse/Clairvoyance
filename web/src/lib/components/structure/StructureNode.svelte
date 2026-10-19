@@ -28,6 +28,7 @@
 	const selected = $derived(tree.selectedId === unit.id);
 	const adding = $derived(tree.addingUnder === unit.id);
 	const reporting = $derived(isGroup ? units.reporting(unit.id) : []);
+	const people = $derived(tree.accessCount(unit.id));
 	const isFresh = $derived(tree.fresh.has(unit.id));
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 </script>
@@ -78,6 +79,14 @@
 				</span>
 			</span>
 		</span>
+
+		{#if people}
+			<Tooltip text="{plural(people, 'person', 'people')} can see {unit.name}, besides administrators" side="left">
+				<span class="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-ink-2 ring-1 ring-line">
+					<Icon name="users" size={12} class="text-muted" /><span class="num">{people}</span><span class="hidden md:inline">{people === 1 ? 'person' : 'people'}</span>
+				</span>
+			</Tooltip>
+		{/if}
 
 		<span class="flex shrink-0 items-center gap-0.5 {selected || adding ? '' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}">
 			{#if !unit.has_values}

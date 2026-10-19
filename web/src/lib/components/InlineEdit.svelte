@@ -26,7 +26,7 @@
 		optional?: boolean;
 		/** Tooltip, e.g. "Rename" */
 		tip: string;
-		tipSide?: 'top' | 'bottom' | 'right';
+		tipSide?: 'top' | 'bottom' | 'left' | 'right';
 		class?: string;
 		inputClass?: string;
 	} = $props();
