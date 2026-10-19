@@ -167,14 +167,14 @@ database both work, and UptimeRobot emails you when it stops.
 
 To load the sample dataset (6 KPIs, 14 units, a year of monthly figures):
 
-1. Sign up and create an organisation.
+1. Sign up.
 2. Run this over SSH:
 
    ```bash
    cd ~/domains/example.com/clairvoyance && php scripts/seed_demo.php you@example.com
    ```
 
-It loads into the organisation that account administers, and it's safe to run twice.
+It creates a separate "DepEd sample" organisation for that account, and it's safe to run twice.
 
 ## Rolling back
 
