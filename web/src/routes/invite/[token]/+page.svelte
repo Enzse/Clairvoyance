@@ -58,8 +58,8 @@
 		<h1 class="mt-1 text-2xl font-semibold tracking-[-0.02em] text-balance">{invite.organization_name}</h1>
 		<p class="mt-3 text-ink-2">
 			{invite.role === 'admin'
-				? "You'll be an administrator: you can set up KPIs, units and people."
-				: "You'll see and enter the figures for the units they've given you."}
+				? "You'll be an administrator: you can set up KPIs, structure and people."
+				: "You'll see and enter the figures for the parts of the organisation they've given you."}
 		</p>
 
 		<div class="mt-8">

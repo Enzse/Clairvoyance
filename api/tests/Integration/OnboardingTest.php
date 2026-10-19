@@ -123,6 +123,24 @@ class OnboardingTest extends ApiTestCase
         $this->assertSame('admin', $this->ok('POST', '/invitations/accept', [], ['token' => $memberInvite['token']])['organization']['role']);
     }
 
+    public function test6bTheOrganisationChoosesItsWordForUnits(): void
+    {
+        $this->actingAs(self::$admin);
+        $before = $this->ok('GET', '/auth/me')['organization'];
+        $this->assertSame('team', $before['unit_label'], 'the default');
+        $me = $this->ok('PUT', '/organization', [], ['unit_label' => 'Branch']);
+        $this->assertSame('branch', $me['organization']['unit_label']);
+        $this->assertSame($before['name'], $me['organization']['name'], 'the name is left alone');
+        $this->assertStatus(400, $this->call('PUT', '/organization', [], ['unit_label' => '<b>']));
+
+        // Messages use it: entering figures for a roll-up of branches
+        $region = $this->createUnit($this->rootId(), 'Metro', 'Region');
+        $this->createUnit($region, 'Uptown', 'Branch');
+        $kpi = $this->createKpi(['code' => 'covers', 'name' => 'Covers']);
+        $refused = $this->call('PUT', '/values', [], ['values' => [['kpi_id' => $kpi['id'], 'unit_id' => $region, 'period' => '2025-06-01', 'value' => 1]]]);
+        $this->assertTrue(strpos(json_encode($refused[1]), 'adds up the branches under it') !== false, json_encode($refused[1]));
+    }
+
     public function test7KpiScopedToADepartment(): void
     {
         $this->actingAs(self::$admin);

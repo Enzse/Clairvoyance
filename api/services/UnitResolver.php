@@ -3,6 +3,7 @@
 namespace Services;
 
 use Domain\UnitTree;
+use Domain\Words;
 
 /**
  * Finds the unit for a CSV row, planning new units (as "new:N" placeholders) when allowed.
@@ -12,11 +13,13 @@ final class UnitResolver
     private UnitTree $tree;
     private int $parentId;
     private bool $create;
+    private string $noun;              // the organisation's word, e.g. "branch"
     private array $planned = [];        // ref => [parent, name, kind, label]
     private array $plannedChildren = []; // parent ref => [lowercase name => ref]
 
-    public function __construct(UnitTree $tree, int $parentId, bool $create)
+    public function __construct(UnitTree $tree, int $parentId, bool $create, string $noun = 'team')
     {
+        $this->noun = $noun;
         $this->tree = $tree;
         $this->parentId = $parentId;
         $this->create = $create;
@@ -27,14 +30,14 @@ final class UnitResolver
     {
         foreach ($names as $name) {
             if ($name === '') {
-                throw new \DomainException('The unit is missing');
+                throw new \DomainException("The {$this->noun} is missing");
             }
         }
 
         if ($match === 'code') {
             $id = $this->tree->findByCode($names[0]);
             if ($id === null) {
-                throw new \DomainException("No unit has code '{$names[0]}'");
+                throw new \DomainException("No {$this->noun} has code '{$names[0]}'");
             }
             return [$id, $this->label($id)];
         }
@@ -45,7 +48,7 @@ final class UnitResolver
                 fn($id) => $this->tree->isLeaf($id) && mb_strtolower($this->tree->get($id)['name']) === mb_strtolower($names[0])
             ));
             if (count($matches) > 1) {
-                throw new \DomainException("More than one unit is named '{$names[0]}'; match by path or code instead");
+                throw new \DomainException("More than one {$this->noun} is named '{$names[0]}'; match by path or code instead");
             }
             if ($matches) {
                 return [$matches[0], $this->label($matches[0])];
@@ -59,7 +62,7 @@ final class UnitResolver
         }
 
         if (is_int($ref) && !$this->tree->isLeaf($ref)) {
-            throw new \DomainException($this->label($ref) . ' has units under it; values go on the units at the bottom of the tree');
+            throw new \DomainException($this->label($ref) . ' adds up the ' . Words::plural($this->noun) . ' under it; figures go on those instead');
         }
         return [$ref, $this->labelOf($ref)];
     }
@@ -111,7 +114,7 @@ final class UnitResolver
         }
         $path = $this->labelOf($parentRef) . ' > ' . $name;
         if (!$this->create) {
-            throw new \DomainException("Unknown unit {$path} (turn on 'create missing units' to add it)");
+            throw new \DomainException("There's no {$this->noun} {$path} (turn on adding new ones to create it)");
         }
         $ref = 'new:' . (count($this->planned) + 1);
         $this->planned[$ref] = ['parent' => $parentRef, 'name' => $name, 'kind' => $kind, 'label' => $path];

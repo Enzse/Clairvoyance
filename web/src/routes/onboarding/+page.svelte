@@ -12,6 +12,7 @@
 	import { logout, session } from '$lib/session.svelte';
 	import { guessCurrency } from '$lib/starter-kpis';
 	import { units } from '$lib/units.svelte';
+	import { term } from '$lib/terms.svelte';
 
 	/**
 	 * Four steps after sign-up: name the organisation, describe its structure, pick starter
@@ -53,7 +54,7 @@
 	const TITLES: Record<number, { title: string; lead: string }> = $derived({
 		1: { title: 'Set up your organisation', lead: 'Name it for the company or team whose KPIs you track. You can change it later.' },
 		2: { title: `How is ${org?.name ?? 'it'} organised?`, lead: 'Figures are entered by each branch, department or team, and add up to the whole organisation.' },
-		3: { title: 'Choose your first KPIs', lead: 'Each one already knows how to add up over time and across units. Targets come next, on your scorecard.' },
+		3: { title: 'Choose your first KPIs', lead: `Each one already knows how to add up over time and across ${term.many}. Targets come next, on your scorecard.` },
 		4: { title: 'Invite your team', lead: 'Give each person access to what they report on or review. You can do this later under Admin.' }
 	});
 </script>

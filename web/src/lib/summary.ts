@@ -32,7 +32,7 @@ export function summarize(rows: ScorecardRow[]): string {
 		parts.push(`${period}: none of these KPIs has a target yet.`);
 	}
 
-	parts.push(incomplete.length ? `Some figures are still missing for ${joinNames(incomplete)}.` : 'Every unit has reported.');
+	parts.push(incomplete.length ? `Some figures are still missing for ${joinNames(incomplete)}.` : 'Everyone has reported.');
 	return parts.join(' ');
 }
 
@@ -40,12 +40,18 @@ export function summarize(rows: ScorecardRow[]): string {
  * The change sentence for a KPI, e.g. "Down $2,500 from Aug 2025." When some units hadn't
  * reported, the comparison covers only those that reported both periods, and says so.
  */
-export function describeChange(kpi: Kpi, change: Change | null, previous: { period_label: string; value: number | null } | null, grain: Frequency): string {
+export function describeChange(
+	kpi: Kpi,
+	change: Change | null,
+	previous: { period_label: string; value: number | null } | null,
+	grain: Frequency,
+	units = 'units'
+): string {
 	if (!previous || previous.value === null) return '';
-	if (!change) return ` Not comparable with ${previous.period_label} yet: no unit has reported both.`;
+	if (!change) return ` Not comparable with ${previous.period_label} yet: nothing has been reported for both.`;
 	const amount = formatDelta(kpi, Math.abs(change.value)).slice(1);
 	const movement = change.value === 0 ? `Unchanged from ${previous.period_label}` : `${change.value > 0 ? 'Up' : 'Down'} ${amount} from ${previous.period_label}`;
 	if (change.basis === 'all') return ` ${movement}.`;
 	const periods = `${GRAIN_NAMES[grain].noun.toLowerCase()}s`;
-	return ` ${movement} for the ${change.units_compared} of ${change.units_total} units that reported both ${periods}.`;
+	return ` ${movement} for the ${change.units_compared} of ${change.units_total} ${units} that reported both ${periods}.`;
 }

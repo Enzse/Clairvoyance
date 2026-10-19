@@ -32,7 +32,7 @@ Everything is keyed on **KPI × unit × period**.
 
 | Concept | Meaning |
 |---|---|
-| Organisation | A tenant. Owns its unit tree, KPIs, figures and imports; people join it with a role (admin or member). One person can belong to several. |
+| Organisation | A tenant. Owns its unit tree, KPIs, figures and imports; people join it with a role (admin or member). One person can belong to several. It has its own word for its units (`unit_label`: "branch", "department", "team"), which the interface uses instead of "unit". |
 | Unit | A node in the organisation's tree (Company › Region › Branch, or Company › Sales › North team). The root carries the organisation's name. Data is entered only at **leaf** units; parents are roll-ups. Model an HQ's own figures as a leaf such as "HQ Office". |
 | KPI | A definition owned by the organisation (admins create them). By default every leaf unit reports it; it can be **scoped** to some units, e.g. revenue for the Sales department only, and optionally to one kind of unit. |
 | Frequency | How often the KPI is reported: daily, weekly (ISO, Monday start), monthly, quarterly, yearly. |
@@ -130,7 +130,9 @@ Abridged; the source of truth is `api/migrations/`:
 - `001_baseline.sql`;
 - `002_organizations.sql`, which adds tenancy;
 - `003_production.sql`, which adds what running on the internet needs, described after the
-  schema.
+  schema;
+- `004_unit_label.sql`, which adds `organizations.unit_label`, set from the existing units'
+  most common kind.
 
 Nothing is seeded: an organisation's root unit is created together with the organisation.
 
@@ -391,7 +393,7 @@ as coarse as the KPI's frequency.
 | GET | `/health` | `{ok: true}` when PHP and the database work, for uptime monitoring |
 | POST | `/organizations` | Create an organisation (you become its admin) and select it |
 | POST | `/organizations/select` | Switch to another organisation you belong to |
-| PUT | `/organization` | Admin: rename (also renames the root unit) |
+| PUT | `/organization` | Admin: `{name?, unit_label?}`: rename (also renames the root unit) and/or change the word for units |
 | DELETE | `/organization` | Admin: delete it with everything in it `{name, password}` |
 | POST | `/organization/leave` | Leave the current organisation (not as its last admin) |
 | GET | `/organization/setup` | Getting-started checklist facts |

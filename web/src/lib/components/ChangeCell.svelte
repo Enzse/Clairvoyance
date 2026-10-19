@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatDelta } from '$lib/format';
+	import { term } from '$lib/terms.svelte';
 	import type { ScorecardRow } from '$lib/types';
 	import Icon from './Icon.svelte';
 
@@ -23,12 +24,12 @@
 	</span>
 	<span
 		class="block text-xs text-muted"
-		title={partial ? `Compares only the ${change.units_compared} of ${change.units_total} units that reported both periods` : undefined}
+		title={partial ? `Compares only the ${change.units_compared} of ${change.units_total} ${term.many} that reported both periods` : undefined}
 	>
-		vs {row.previous.period_label}{#if partial}, {change.units_compared} of {change.units_total} units{:else if change.direction === 'better' || change.direction === 'worse'}, {change.direction}{/if}
+		vs {row.previous.period_label}{#if partial}, {change.units_compared} of {change.units_total} {term.many}{:else if change.direction === 'better' || change.direction === 'worse'}, {change.direction}{/if}
 	</span>
 {:else if row.previous?.value != null && row.value !== null}
-	<span class="text-muted" title="No unit has reported both periods yet">Not comparable yet</span>
+	<span class="text-muted" title="Nothing has been reported for both periods yet">Not comparable yet</span>
 {:else}
 	<span class="text-muted">–</span>
 {/if}

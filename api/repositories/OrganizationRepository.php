@@ -21,7 +21,7 @@ class OrganizationRepository
 
     public function find(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, name, setup_dismissed_at, created_at FROM organizations WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT id, name, unit_label, setup_dismissed_at, created_at FROM organizations WHERE id = ?');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row ? ['id' => (int)$row['id']] + $row : null;
@@ -30,6 +30,11 @@ class OrganizationRepository
     public function rename(int $id, string $name): void
     {
         $this->db->prepare('UPDATE organizations SET name = ? WHERE id = ?')->execute([$name, $id]);
+    }
+
+    public function setUnitLabel(int $id, string $label): void
+    {
+        $this->db->prepare('UPDATE organizations SET unit_label = ? WHERE id = ?')->execute([$label, $id]);
     }
 
     public function dismissSetup(int $id): void

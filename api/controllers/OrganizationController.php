@@ -21,10 +21,10 @@ class OrganizationController
         return Response::created($this->organizations->create($request->body));
     }
 
-    /** PUT /organization {name}: rename the current organisation (admin). */
+    /** PUT /organization {name?, unit_label?}: rename the organisation or change its word for units (admin). */
     public function rename(Request $request): array
     {
-        return $this->organizations->rename($request->body);
+        return $this->organizations->update($request->body);
     }
 
     /** POST /organizations/select {organization_id}: work in another of your organisations. */

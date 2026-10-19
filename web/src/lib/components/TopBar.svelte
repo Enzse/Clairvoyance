@@ -29,8 +29,8 @@
 	const links = $derived(
 		[
 			{ href: '/', label: 'Scorecard', show: true, active: (p: string) => p === '/' || p.startsWith('/kpis') },
-			{ href: '/enter', label: 'Enter data', show: canEnter, active: (p: string) => p.startsWith('/enter') },
-			{ href: '/import', label: 'Import', show: canEnter, active: (p: string) => p.startsWith('/import') },
+			// Typing figures in and uploading a spreadsheet are two tabs of one page
+			{ href: '/enter', label: 'Add data', show: canEnter, active: (p: string) => p.startsWith('/enter') || p.startsWith('/import') },
 			{ href: '/admin/units', label: 'Admin', show: isAdmin, active: (p: string) => p.startsWith('/admin') }
 		].filter((l) => l.show)
 	);

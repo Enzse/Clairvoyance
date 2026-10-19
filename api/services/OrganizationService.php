@@ -53,12 +53,32 @@ class OrganizationService
         return $this->accounts->me();
     }
 
-    public function rename(array $input): array
+    /**
+     * Change the organisation's name and/or the word it uses for the parts that report
+     * figures (unit_label: "branch", "department"…, singular).
+     */
+    public function update(array $input): array
     {
         $organization = $this->auth->requireAdmin();
-        $name = $this->validName($input);
-        $this->organizations->rename($organization['id'], $name);
-        $this->units->renameRoot($organization['id'], $name);
+        $v = new Validator($input);
+        $name = $v->string('name', false, 255);
+        $label = $v->string('unit_label', false, 40);
+        if ($label !== null && !preg_match('/^\p{L}[\p{L} \'-]*$/u', $label)) {
+            $v->addError('unit_label', 'should be a word such as branch, department or team');
+        }
+        if ($name === null && $label === null) {
+            $v->addError('name', 'is required');
+        }
+        $v->check();
+
+        if ($name !== null) {
+            $this->organizations->rename($organization['id'], $name);
+            $this->units->renameRoot($organization['id'], $name);
+        }
+        if ($label !== null) {
+            $this->organizations->setUnitLabel($organization['id'], mb_strtolower($label));
+        }
+        $this->auth->refresh();
         return $this->accounts->me();
     }
 

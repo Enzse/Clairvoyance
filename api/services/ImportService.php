@@ -142,7 +142,7 @@ class ImportService
         $m = $this->validateMapping($mapping, $headers, $user);
 
         $plan = ['rows_total' => count($rows), 'entries' => [], 'errors' => [], 'new_units' => [], 'empty_cells' => 0];
-        $resolver = new UnitResolver($this->access->tree(), $m['parent_unit_id'], $m['create_missing_units']);
+        $resolver = new UnitResolver($this->access->tree(), $m['parent_unit_id'], $m['create_missing_units'], $this->auth->organization()['unit_label']);
         $seen = [];
         $finalUnits = [];   // unit ref => first row using it for values
 
@@ -196,7 +196,7 @@ class ImportService
                 $period = Period::align($date, $kpi['frequency']);
                 $key = "{$kpi['id']}|{$unitRef}|{$period}";
                 if (isset($seen[$key])) {
-                    $err("Duplicates row {$seen[$key]} (same unit, KPI and period)", $column);
+                    $err("Repeats row {$seen[$key]}: same place, KPI and period", $column);
                     continue;
                 }
                 $seen[$key] = $rowNo;
@@ -247,13 +247,13 @@ class ImportService
         $dateIndex = $find('date_column', $dateColumn);
 
         if (!$this->access->tree()->get($parentId)) {
-            $v->addError('parent_unit_id', 'unit not found');
+            $v->addError('parent_unit_id', 'not found');
         }
         if ($create && !$this->auth->isAdmin()) {
-            $v->addError('create_missing_units', 'only admins can create units');
+            $v->addError('create_missing_units', 'only administrators can add new ones');
         }
         if ($create && $unitMatch === 'code') {
-            $v->addError('create_missing_units', 'units cannot be created when matching by code');
+            $v->addError('create_missing_units', "new ones can't be added when matching by code");
         }
 
         $kpiColumns = [];

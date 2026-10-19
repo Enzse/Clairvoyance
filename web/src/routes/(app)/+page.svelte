@@ -14,6 +14,7 @@
 	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
+	import { cap, term, wordFor } from '$lib/terms.svelte';
 	import { units } from '$lib/units.svelte';
 
 	const ctx = $derived(readContext(page.url));
@@ -67,9 +68,9 @@
 {#if unitId === null}
 	<main class="mx-auto max-w-[1240px] px-4 py-16 sm:px-6">
 		<div class="panel max-w-xl p-8">
-			<h1 class="text-lg font-semibold">You don't have access to any units yet</h1>
+			<h1 class="text-lg font-semibold">You don't have access to anything yet</h1>
 			<p class="mt-2 text-ink-2">
-				An administrator needs to give {session.user?.email} access to the units you report for or review. Once they do, your
+				An administrator needs to give {session.user?.email} access to the {term.many} you report for or review. Once they do, your
 				scorecard appears here.
 			</p>
 		</div>
@@ -103,7 +104,7 @@
 							{/if}
 							{#if canEnter}
 								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: unitId, date: card.date })}>
-									<Icon name="pencil" size={14} /> Enter {card.kpis[0]?.period_label ?? ''} data
+									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
 								</a>
 							{/if}
 						</div>
@@ -161,8 +162,8 @@
 				<!-- Units × KPIs -->
 				{#if !isLeaf && childUnits.length && card.kpis.length}
 					<section class="panel mt-6 p-5" aria-labelledby="units-heading">
-						<h2 id="units-heading" class="text-md font-semibold">Units in {unit?.name}</h2>
-						<p class="mt-1 mb-4 text-sm text-ink-2">Each unit's own figure for {card.kpis[0].period_label}. Select a unit to open its scorecard, or a cell for that KPI's detail.</p>
+						<h2 id="units-heading" class="text-md font-semibold">{cap(wordFor(childUnits))} in {unit?.name}</h2>
+						<p class="mt-1 mb-4 text-sm text-ink-2">Each one's own figure for {card.kpis[0].period_label}. Select a name to open its scorecard, or a cell for that KPI's detail.</p>
 						<StatusMatrix
 							rows={childUnits}
 							kpis={card.kpis.map((r) => r.kpi)}

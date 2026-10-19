@@ -16,6 +16,7 @@
 	import { STATUS } from '$lib/status';
 	import type { Breakdown, Frequency, Kpi, Series } from '$lib/types';
 	import { units } from '$lib/units.svelte';
+	import { term, wordFor } from '$lib/terms.svelte';
 
 	const kpiId = $derived(Number(page.params.id));
 	const ctx = $derived(readContext(page.url));
@@ -78,7 +79,7 @@
 		if (current.value === null) return `${unit?.name} has no ${kpi.name.toLowerCase()} figure for ${current.period_label} yet.`;
 		let text = `${formatValue(kpi, current.value)} in ${current.period_label}`;
 		if (current.status && current.target !== null) text += `, ${STATUS[current.status].label.toLowerCase()} (target ${formatValue(kpi, current.target)})`;
-		return text + '.' + describeChange(kpi, series?.change ?? null, previous, grain);
+		return text + '.' + describeChange(kpi, series?.change ?? null, previous, grain, term.many);
 	}
 </script>
 
@@ -175,8 +176,8 @@
 				<div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
 					{#if breakdown && !isLeaf}
 						<section class="panel min-w-0 p-5 sm:p-6" aria-labelledby="units-heading">
-							<h2 id="units-heading" class="text-md font-semibold">By unit, {breakdown.period_label}</h2>
-							<p class="mt-1 mb-4 text-sm text-ink-2">Select a unit to see this KPI for it alone.</p>
+							<h2 id="units-heading" class="text-md font-semibold">By {wordFor(breakdown.units.map((r) => r.unit), false)}, {breakdown.period_label}</h2>
+							<p class="mt-1 mb-4 text-sm text-ink-2">Select one to see this KPI for it alone.</p>
 							<BreakdownBars rows={breakdown.units} {kpi} hrefFor={unitHref} />
 						</section>
 					{:else}
@@ -190,14 +191,14 @@
 							<div>
 								<dt class="text-ink-2">Reported</dt>
 								<dd class="mt-0.5">
-									{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, by each ${kpi.applies_to_kind.toLowerCase()}` : ', by each reporting unit'}{kpi.scope_unit_ids.length
+									{GRAIN_NAMES[kpi.frequency].adjective}{kpi.applies_to_kind ? `, by each ${kpi.applies_to_kind.toLowerCase()}` : `, by each ${term.one}`}{kpi.scope_unit_ids.length
 										? ` in ${kpi.scope_unit_ids.map((id) => units.get(id)?.name ?? '?').join(', ')}`
 										: ''}
 								</dd>
 							</div>
 							<div>
 								<dt class="text-ink-2">Combined</dt>
-								<dd class="mt-0.5">{describeRules(kpi, weight?.name.toLowerCase())}</dd>
+								<dd class="mt-0.5">{describeRules(kpi, weight?.name.toLowerCase(), term.many)}</dd>
 							</div>
 							<div>
 								<dt class="text-ink-2">Status</dt>

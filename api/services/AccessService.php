@@ -63,7 +63,7 @@ class AccessService
     {
         $unit = $this->requireUnit($unitId);
         if ($this->roleFor($unitId) === null) {
-            throw HttpException::forbidden('You do not have access to this unit');
+            throw HttpException::forbidden("You don't have access to this part of the organisation");
         }
         return $unit;
     }
@@ -73,10 +73,10 @@ class AccessService
         $unit = $this->requireUnit($unitId);
         $role = $this->roleFor($unitId);
         if ($role === null) {
-            throw HttpException::forbidden('You do not have access to this unit');
+            throw HttpException::forbidden("You don't have access to this part of the organisation");
         }
         if (self::RANK[$role] < self::RANK['contributor']) {
-            throw HttpException::forbidden('You can view this unit but not enter data for it');
+            throw HttpException::forbidden('You can view these figures but not enter them');
         }
         return $unit;
     }

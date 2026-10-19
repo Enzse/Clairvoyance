@@ -105,7 +105,7 @@ class ReportService
         $this->checkDate($date);
         $tree = $this->access->tree();
         if ($tree->isLeaf($unitId)) {
-            throw HttpException::badRequest("{$unit['name']} has no units under it");
+            throw HttpException::badRequest("{$unit['name']} has nothing under it to break down");
         }
 
         $start = Period::align($date, $grain);

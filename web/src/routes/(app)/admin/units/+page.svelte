@@ -6,6 +6,7 @@
 	import { toast } from '$lib/toast.svelte';
 	import type { Unit } from '$lib/types';
 	import { units } from '$lib/units.svelte';
+	import { term } from '$lib/terms.svelte';
 
 	const root = $derived(units.list.find((u) => u.parent_id === null));
 	const kinds = $derived([...new Set(units.list.map((u) => u.kind).filter(Boolean))] as string[]);
@@ -98,14 +99,14 @@
 	const leafCount = $derived(units.list.filter((u) => u.is_leaf && u.is_active).length);
 </script>
 
-<svelte:head><title>Organisation | Clairvoyance</title></svelte:head>
+<svelte:head><title>Structure | Clairvoyance</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-4">
 	<div>
-		<h2 class="text-lg font-semibold">Organisation</h2>
+		<h2 class="text-lg font-semibold">Structure</h2>
 		<p class="mt-1 max-w-[70ch] text-ink-2">
-			Figures are entered for the units at the bottom of the tree ({plural(leafCount, 'reporting unit')} now). Every unit above
-			them shows the combined figures of the units it contains.
+			Figures are entered by the {term.many} at the bottom ({plural(leafCount, term.one, term.many)} now). Each group above them,
+			like a region, shows the combined figures of everything inside it.
 		</p>
 	</div>
 </div>
@@ -114,7 +115,7 @@
 	<table class="w-full text-left">
 		<thead class="bg-surface-2 text-sm text-ink-2">
 			<tr class="border-b border-line">
-				<th scope="col" class="px-5 py-2.5 font-medium">Unit</th>
+				<th scope="col" class="px-5 py-2.5 font-medium">Name</th>
 				<th scope="col" class="hidden px-3 py-2.5 font-medium sm:table-cell">Kind</th>
 				<th scope="col" class="hidden px-3 py-2.5 font-medium md:table-cell">Code</th>
 				<th scope="col" class="px-3 py-2.5 font-medium">Reports</th>
@@ -136,7 +137,7 @@
 							{/if}
 							<span class={depth === 0 ? 'font-semibold' : 'font-medium'}>{unit.name}</span>
 							{#if !unit.is_active}<span class="rounded bg-surface-2 px-1.5 text-xs ring-1 ring-line">Inactive</span>{/if}
-							{#if collapsed.has(unit.id)}<span class="text-sm text-muted">{plural(kids.length, 'unit')}</span>{/if}
+							{#if collapsed.has(unit.id)}<span class="text-sm text-muted">{kids.length} inside</span>{/if}
 						</div>
 					</th>
 					<td class="hidden px-3 py-2 text-ink-2 sm:table-cell">{unit.kind ?? ''}</td>
@@ -145,7 +146,7 @@
 					<td class="px-5 py-2">
 						<div class="flex items-center justify-end gap-1">
 							{#if !unit.has_values}
-								<button class="btn btn-ghost btn-sm" onclick={() => startAdd(unit)}><Icon name="plus" size={14} /> Add unit</button>
+								<button class="btn btn-ghost btn-sm" onclick={() => startAdd(unit)}><Icon name="plus" size={14} /> Add inside</button>
 							{/if}
 							<button class="btn btn-ghost btn-sm" onclick={() => startEdit(unit)}>Edit</button>
 						</div>
@@ -156,7 +157,7 @@
 	</table>
 </div>
 
-<Drawer bind:open title={editing ? `Edit ${editing.name}` : `Add a unit to ${units.get(form.parent_id)?.name ?? ''}`}>
+<Drawer bind:open title={editing ? `Edit ${editing.name}` : `Add to ${units.get(form.parent_id)?.name ?? ''}`}>
 	<form id="unit-form" class="space-y-5" onsubmit={save}>
 		<div>
 			<label class="field-label" for="u-name">Name</label>
@@ -187,7 +188,7 @@
 				<input type="checkbox" class="mt-0.5 size-4 accent-[var(--accent)]" bind:checked={form.is_active} />
 				<span>
 					<span class="font-medium">Active</span>
-					<span class="block text-sm text-ink-2">Inactive units and everything inside them are left out of scorecards and data entry. Their data is kept.</span>
+					<span class="block text-sm text-ink-2">Inactive ones and everything inside them are left out of scorecards and data entry. Their data is kept.</span>
 				</span>
 			</label>
 		{/if}
@@ -200,6 +201,6 @@
 			<button class="btn btn-danger mr-auto" type="button" onclick={() => remove(editing!)}><Icon name="trash" size={14} /> Delete</button>
 		{/if}
 		<button class="btn btn-secondary" type="button" onclick={() => (open = false)}>Cancel</button>
-		<button class="btn btn-primary" form="unit-form" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Add unit'}</button>
+		<button class="btn btn-primary" form="unit-form" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Add'}</button>
 	{/snippet}
 </Drawer>

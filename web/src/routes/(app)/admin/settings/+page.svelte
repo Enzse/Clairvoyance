@@ -1,31 +1,35 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, ApiError } from '$lib/api';
+	import { pluralize } from '$lib/format';
 	import { session, setMe } from '$lib/session.svelte';
+	import { term } from '$lib/terms.svelte';
 	import { toast } from '$lib/toast.svelte';
 	import { units } from '$lib/units.svelte';
 
 	const current = $derived(session.user?.organization?.name ?? '');
 
 	let name = $state(session.user?.organization?.name ?? '');
-	let renaming = $state(false);
+	let label = $state(session.user?.organization?.unit_label ?? 'team');
+	let saving = $state<'name' | 'label' | null>(null);
+	const SUGGESTIONS = ['branch', 'store', 'department', 'team', 'office', 'site', 'school', 'clinic'];
 
 	let confirmName = $state('');
 	let password = $state('');
 	let deleting = $state(false);
 	let deleteError = $state<ApiError | null>(null);
 
-	async function rename(event: SubmitEvent) {
+	async function save(what: 'name' | 'label', event: SubmitEvent) {
 		event.preventDefault();
-		renaming = true;
+		saving = what;
 		try {
-			setMe(await api.renameOrganization(name.trim()));
-			await units.load(true); // the top unit carries the organisation's name
-			toast('Organisation renamed');
+			setMe(await api.updateOrganization(what === 'name' ? { name: name.trim() } : { unit_label: label.trim() }));
+			if (what === 'name') await units.load(true); // the top of the structure carries the organisation's name
+			toast(what === 'name' ? 'Organisation renamed' : `Saved. The app now says “${term.many}”`);
 		} catch (e) {
-			toast(e instanceof ApiError ? e.message : 'Could not rename', 'error');
+			toast(e instanceof ApiError ? (e.field('unit_label') ? `The word ${e.field('unit_label')}` : e.message) : 'Could not save', 'error');
 		} finally {
-			renaming = false;
+			saving = null;
 		}
 	}
 
@@ -49,23 +53,35 @@
 
 <svelte:head><title>Settings | Clairvoyance</title></svelte:head>
 
-<div class="grid max-w-3xl gap-6">
-	<form class="panel p-6" onsubmit={rename}>
+<div class="grid gap-6 lg:grid-cols-2">
+	<form class="panel p-6" onsubmit={(e) => save('name', e)}>
 		<h2 class="font-semibold">Organisation name</h2>
 		<p class="mt-1 text-sm text-ink-2">Shown in the top bar, on the scorecard and in invitation emails.</p>
 		<div class="mt-4 flex flex-wrap gap-3">
-			<input class="input max-w-sm flex-1" aria-label="Organisation name" required bind:value={name} />
-			<button class="btn btn-secondary" disabled={renaming || !name.trim() || name.trim() === current}>Save name</button>
+			<input class="input min-w-0 flex-1" aria-label="Organisation name" required bind:value={name} />
+			<button class="btn btn-secondary" disabled={saving !== null || !name.trim() || name.trim() === current}>Save</button>
 		</div>
 	</form>
 
-	<form class="panel p-6 ring-1 ring-bad/30" onsubmit={remove}>
-		<h2 class="font-semibold text-bad-ink">Delete this organisation</h2>
+	<form class="panel p-6" onsubmit={(e) => save('label', e)}>
+		<h2 class="font-semibold">What you call the parts that report</h2>
 		<p class="mt-1 text-sm text-ink-2">
-			Deletes {current} for everyone: its units, KPIs, targets, every figure and its history, and pending invitations. People
-			keep their accounts. This can't be undone, so export anything you want to keep first.
+			The app uses this word everywhere, e.g. “2 of 3 {pluralize(label.trim().toLowerCase() || 'team')} have reported”.
 		</p>
-		<div class="mt-5 grid max-w-xl gap-4 sm:grid-cols-2">
+		<div class="mt-4 flex flex-wrap gap-3">
+			<input class="input min-w-0 flex-1" aria-label="Word for the parts that report" list="unit-words" required maxlength="40" bind:value={label} />
+			<datalist id="unit-words">{#each SUGGESTIONS as word (word)}<option value={word}></option>{/each}</datalist>
+			<button class="btn btn-secondary" disabled={saving !== null || !label.trim() || label.trim().toLowerCase() === term.one}>Save</button>
+		</div>
+	</form>
+
+	<form class="panel p-6 ring-1 ring-bad/30 lg:col-span-2" onsubmit={remove}>
+		<h2 class="font-semibold text-bad-ink">Delete this organisation</h2>
+		<p class="mt-1 max-w-[80ch] text-sm text-ink-2">
+			Deletes {current} for everyone: its {term.many}, KPIs, targets, every figure and its history, and pending invitations.
+			People keep their accounts. This can't be undone, so export anything you want to keep first.
+		</p>
+		<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:max-w-3xl">
 			<div>
 				<label class="field-label" for="confirm-name">Type <strong>{current}</strong> to confirm</label>
 				<input id="confirm-name" class="input" autocomplete="off" bind:value={confirmName} aria-invalid={!!deleteError?.field('name')} />

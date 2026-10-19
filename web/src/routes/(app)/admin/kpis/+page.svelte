@@ -4,7 +4,8 @@
 	import ChoiceGroup from '$lib/components/ChoiceGroup.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { describeRules, formatValue } from '$lib/format';
+	import { describeRules, formatValue, pluralize } from '$lib/format';
+	import { term } from '$lib/terms.svelte';
 	import { align, FREQUENCIES, GRAIN_NAMES } from '$lib/period';
 	import { toast } from '$lib/toast.svelte';
 	import type { Kpi, Target, Unit } from '$lib/types';
@@ -129,7 +130,7 @@
 	}
 
 	const sampleValue = $derived(formatValue({ decimals: form.decimals, prefix: form.prefix, suffix: form.suffix }, 1234.5678));
-	const unitWord = $derived(form.applies_to_kind ? form.applies_to_kind.toLowerCase() : 'reporting unit');
+	const unitWord = $derived(form.applies_to_kind ? form.applies_to_kind.toLowerCase() : term.one);
 	const fieldError = (name: string) => (error?.field(name) ? `This ${error.field(name)}` : undefined);
 </script>
 
@@ -138,7 +139,7 @@
 <div class="flex flex-wrap items-end justify-between gap-4">
 	<div>
 		<h2 class="text-lg font-semibold">KPIs</h2>
-		<p class="mt-1 max-w-[70ch] text-ink-2">Each KPI decides once how its figures combine over time and across units, so it shows the same number everywhere.</p>
+		<p class="mt-1 max-w-[70ch] text-ink-2">Each KPI decides once how its figures combine over time and across {term.many}, so it shows the same number everywhere.</p>
 	</div>
 	<button class="btn btn-primary" onclick={startNew}><Icon name="plus" size={15} /> New KPI</button>
 </div>
@@ -164,7 +165,7 @@
 							<span class="block font-mono text-xs text-muted">{kpi.code}</span>
 						</th>
 						<td class="px-3 py-3 text-sm">{GRAIN_NAMES[kpi.frequency].adjective}<span class="block text-ink-2">{kpi.scope_unit_ids.length ? `By ${unitNames(kpi.scope_unit_ids)}` : 'By everyone'}{kpi.applies_to_kind ? `, ${kpi.applies_to_kind} only` : ''}</span></td>
-						<td class="max-w-80 px-3 py-3 text-sm text-ink-2">{describeRules(kpi, kpis.find((k) => k.id === kpi.weight_kpi_id)?.name.toLowerCase())}</td>
+						<td class="max-w-80 px-3 py-3 text-sm text-ink-2">{describeRules(kpi, kpis.find((k) => k.id === kpi.weight_kpi_id)?.name.toLowerCase(), term.many)}</td>
 						<td class="px-3 py-3 text-sm">
 							{kpi.direction === 'none' ? 'Tracked only' : kpi.direction === 'higher_is_better' ? 'Higher is better' : 'Lower is better'}
 							{#if kpi.direction !== 'none'}<span class="block text-ink-2">Close within {kpi.tolerance_pct}%</span>{/if}
@@ -210,8 +211,8 @@
 				<div>
 					<label class="field-label" for="k-kind">Of those, only</label>
 					<select id="k-kind" class="input" bind:value={form.applies_to_kind}>
-						<option value="">Any kind of unit</option>
-						{#each leafKinds as k (k)}<option value={k}>Units of kind {k}</option>{/each}
+						<option value="">Any kind</option>
+						{#each leafKinds as k (k)}<option value={k}>{pluralize(k)}</option>{/each}
 					</select>
 				</div>
 			{/if}
@@ -221,7 +222,7 @@
 			<fieldset>
 				<legend class="field-label">Reported by</legend>
 				<div class="flex gap-2">
-					{#each [[false, 'Everyone'], [true, 'Only some units']] as [some, text] (text)}
+					{#each [[false, 'Everyone'], [true, `Only some ${term.many}`]] as [some, text] (text)}
 						<label class="flex flex-1 cursor-pointer items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1 {limited === some ? 'bg-accent-wash ring-chart' : 'ring-line-strong'}">
 							<input type="radio" name="scope-mode" checked={limited === some} onchange={() => setLimited(some as boolean)} class="accent-[var(--accent)]" /> {text}
 						</label>
@@ -238,7 +239,7 @@
 						{/each}
 					</div>
 					<p class={fieldError('scope_unit_ids') ? 'field-error' : 'field-hint'}>
-						{fieldError('scope_unit_ids') ?? 'Ticking a unit includes everything inside it. Other units never see this KPI as missing.'}
+						{fieldError('scope_unit_ids') ?? 'Ticking one includes everything inside it. The others never see this KPI as missing.'}
 					</p>
 				{/if}
 			</fieldset>
@@ -258,13 +259,13 @@
 		<div>
 			<ChoiceGroup
 				name="units"
-				legend="Across units, figures are…"
+				legend="Across {term.many}, figures are…"
 				bind:value={form.unit_aggregation}
 				error={fieldError('weight_kpi_id')}
 				options={[
 					{ value: 'sum', label: 'Added up', hint: 'The company total is the sum of its branches or teams.' },
-					{ value: 'average', label: 'Averaged, each unit counting equally', hint: 'A small branch counts as much as a large one.' },
-					{ value: 'weighted_average', label: 'Averaged, weighted by another KPI', hint: 'Bigger units count more, e.g. satisfaction weighted by number of customers.' }
+					{ value: 'average', label: `Averaged, each ${term.one} counting equally`, hint: 'A small branch counts as much as a large one.' },
+					{ value: 'weighted_average', label: 'Averaged, weighted by another KPI', hint: `Bigger ${term.many} count more, e.g. satisfaction weighted by number of customers.` }
 				]}
 			/>
 			{#if form.unit_aggregation === 'weighted_average'}
@@ -321,17 +322,17 @@
 		<section class="border-t border-line pt-6" aria-labelledby="targets-heading">
 			<h3 id="targets-heading" class="font-semibold">Targets</h3>
 			<p class="mt-1 text-sm text-ink-2">
-				Set per {unitWord} per {GRAIN_NAMES[form.frequency].noun.toLowerCase()}. Parent units and longer periods combine targets the same way as the
+				Set per {unitWord} per {GRAIN_NAMES[form.frequency].noun.toLowerCase()}. Groups above them and longer periods combine targets the same way as the
 				figures. A target applies from its start date until a later one replaces it.
 			</p>
 			{#each [null, 'unit'] as scope (scope)}
 				{@const list = targets.filter((t) => (scope === null ? t.unit_id === null : t.unit_id !== null))}
 				<div class="mt-4">
-					<p class="text-sm font-medium">{scope === null ? `Every ${unitWord}` : 'Specific units'}</p>
+					<p class="text-sm font-medium">{scope === null ? `Every ${unitWord}` : `Specific ${term.many}`}</p>
 					{#each list as t (t.key)}
 						<div class="mt-2 flex items-center gap-2">
 							{#if scope !== null}
-								<select class="input min-w-0 flex-1" bind:value={t.unit_id} aria-label="Unit">
+								<select class="input min-w-0 flex-1" bind:value={t.unit_id} aria-label={term.One}>
 									{#each units.list.filter((u) => u.is_active) as u (u.id)}<option value={u.id}>{u.name}</option>{/each}
 								</select>
 							{/if}
@@ -343,7 +344,7 @@
 						</div>
 					{/each}
 					<button type="button" class="btn btn-ghost btn-sm mt-2 -ml-2.5" onclick={() => addTarget(scope === null ? null : (units.list.find((u) => u.is_leaf)?.id ?? null))}>
-						<Icon name="plus" size={14} /> Add {scope === null ? 'a target' : 'a unit target'}
+						<Icon name="plus" size={14} /> Add {scope === null ? 'a target' : `a target for one ${term.one}`}
 					</button>
 				</div>
 			{/each}

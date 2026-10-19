@@ -19,7 +19,7 @@
 			goto('/onboarding', { replaceState: true });
 			return;
 		}
-		units.load().catch((e) => (error = e instanceof ApiError ? e.message : 'Could not load your units'));
+		units.load().catch((e) => (error = e instanceof ApiError ? e.message : 'Could not load your organisation'));
 	});
 </script>
 

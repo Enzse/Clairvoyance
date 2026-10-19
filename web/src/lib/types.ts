@@ -15,6 +15,8 @@ export interface OrganizationSummary {
 	id: number;
 	name: string;
 	role: Role;
+	/** Its word for the parts that report ("branch"); present on the current organisation */
+	unit_label?: string;
 }
 
 export interface User {

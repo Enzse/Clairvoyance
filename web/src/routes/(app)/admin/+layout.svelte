@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { session } from '$lib/session.svelte';
+	import { term } from '$lib/terms.svelte';
 
 	let { children } = $props();
 
-	const tabs = [
-		{ href: '/admin/units', label: 'Organisation', hint: 'Units and how they nest' },
-		{ href: '/admin/kpis', label: 'KPIs', hint: 'Definitions and targets' },
-		{ href: '/admin/users', label: 'People', hint: 'Accounts and access' },
-		{ href: '/admin/settings', label: 'Settings', hint: 'Name, deleting' }
-	];
+	const tabs = $derived([
+		{ href: '/admin/units', label: 'Structure', hint: `${term.Many} and how they're grouped` },
+		{ href: '/admin/kpis', label: 'KPIs', hint: 'What you measure, and targets' },
+		{ href: '/admin/users', label: 'People', hint: 'Who can see and enter what' },
+		{ href: '/admin/settings', label: 'Settings', hint: 'Name, wording, deleting' }
+	]);
 </script>
 
 <section class="bg-navy text-navy-ink">

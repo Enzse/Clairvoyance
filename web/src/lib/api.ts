@@ -94,7 +94,7 @@ export const api = {
 	// Organisations
 	createOrganization: (name: string) => request<Me>('POST', '/organizations', { body: { name } }),
 	selectOrganization: (organizationId: number) => request<Me>('POST', '/organizations/select', { body: { organization_id: organizationId } }),
-	renameOrganization: (name: string) => request<Me>('PUT', '/organization', { body: { name } }),
+	updateOrganization: (body: { name?: string; unit_label?: string }) => request<Me>('PUT', '/organization', { body }),
 	leaveOrganization: () => request<Me>('POST', '/organization/leave'),
 	deleteOrganization: (name: string, password: string) => request<Me>('DELETE', '/organization', { body: { name, password } }),
 	setup: () => request<Setup>('GET', '/organization/setup'),

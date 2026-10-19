@@ -94,11 +94,11 @@ class KpiService
         $ids = $input['scope_unit_ids'] ?? [];
         $v = new Validator([]);
         if (!is_array($ids)) {
-            $v->addError('scope_unit_ids', 'must be a list of units');
+            $v->addError('scope_unit_ids', 'must be a list');
         } else {
             foreach ($ids as $id) {
                 if (filter_var($id, FILTER_VALIDATE_INT) === false || !$this->access->tree()->get((int)$id)) {
-                    $v->addError('scope_unit_ids', 'contains a unit that does not exist');
+                    $v->addError('scope_unit_ids', 'contains one that no longer exists');
                 }
             }
         }
@@ -132,7 +132,7 @@ class KpiService
             $from = $rv->date('effective_from', true);
             $value = $rv->number('value', true);
             if ($unitId !== null && !$tree->get($unitId)) {
-                $rv->addError('unit_id', 'unit not found');
+                $rv->addError('unit_id', 'not found');
             }
             try {
                 $rv->check();
@@ -143,7 +143,7 @@ class KpiService
             $from = Period::align($from, $kpi['frequency']);
             $key = ($unitId ?? 0) . '|' . $from;
             if (isset($seen[$key])) {
-                $v->addError("targets.{$i}", 'duplicates another target for the same unit and start period');
+                $v->addError("targets.{$i}", 'duplicates another target for the same place and start date');
                 continue;
             }
             $seen[$key] = true;

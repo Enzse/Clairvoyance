@@ -27,8 +27,7 @@ npm run build        # static build in build/; for a production release use ../s
 |---|---|
 | `src/routes/(app)/+page.svelte` | Scorecard: one unit, one period, every KPI, and the units × KPIs matrix |
 | `src/routes/(app)/kpis/[id]` | One KPI: trend, by-unit breakdown, how it's calculated |
-| `src/routes/(app)/enter` | Data entry for one unit and month |
-| `src/routes/(app)/import` | CSV import wizard |
+| `src/routes/(app)/enter`, `import` | "Add data": two tabs, typing in one unit's figures for a month, or uploading a CSV |
 | `src/routes/(app)/admin` | Organisation tree, KPI definitions and targets, people, access and invitations |
 | `src/routes/(app)/account` | Your name and password, leaving organisations, deleting your account |
 | `src/routes/(app)/admin/settings` | Renaming or deleting the organisation |
@@ -42,6 +41,10 @@ npm run build        # static build in build/; for a production release use ../s
 
 The unit, period and period length live in the URL (`?unit=&date=&grain=`), so every view can be
 bookmarked or shared. All numbers come from the API; the frontend never aggregates.
+
+The interface never says "unit": it uses the organisation's own word (`term` in
+`src/lib/terms.svelte.ts`, e.g. "2 of 3 branches"), or a list's shared kind ("Regions in …") via
+`wordFor()`. Page bands and bodies share one centred width (`PageBand.svelte`).
 
 ## Design notes
 

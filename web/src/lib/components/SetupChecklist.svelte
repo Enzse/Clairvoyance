@@ -20,7 +20,7 @@
 	const items = $derived(
 		setup
 			? [
-					{ done: setup.steps.structure, text: 'Add your branches, departments or teams', hint: 'Skip this if you report as one team.', links: [['Organisation', '/admin/units']] },
+					{ done: setup.steps.structure, text: 'Add your branches, departments or teams', hint: 'Skip this if you report as one team.', links: [['Structure', '/admin/units']] },
 					{ done: setup.steps.kpis, text: 'Choose the KPIs you track', hint: '', links: [['KPIs', '/admin/kpis']] },
 					{ done: setup.steps.targets, text: 'Set targets', hint: 'Status shows on target, close or behind once a KPI has one.', links: [['Targets', '/admin/kpis']] },
 					{ done: setup.steps.data, text: 'Enter or import your first figures', hint: '', links: [['Enter data', '/enter'], ['Import a spreadsheet', '/import']] },

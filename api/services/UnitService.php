@@ -41,11 +41,11 @@ class UnitService
         $tree = $this->access->tree();
         $parent = $tree->get($parentId);
         if (!$parent) {
-            $v->addError('parent_id', 'unit not found');
+            $v->addError('parent_id', 'not found');
         } elseif ($parent['has_values']) {
             $v->addError('parent_id', 'already holds values, so it must stay a leaf');
         } elseif ($tree->findChildByName($parentId, $name) !== null) {
-            $v->addError('name', 'is already used by another unit under the same parent');
+            $v->addError('name', 'is already used by another one in the same place');
         }
         $this->checkCode($v, $code, null);
         $v->check();
@@ -78,9 +78,9 @@ class UnitService
         if (isset($fields['parent_id']) && $fields['parent_id'] !== $unit['parent_id']) {
             $newParent = $tree->get($fields['parent_id']);
             if (!$newParent) {
-                $v->addError('parent_id', 'unit not found');
+                $v->addError('parent_id', 'not found');
             } elseif ($tree->isInSubtree($fields['parent_id'], $id)) {
-                $v->addError('parent_id', 'cannot move a unit inside itself');
+                $v->addError('parent_id', "can't be moved inside itself");
             } elseif ($newParent['has_values']) {
                 $v->addError('parent_id', 'already holds values, so it must stay a leaf');
             }
@@ -89,7 +89,7 @@ class UnitService
         if (!$isRoot && $parentId !== null) {
             $sibling = $tree->findChildByName($parentId, $name);
             if ($sibling !== null && $sibling !== $id) {
-                $v->addError('name', 'is already used by another unit under the same parent');
+                $v->addError('name', 'is already used by another one in the same place');
             }
         }
         if (array_key_exists('code', $fields)) {
@@ -116,10 +116,10 @@ class UnitService
             throw HttpException::conflict('The organisation root cannot be deleted');
         }
         if (!$tree->isLeaf($id)) {
-            throw HttpException::conflict('Delete or move the units under it first');
+            throw HttpException::conflict("Delete or move what's under it first");
         }
         if ($unit['has_values']) {
-            throw HttpException::conflict('This unit has data; deactivate it instead');
+            throw HttpException::conflict('This has figures; deactivate it instead, so they stay in the history');
         }
         $this->units->delete($this->auth->organizationId(), $id);
         $this->access->refreshTree();
@@ -132,7 +132,7 @@ class UnitService
         }
         $clash = $this->access->tree()->findByCode($code);
         if ($clash !== null && $clash !== $selfId) {
-            $v->addError('code', 'is already used by another unit');
+            $v->addError('code', 'is already used by another one');
         }
     }
 }
