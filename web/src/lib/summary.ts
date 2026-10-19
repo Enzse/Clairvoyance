@@ -55,3 +55,25 @@ export function describeChange(
 	const periods = `${GRAIN_NAMES[grain].noun.toLowerCase()}s`;
 	return ` ${movement} for the ${change.units_compared} of ${change.units_total} ${units} that reported both ${periods}.`;
 }
+
+/** Which KPIs a scorecard is showing: all, those with one status, or those still missing reports. */
+export type RowFilter = 'all' | 'green' | 'amber' | 'red' | 'missing';
+
+/** How many KPIs are on target, close and behind, and how many of the period's figures are in. */
+export function statusCounts(rows: ScorecardRow[]) {
+	const count = (status: string) => rows.filter((r) => r.value !== null && r.status === status).length;
+	return {
+		green: count('green'),
+		amber: count('amber'),
+		red: count('red'),
+		reported: rows.reduce((sum, r) => sum + r.reported, 0),
+		expected: rows.reduce((sum, r) => sum + r.expected, 0),
+		missing: rows.filter((r) => r.reported < r.expected).length
+	};
+}
+
+export function filterRows(rows: ScorecardRow[], filter: RowFilter): ScorecardRow[] {
+	if (filter === 'all') return rows;
+	if (filter === 'missing') return rows.filter((r) => r.reported < r.expected);
+	return rows.filter((r) => r.value !== null && r.status === filter);
+}

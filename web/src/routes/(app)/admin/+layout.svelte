@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { session } from '$lib/session.svelte';
 
 	let { children } = $props();
+	const isAdmin = $derived(session.user?.organization?.role === 'admin');
 
 	const tabs = $derived([
 		{ href: '/admin/units', label: 'Structure', hint: 'Your units and how they’re grouped' },
@@ -17,6 +19,7 @@
 		<div class="border-t border-navy-2 pt-6">
 			<h1 class="text-2xl font-semibold tracking-[-0.025em]">Manage {session.user?.organization?.name}</h1>
 		</div>
+		{#if isAdmin}
 		<nav class="mt-5 flex gap-1 overflow-x-auto" aria-label="Manage">
 			{#each tabs as tab (tab.href)}
 				{@const active = page.url.pathname.startsWith(tab.href)}
@@ -30,13 +33,21 @@
 				</a>
 			{/each}
 		</nav>
+		{:else}
+			<div class="pb-9"></div>
+		{/if}
 	</div>
 </section>
 
 <main class="mx-auto max-w-[1240px] px-4 py-8 sm:px-6">
-	{#if session.user?.organization?.role === 'admin'}
+	{#if isAdmin}
 		{@render children()}
 	{:else}
-		<p class="text-ink-2">Only administrators can change the organisation, KPIs and people.</p>
+		<div class="-mt-12">
+			<EmptyState icon="shield" title="Manage is for administrators">
+				<p>Administrators set up the structure, KPIs and people of {session.user?.organization?.name}. Ask one of them if something needs changing.</p>
+				{#snippet action()}<a class="btn btn-secondary" href="/">Back to the scorecard</a>{/snippet}
+			</EmptyState>
+		</div>
 	{/if}
 </main>

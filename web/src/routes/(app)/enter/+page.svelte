@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import DataTabs from '$lib/components/DataTabs.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import EntryForm from '$lib/components/entry/EntryForm.svelte';
 	import EntryHub from '$lib/components/entry/EntryHub.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -53,7 +54,11 @@
 
 <PageBand
 	title={unit ? `${unit.name} · ${month}` : 'Add data'}
-	lead={unit ? `Type in ${unit.name}'s figures. Leave a field empty if you don't have that figure yet.` : `Who has entered their figures for ${month}, and who is still to go.`}
+	lead={unit
+		? `Type in ${unit.name}'s figures. Leave a field empty if you don't have that figure yet.`
+		: enterable.length
+			? `Who has entered their figures for ${month}, and who is still to go.`
+			: undefined}
 	width="form"
 >
 	<DataTabs />
@@ -93,9 +98,11 @@
 
 <main class="mx-auto max-w-[1240px] px-4 pb-28 sm:px-6"><div class="mx-auto {WIDTH.form}">
 	{#if !enterable.length}
-		<div class="panel -mt-5 p-6">
-			<p class="font-semibold">You can't add figures for any {term.many} yet</p>
-			<p class="mt-1 text-ink-2">An administrator can let you enter data for the {term.many} you report for.</p>
+		<div class="-mt-5">
+			<EmptyState icon="lock" title="Nothing for you to add yet">
+				<p>An administrator can let you enter figures for the {term.many} you report for. Until then you can look at the scorecard.</p>
+				{#snippet action()}<a class="btn btn-secondary" href="/">Open the scorecard</a>{/snippet}
+			</EmptyState>
 		</div>
 	{:else if unitId !== null}
 		<EntryForm {unitId} {date} {next} onSaved={() => loadProgress(date)} />

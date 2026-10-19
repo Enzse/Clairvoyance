@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describeChange } from './summary';
-import type { Change, Kpi } from './types';
+import { describeChange, filterRows, statusCounts } from './summary';
+import type { Change, Kpi, ScorecardRow } from './types';
 
 const kpi = { prefix: '$', suffix: '', decimals: 0 } as Kpi;
 const change = (value: number, partial = false): Change => ({
@@ -26,5 +26,21 @@ describe('describeChange', () => {
 	it('explains when nothing can be compared, and stays quiet without a previous figure', () => {
 		expect(describeChange(kpi, null, aug, 'quarterly')).toBe(' Not comparable with Aug 2026 yet: nothing has been reported for both.');
 		expect(describeChange(kpi, null, { period_label: 'Aug 2026', value: null }, 'monthly')).toBe('');
+	});
+});
+
+describe('statusCounts and filterRows', () => {
+	const row = (id: number, status: 'green' | 'amber' | 'red' | null, reported: number, expected = 2) =>
+		({ kpi: { id }, status, value: reported ? 1 : null, reported, expected }) as unknown as ScorecardRow;
+	const rows = [row(1, 'green', 2), row(2, 'red', 1), row(3, 'amber', 2), row(4, 'green', 0)];
+
+	it('counts statuses of KPIs with a figure, and the figures in', () => {
+		expect(statusCounts(rows)).toEqual({ green: 1, amber: 1, red: 1, reported: 5, expected: 8, missing: 2 });
+	});
+
+	it('keeps the KPIs a filter asks for', () => {
+		expect(filterRows(rows, 'all').length).toBe(4);
+		expect(filterRows(rows, 'red').map((r) => r.kpi.id)).toEqual([2]);
+		expect(filterRows(rows, 'missing').map((r) => r.kpi.id)).toEqual([2, 4]);
 	});
 });

@@ -5,6 +5,7 @@
 	import { fly, scale } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import DataTabs from '$lib/components/DataTabs.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import ImportCheck from '$lib/components/import/ImportCheck.svelte';
 	import ImportColumns from '$lib/components/import/ImportColumns.svelte';
@@ -97,6 +98,7 @@
 	width="form"
 >
 	<DataTabs />
+	{#if units.enterable().length}
 	<ol class="mt-6 grid grid-cols-4 gap-2" aria-label="Steps">
 		{#each STEPS as name, i (name)}
 			<li aria-current={i === step ? 'step' : undefined}>
@@ -109,9 +111,18 @@
 			</li>
 		{/each}
 	</ol>
+	{/if}
 </PageBand>
 
 <main class="mx-auto max-w-[1240px] px-4 pb-16 sm:px-6"><div class="mx-auto {WIDTH.form}">
+	{#if !units.enterable().length}
+		<div class="-mt-5">
+			<EmptyState icon="lock" title="Nothing for you to upload yet">
+				<p>An administrator can let you enter figures for the {term.many} you report for. Until then you can look at the scorecard.</p>
+				{#snippet action()}<a class="btn btn-secondary" href="/">Open the scorecard</a>{/snippet}
+			</EmptyState>
+		</div>
+	{:else}
 	<div class="panel -mt-5 overflow-hidden p-5 sm:p-7">
 		{#key step}
 			<div in:fly={{ x: 24 * move, duration: 300, easing: cubicOut }}>
@@ -140,4 +151,5 @@
 			</div>
 		{/key}
 	</div>
+	{/if}
 </div></main>
