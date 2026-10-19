@@ -6,6 +6,7 @@ use Core\Auth;
 use Core\HttpException;
 use Core\RateLimiter;
 use Core\Validator;
+use PDO;
 use Repositories\MembershipRepository;
 use Repositories\OrganizationRepository;
 use Repositories\UserRepository;
@@ -15,6 +16,7 @@ class AccountService
 {
     public const MIN_PASSWORD = 8;
 
+    private PDO $db;
     private Auth $auth;
     private UserRepository $users;
     private OrganizationRepository $organizations;
@@ -22,9 +24,10 @@ class AccountService
     private AccountEmailService $verification;
     private RateLimiter $limiter;
 
-    public function __construct(Auth $auth, UserRepository $users, OrganizationRepository $organizations, MembershipRepository $memberships,
+    public function __construct(PDO $db, Auth $auth, UserRepository $users, OrganizationRepository $organizations, MembershipRepository $memberships,
                                 AccountEmailService $verification, RateLimiter $limiter)
     {
+        $this->db = $db;
         $this->verification = $verification;
         $this->limiter = $limiter;
         $this->auth = $auth;
@@ -125,5 +128,45 @@ class AccountService
             $this->auth->signOutOtherSessions();
         }
         return $this->users->find($user['id']) + ['organizations' => $this->organizations->forUser($user['id'])];
+    }
+
+    /**
+     * Delete your own account (password required). Organisations where you're the only person
+     * go with it. Refused while you're the only administrator of one that has other people.
+     * Figures you entered stay, without your name.
+     */
+    public function delete(array $input): void
+    {
+        $user = $this->auth->requireUser();
+        $v = new Validator($input);
+        $password = $v->secret('password', true);
+        if ($password !== null && !$this->users->passwordMatches($user['id'], $password)) {
+            $v->addError('password', 'is not right');
+        }
+        $v->check();
+
+        $alone = [];
+        foreach ($this->organizations->forUser($user['id']) as $organization) {
+            if ($organization['role'] !== 'admin' || $this->organizations->countAdmins($organization['id']) > 1) {
+                continue;
+            }
+            if ($this->organizations->countMembers($organization['id']) > 1) {
+                throw HttpException::conflict("You're the only administrator of {$organization['name']}. Make someone else an administrator first, or delete the organisation");
+            }
+            $alone[] = $organization['id'];
+        }
+
+        $this->db->beginTransaction();
+        try {
+            foreach ($alone as $organizationId) {
+                $this->organizations->deleteWithData($organizationId);
+            }
+            $this->users->delete($user['id']);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+        $this->auth->logout();
     }
 }

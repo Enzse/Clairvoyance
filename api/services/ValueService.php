@@ -113,7 +113,7 @@ class ValueService
         try {
             foreach ($clean as [$kpiId, $unitId, $periodStart, $value, $note]) {
                 if ($value === null) {
-                    $counts['deleted'] += (int)$this->values->delete($kpiId, $unitId, $periodStart);
+                    $counts['deleted'] += (int)$this->values->delete($kpiId, $unitId, $periodStart, $user['id']);
                 } else {
                     $counts[$this->values->upsert($kpiId, $unitId, $periodStart, $value, $note, null, $user['id'])]++;
                 }
@@ -124,6 +124,25 @@ class ValueService
             throw $e;
         }
         return $counts;
+    }
+
+    /**
+     * Who changed this KPI's figures in the unit (and the units inside it), newest first.
+     * With a date, only changes to the period containing it.
+     */
+    public function history(int $kpiId, int $unitId, ?string $date): array
+    {
+        $this->access->requireView($unitId);
+        $kpi = $this->kpis->find($this->auth->organizationId(), $kpiId);
+        if (!$kpi) {
+            throw HttpException::notFound('KPI not found');
+        }
+        if ($date !== null && !Period::isValidDate($date)) {
+            throw HttpException::badRequest('date must be YYYY-MM-DD');
+        }
+        $period = $date === null ? null : Period::align($date, $kpi['frequency']);
+        $changes = $this->values->changes($kpiId, $this->access->tree()->subtreeIds($unitId), $period);
+        return array_map(fn($c) => $c + ['period_label' => Period::label($c['period_start'], $kpi['frequency'])], $changes);
     }
 
     /**

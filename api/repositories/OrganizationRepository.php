@@ -94,6 +94,29 @@ class OrganizationRepository
             ->execute([$organizationId, $userId]);
     }
 
+    public function countMembers(int $organizationId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM organization_users WHERE organization_id = ?');
+        $stmt->execute([$organizationId]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Deletes the organisation and everything in it. Units and figures are normally protected
+     * from deletion (RESTRICT), so the order matters: figures first, then the links that hold
+     * units and KPIs to each other, then the organisation, whose deletion cascades to the rest.
+     * Call inside a transaction.
+     */
+    public function deleteWithData(int $organizationId): void
+    {
+        $this->db->prepare('DELETE v FROM kpi_values v JOIN kpis k ON k.id = v.kpi_id WHERE k.organization_id = ?')
+            ->execute([$organizationId]);
+        $this->db->prepare("UPDATE kpis SET unit_aggregation = 'average', weight_kpi_id = NULL WHERE organization_id = ? AND weight_kpi_id IS NOT NULL")
+            ->execute([$organizationId]);
+        $this->db->prepare('UPDATE units SET parent_id = NULL WHERE organization_id = ?')->execute([$organizationId]);
+        $this->db->prepare('DELETE FROM organizations WHERE id = ?')->execute([$organizationId]);
+    }
+
     public function countAdmins(int $organizationId): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM organization_users WHERE organization_id = ? AND role = 'admin'");

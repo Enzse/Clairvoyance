@@ -75,4 +75,11 @@ class AuthController
         $this->emails->resetPassword($request->body);
         return $this->accounts->me();
     }
+
+    /** DELETE /auth/me {password}: delete your account and sign out */
+    public function delete(Request $request): array
+    {
+        $this->accounts->delete($request->body);
+        return [];
+    }
 }

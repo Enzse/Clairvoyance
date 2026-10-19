@@ -71,9 +71,13 @@ class ValueRepository
         return $rows;
     }
 
-    /** @return string 'created', 'updated' or 'unchanged' */
+    /**
+     * Stores the value and records the change in kpi_value_changes. Call inside a transaction.
+     * @return string 'created', 'updated' or 'unchanged'
+     */
     public function upsert(int $kpiId, int $unitId, string $periodStart, float $value, ?string $note, ?int $importId, ?int $userId): string
     {
+        $old = $this->current($kpiId, $unitId, $periodStart);
         $stmt = $this->db->prepare(
             'INSERT INTO kpi_values (kpi_id, unit_id, period_start, value, note, import_id, updated_by)
              VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -86,13 +90,74 @@ class ValueRepository
         // Provenance columns are assigned first so they still compare against the old value
         $stmt->execute([$kpiId, $unitId, $periodStart, $value, $note, $importId, $userId]);
         // MySQL reports 1 for an insert, 2 for an update and 0 when nothing changed
-        return [1 => 'created', 2 => 'updated'][$stmt->rowCount()] ?? 'unchanged';
+        $status = [1 => 'created', 2 => 'updated'][$stmt->rowCount()] ?? 'unchanged';
+        if ($status !== 'unchanged') {
+            $this->recordChange($kpiId, $unitId, $periodStart, $old, $value, $note, $importId, $userId);
+        }
+        return $status;
     }
 
-    public function delete(int $kpiId, int $unitId, string $periodStart): bool
+    /** Deletes the value and records that. Call inside a transaction. */
+    public function delete(int $kpiId, int $unitId, string $periodStart, ?int $userId = null): bool
     {
-        $stmt = $this->db->prepare('DELETE FROM kpi_values WHERE kpi_id = ? AND unit_id = ? AND period_start = ?');
+        $old = $this->current($kpiId, $unitId, $periodStart);
+        if (!$old) {
+            return false;
+        }
+        $this->db->prepare('DELETE FROM kpi_values WHERE kpi_id = ? AND unit_id = ? AND period_start = ?')
+            ->execute([$kpiId, $unitId, $periodStart]);
+        $this->recordChange($kpiId, $unitId, $periodStart, $old, null, null, null, $userId);
+        return true;
+    }
+
+    /**
+     * Changes to one KPI in these units, newest first, optionally for one period.
+     * @return array<array> with who made each change (name or email) and the import's file name
+     */
+    public function changes(int $kpiId, array $unitIds, ?string $periodStart, int $limit = 50): array
+    {
+        if (!$unitIds) {
+            return [];
+        }
+        $in = implode(',', array_fill(0, count($unitIds), '?'));
+        $params = [$kpiId, ...array_values($unitIds)];
+        $period = '';
+        if ($periodStart !== null) {
+            $period = ' AND c.period_start = ?';
+            $params[] = $periodStart;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT c.id, c.unit_id, un.name AS unit_name, c.period_start, c.old_value, c.new_value, c.old_note, c.new_note,
+                    c.changed_at, COALESCE(u.name, u.email) AS changed_by, i.filename AS import_file
+             FROM kpi_value_changes c
+             JOIN units un ON un.id = c.unit_id
+             LEFT JOIN users u ON u.id = c.changed_by
+             LEFT JOIN imports i ON i.id = c.import_id
+             WHERE c.kpi_id = ? AND c.unit_id IN ({$in}){$period}
+             ORDER BY c.id DESC LIMIT " . max(1, min(200, $limit))
+        );
+        $stmt->execute($params);
+        return array_map(fn($r) => [
+            'id' => (int)$r['id'],
+            'unit_id' => (int)$r['unit_id'],
+            'old_value' => $r['old_value'] === null ? null : (float)$r['old_value'],
+            'new_value' => $r['new_value'] === null ? null : (float)$r['new_value'],
+        ] + $r, $stmt->fetchAll());
+    }
+
+    /** The stored value and note, locked until the transaction ends. */
+    private function current(int $kpiId, int $unitId, string $periodStart): ?array
+    {
+        $stmt = $this->db->prepare('SELECT value, note FROM kpi_values WHERE kpi_id = ? AND unit_id = ? AND period_start = ? FOR UPDATE');
         $stmt->execute([$kpiId, $unitId, $periodStart]);
-        return $stmt->rowCount() > 0;
+        return $stmt->fetch() ?: null;
+    }
+
+    private function recordChange(int $kpiId, int $unitId, string $periodStart, ?array $old, ?float $value, ?string $note, ?int $importId, ?int $userId): void
+    {
+        $this->db->prepare(
+            'INSERT INTO kpi_value_changes (kpi_id, unit_id, period_start, old_value, new_value, old_note, new_note, import_id, changed_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        )->execute([$kpiId, $unitId, $periodStart, $old['value'] ?? null, $value, $old['note'] ?? null, $note, $importId, $userId]);
     }
 }

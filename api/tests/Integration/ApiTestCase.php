@@ -41,6 +41,8 @@ abstract class ApiTestCase extends TestCase
     /** @return array{0: int, 1: array} status code and decoded payload */
     protected function call(string $method, string $path, array $query = [], array $body = [], array $files = []): array
     {
+        // Like a real query string: values are strings and nulls are left out
+        $query = array_map('strval', array_filter($query, fn($value) => $value !== null));
         $ip = $this->clientIp ?? '10.' . random_int(0, 255) . '.' . random_int(0, 255) . '.' . random_int(1, 254);
         $response = self::$app->handle(new Request($method, $path, $query, $body, $files, $ip));
         // Round-trip through JSON so tests see exactly what a client would

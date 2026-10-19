@@ -1,6 +1,7 @@
 <?php
 
 use Controllers\AuthController;
+use Controllers\ExportController;
 use Controllers\HealthController;
 use Controllers\ImportController;
 use Controllers\InvitationController;
@@ -19,6 +20,7 @@ return function (Router $r): void {
     $r->add('POST', '/auth/logout', [AuthController::class, 'logout']);
     $r->add('GET', '/auth/me', [AuthController::class, 'me']);
     $r->add('PUT', '/auth/me', [AuthController::class, 'update']);
+    $r->add('DELETE', '/auth/me', [AuthController::class, 'delete']);
     $r->add('POST', '/auth/verify-email', [AuthController::class, 'verifyEmail']);
     $r->add('POST', '/auth/verify-email/resend', [AuthController::class, 'resendVerification']);
     $r->add('POST', '/auth/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -30,6 +32,8 @@ return function (Router $r): void {
     $r->add('POST', '/organizations', [OrganizationController::class, 'create']);
     $r->add('POST', '/organizations/select', [OrganizationController::class, 'select']);
     $r->add('PUT', '/organization', [OrganizationController::class, 'rename']);
+    $r->add('DELETE', '/organization', [OrganizationController::class, 'delete']);
+    $r->add('POST', '/organization/leave', [OrganizationController::class, 'leave']);
     $r->add('GET', '/organization/setup', [OrganizationController::class, 'setup']);
     $r->add('POST', '/organization/setup/dismiss', [OrganizationController::class, 'dismissSetup']);
 
@@ -59,6 +63,7 @@ return function (Router $r): void {
     $r->add('PUT', '/kpis/{id}/targets', [KpiController::class, 'replaceTargets']);
     $r->add('GET', '/kpis/{id}/series', [ReportController::class, 'series']);
     $r->add('GET', '/kpis/{id}/breakdown', [ReportController::class, 'breakdown']);
+    $r->add('GET', '/kpis/{id}/history', [ValueController::class, 'history']);
 
     $r->add('GET', '/values', [ValueController::class, 'form']);
     $r->add('PUT', '/values', [ValueController::class, 'save']);
@@ -66,6 +71,7 @@ return function (Router $r): void {
     $r->add('GET', '/imports', [ImportController::class, 'list']);
     $r->add('POST', '/imports/preview', [ImportController::class, 'preview']);
     $r->add('POST', '/imports', [ImportController::class, 'commit']);
+    $r->add('GET', '/exports/values', [ExportController::class, 'values']);
 
     $r->add('GET', '/scorecard', [ReportController::class, 'scorecard']);
 };

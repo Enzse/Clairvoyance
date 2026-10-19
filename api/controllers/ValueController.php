@@ -25,4 +25,10 @@ class ValueController
     {
         return $this->values->save($request->body);
     }
+
+    /** GET /kpis/{id}/history?unit=[&date=] : recent changes to the figures */
+    public function history(Request $request, array $params): array
+    {
+        return $this->values->history((int)$params['id'], $request->queryInt('unit'), $request->queryParam('date') ?: null);
+    }
 }

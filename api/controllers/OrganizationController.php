@@ -42,4 +42,16 @@ class OrganizationController
     {
         return $this->organizations->dismissSetup();
     }
+
+    /** POST /organization/leave */
+    public function leave(): array
+    {
+        return $this->organizations->leave();
+    }
+
+    /** DELETE /organization {name, password}: delete it with everything in it (admin). */
+    public function delete(Request $request): array
+    {
+        return $this->organizations->delete($request->body);
+    }
 }
