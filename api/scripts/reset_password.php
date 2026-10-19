@@ -3,7 +3,7 @@
 /**
  * Usage: php scripts/reset_password.php <email>
  * Sets a new random password for the account and prints it. For when a password is
- * forgotten; change it afterwards under Admin › People.
+ * forgotten; change it afterwards under Account › Password.
  */
 
 if (PHP_SAPI !== 'cli') {
