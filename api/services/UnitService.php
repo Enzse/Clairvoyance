@@ -4,6 +4,8 @@ namespace Services;
 
 use Core\HttpException;
 use Core\Validator;
+use Core\Auth;
+use Repositories\OrganizationRepository;
 use Repositories\UnitRepository;
 
 /**
@@ -14,13 +16,17 @@ class UnitService
 {
     private const CODE_PATTERN = '/^[A-Za-z0-9_.\-]+$/';
 
+    private Auth $auth;
     private UnitRepository $units;
+    private OrganizationRepository $organizations;
     private AccessService $access;
 
-    public function __construct(UnitRepository $units, AccessService $access)
+    public function __construct(Auth $auth, UnitRepository $units, OrganizationRepository $organizations, AccessService $access)
     {
         $this->units = $units;
         $this->access = $access;
+        $this->auth = $auth;
+        $this->organizations = $organizations;
     }
 
     public function create(array $input): array
@@ -44,7 +50,7 @@ class UnitService
         $this->checkCode($v, $code, null);
         $v->check();
 
-        $id = $this->units->create($parentId, $name, $code, $kind);
+        $id = $this->units->create($this->auth->organizationId(), $parentId, $name, $code, $kind);
         return $this->access->refreshTree()->get($id);
     }
 
@@ -94,7 +100,11 @@ class UnitService
         if (isset($fields['is_active'])) {
             $fields['is_active'] = (int)$fields['is_active'];
         }
-        $this->units->update($id, $fields);
+        $this->units->update($this->auth->organizationId(), $id, $fields);
+        if ($isRoot && isset($fields['name'])) {
+            // The root unit is the organisation itself
+            $this->organizations->rename($this->auth->organizationId(), $fields['name']);
+        }
         return $this->access->refreshTree()->get($id);
     }
 
@@ -111,7 +121,7 @@ class UnitService
         if ($unit['has_values']) {
             throw HttpException::conflict('This unit has data; deactivate it instead');
         }
-        $this->units->delete($id);
+        $this->units->delete($this->auth->organizationId(), $id);
         $this->access->refreshTree();
     }
 

@@ -106,4 +106,4 @@ CREATE TABLE unit_memberships (
   CONSTRAINT fk_memberships_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO units (parent_id, name, kind) VALUES (NULL, 'Organization', 'Organization');
+-- No seed: since 002, each organisation's root unit is created when the organisation is.

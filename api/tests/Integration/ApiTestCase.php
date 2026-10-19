@@ -55,17 +55,33 @@ abstract class ApiTestCase extends TestCase
         $this->assertSame($expected, $result[0], ($message ? "{$message} " : '') . json_encode($result[1]));
     }
 
-    protected function actingAs(?int $userId): void
+    /** Act as this user, in their first organisation unless one is given. */
+    protected function actingAs(?int $userId, ?int $organizationId = null): void
     {
-        $_SESSION = $userId === null ? [] : ['user_id' => $userId];
+        $_SESSION = $userId === null ? [] : array_filter(['user_id' => $userId, 'org_id' => $organizationId]);
     }
 
-    /** Register an account (the first one becomes admin) and log in as it. */
-    protected function registerAndLogin(string $email): int
+    /**
+     * Sign up and, like onboarding does, create an organisation (making this person its
+     * admin). Pass null to stop after sign-up. Returns the user id.
+     */
+    protected function registerAndLogin(string $email, ?string $organization = 'Test Org'): int
     {
         $user = $this->ok('POST', '/auth/register', [], ['email' => $email, 'password' => self::PASSWORD]);
         $this->actingAs($user['id']);
+        if ($organization !== null) {
+            $this->ok('POST', '/organizations', [], ['name' => $organization]);
+        }
         return $user['id'];
+    }
+
+    /** Invite someone to the acting admin's organisation and accept as them. */
+    protected function inviteAndJoin(int $adminId, int $userId, string $email, string $role = 'member', array $access = []): void
+    {
+        $this->actingAs($adminId);
+        $invite = $this->ok('POST', '/invitations', [], ['email' => $email, 'role' => $role, 'access' => $access]);
+        $this->actingAs($userId);
+        $this->ok('POST', '/invitations/accept', [], ['token' => $invite['token']]);
     }
 
     protected function upload(string $path): array
@@ -80,9 +96,15 @@ abstract class ApiTestCase extends TestCase
         return $path;
     }
 
+    /** The root unit of the acting user's current organisation. */
     protected function rootId(): int
     {
-        return (int)self::$db->query('SELECT id FROM units WHERE parent_id IS NULL')->fetchColumn();
+        foreach ($this->ok('GET', '/units') as $unit) {
+            if ($unit['parent_id'] === null) {
+                return $unit['id'];
+            }
+        }
+        $this->fail('The acting user sees no root unit');
     }
 
     protected function createKpi(array $fields): array

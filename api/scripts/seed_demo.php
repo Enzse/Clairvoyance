@@ -3,10 +3,10 @@
 /**
  * Usage: php scripts/seed_demo.php <admin-email>
  *
- * Loads the DepEd sample (demo/deped.csv): six school KPIs with targets, and the
- * Region > Division > School units with a year of monthly reports. Runs through the
- * API in-process as the given admin, so it gets exactly the same validation as the UI.
- * Safe to run again: existing KPIs are kept and the import is an upsert.
+ * Loads the DepEd sample (demo/deped.csv) into the first organisation the person administers:
+ * six school KPIs with targets, and the Region > Division > School units with a year of
+ * monthly reports. Runs through the API in-process as that admin, so it gets exactly the same
+ * validation as the UI. Safe to run again: existing KPIs are kept and the import is an upsert.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -19,6 +19,7 @@ use Core\App;
 use Core\Database;
 use Core\Environment;
 use Core\Request;
+use Repositories\OrganizationRepository;
 use Repositories\UserRepository;
 
 $email = $argv[1] ?? null;
@@ -29,13 +30,17 @@ if (!$email) {
 
 $db = Database::connect(Environment::getInstance());
 $admin = (new UserRepository($db))->findByEmail($email);
-if (!$admin || $admin['role'] !== 'admin') {
-    fwrite(STDERR, "{$email} is not an admin account\n");
+$organization = $admin
+    ? array_values(array_filter((new OrganizationRepository($db))->forUser($admin['id']), fn($o) => $o['role'] === 'admin'))[0] ?? null
+    : null;
+if (!$organization) {
+    fwrite(STDERR, "{$email} is not an administrator of any organisation\n");
     exit(1);
 }
+echo "Loading into {$organization['name']}\n";
 
 $app = new App(fn() => $db);
-$_SESSION = ['user_id' => $admin['id']];
+$_SESSION = ['user_id' => $admin['id'], 'org_id' => $organization['id']];
 
 $call = function (string $method, string $path, array $body = [], array $files = []) use ($app): array {
     $response = $app->handle(new Request($method, $path, [], $body, $files));

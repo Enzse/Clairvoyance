@@ -32,6 +32,11 @@ class UnitTree
         return $this->units[$id] ?? null;
     }
 
+    public function hasRoot(): bool
+    {
+        return $this->rootId !== null;
+    }
+
     public function rootId(): int
     {
         if ($this->rootId === null) {

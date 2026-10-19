@@ -2,21 +2,27 @@
 
 namespace Core;
 
+use Repositories\OrganizationRepository;
 use Repositories\UserRepository;
 
 /**
- * The logged-in user. Only the user id is kept in the session; the user is re-read
- * once per request, so deleted accounts and role changes take effect immediately.
+ * The logged-in user and the organisation they are working in. The session keeps only ids;
+ * both are re-read once per request, so removed members and role changes take effect at once.
+ * Roles (admin / member) belong to the user's membership in an organisation, not the user.
  */
 class Auth
 {
     private UserRepository $users;
+    private OrganizationRepository $organizations;
     private bool $loaded = false;
     private ?array $user = null;
+    private bool $organizationLoaded = false;
+    private ?array $organization = null;
 
-    public function __construct(UserRepository $users)
+    public function __construct(UserRepository $users, OrganizationRepository $organizations)
     {
         $this->users = $users;
+        $this->organizations = $organizations;
     }
 
     public function user(): ?array
@@ -25,7 +31,7 @@ class Auth
             $id = $_SESSION['user_id'] ?? null;
             $this->user = $id ? $this->users->find((int)$id) : null;
             if ($id && !$this->user) {
-                unset($_SESSION['user_id']);
+                unset($_SESSION['user_id'], $_SESSION['org_id']);
             }
             $this->loaded = true;
         }
@@ -41,18 +47,74 @@ class Auth
         return $user;
     }
 
+    /**
+     * The selected organisation as {id, name, role}, or null if the user belongs to none.
+     * Falls back to the user's first organisation when the selection is missing or stale.
+     */
+    public function organization(): ?array
+    {
+        if ($this->organizationLoaded) {
+            return $this->organization;
+        }
+        $this->organizationLoaded = true;
+        $user = $this->user();
+        if (!$user) {
+            return $this->organization = null;
+        }
+
+        $id = isset($_SESSION['org_id']) ? (int)$_SESSION['org_id'] : null;
+        $role = $id ? $this->organizations->roleOf($id, $user['id']) : null;
+        if (!$role) {
+            $first = $this->organizations->forUser($user['id'])[0] ?? null;
+            $id = $first['id'] ?? null;
+            $role = $first['role'] ?? null;
+        }
+        if (!$id) {
+            unset($_SESSION['org_id']);
+            return $this->organization = null;
+        }
+        $_SESSION['org_id'] = $id;
+        return $this->organization = ['id' => $id, 'name' => $this->organizations->find($id)['name'], 'role' => $role];
+    }
+
+    public function requireOrganization(): array
+    {
+        $this->requireUser();
+        $organization = $this->organization();
+        if (!$organization) {
+            throw new HttpException(403, 'Create or join an organisation first');
+        }
+        return $organization;
+    }
+
+    public function organizationId(): int
+    {
+        return $this->requireOrganization()['id'];
+    }
+
     public function requireAdmin(): array
     {
-        $user = $this->requireUser();
-        if ($user['role'] !== 'admin') {
-            throw HttpException::forbidden('Only admins can do this');
+        $organization = $this->requireOrganization();
+        if ($organization['role'] !== 'admin') {
+            throw HttpException::forbidden("Only administrators of {$organization['name']} can do this");
         }
-        return $user;
+        return $organization;
     }
 
     public function isAdmin(): bool
     {
-        return ($this->user()['role'] ?? null) === 'admin';
+        return ($this->organization()['role'] ?? null) === 'admin';
+    }
+
+    /** Work in another organisation the user belongs to. */
+    public function selectOrganization(int $organizationId): void
+    {
+        $user = $this->requireUser();
+        if (!$this->organizations->roleOf($organizationId, $user['id'])) {
+            throw HttpException::notFound('Organisation not found');
+        }
+        $_SESSION['org_id'] = $organizationId;
+        $this->organizationLoaded = false;
     }
 
     public function login(array $user): void
@@ -61,8 +123,10 @@ class Auth
             session_regenerate_id(true); // prevents session fixation
         }
         $_SESSION['user_id'] = $user['id'];
+        unset($_SESSION['org_id']);
         $this->user = $user;
         $this->loaded = true;
+        $this->organizationLoaded = false;
     }
 
     public function logout(): void
@@ -74,5 +138,6 @@ class Auth
             session_destroy();
         }
         $this->user = null;
+        $this->organization = null;
     }
 }

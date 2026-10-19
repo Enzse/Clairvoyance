@@ -4,9 +4,10 @@ namespace Repositories;
 
 use PDO;
 
+/** Accounts. Roles are per organisation (see OrganizationRepository). */
 class UserRepository
 {
-    private const PUBLIC_COLUMNS = 'id, email, name, role, created_at, updated_at';
+    private const PUBLIC_COLUMNS = 'id, email, name, created_at, updated_at';
 
     private PDO $db;
 
@@ -41,32 +42,24 @@ class UserRepository
         return $this->find((int)$row['id']);
     }
 
-    public function all(): array
+    public function passwordMatches(int $id, string $password): bool
     {
-        $rows = $this->db->query('SELECT ' . self::PUBLIC_COLUMNS . ' FROM users ORDER BY email')->fetchAll();
-        return array_map([$this, 'cast'], $rows);
+        $stmt = $this->db->prepare('SELECT password FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+        $hash = $stmt->fetchColumn();
+        return $hash && password_verify($password, $hash);
     }
 
-    public function count(): int
+    public function create(string $email, string $password, ?string $name): int
     {
-        return (int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
-    }
-
-    public function countAdmins(): int
-    {
-        return (int)$this->db->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
-    }
-
-    public function create(string $email, string $password, string $role, ?string $name): int
-    {
-        $stmt = $this->db->prepare('INSERT INTO users (email, name, password, role) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$email, $name, password_hash($password, PASSWORD_DEFAULT), $role]);
+        $stmt = $this->db->prepare('INSERT INTO users (email, name, password) VALUES (?, ?, ?)');
+        $stmt->execute([$email, $name, password_hash($password, PASSWORD_DEFAULT)]);
         return (int)$this->db->lastInsertId();
     }
 
     public function update(int $id, array $fields): void
     {
-        $allowed = array_intersect_key($fields, array_flip(['name', 'role']));
+        $allowed = array_intersect_key($fields, array_flip(['name']));
         if (isset($fields['password'])) {
             $allowed['password'] = password_hash($fields['password'], PASSWORD_DEFAULT);
         }
@@ -76,11 +69,6 @@ class UserRepository
         $sets = implode(', ', array_map(fn($column) => "{$column} = ?", array_keys($allowed)));
         $stmt = $this->db->prepare("UPDATE users SET {$sets} WHERE id = ?");
         $stmt->execute([...array_values($allowed), $id]);
-    }
-
-    public function delete(int $id): void
-    {
-        $this->db->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     }
 
     private function cast(?array $row): ?array

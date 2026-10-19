@@ -101,7 +101,7 @@ class ImportService
         $this->db->beginTransaction();
         try {
             $unitIds = $this->createUnits($plan['new_units']);
-            $importId = $this->imports->start($user['id'], mb_substr($filename, 0, 255), $plan['rows_total']);
+            $importId = $this->imports->start($this->auth->organizationId(), $user['id'], mb_substr($filename, 0, 255), $plan['rows_total']);
             $counts = ['created' => 0, 'updated' => 0, 'unchanged' => 0];
             foreach ($plan['entries'] as $e) {
                 $unitId = is_int($e['unit']) ? $e['unit'] : $unitIds[$e['unit']];
@@ -127,7 +127,7 @@ class ImportService
 
     public function recent(): array
     {
-        return $this->imports->recent();
+        return $this->imports->recent($this->auth->organizationId());
     }
 
     // ---- analysis -------------------------------------------------------------
@@ -186,7 +186,9 @@ class ImportService
                     $err("'{$raw}' is not a number", $column);
                     continue;
                 }
-                $problem = $this->valueRules->entryProblem($kpi, $unit, is_int($unitRef) ? $this->access->tree()->isLeaf($unitRef) : true);
+                $problem = $this->valueRules->entryProblem(
+                    $kpi, $unit, is_int($unitRef) ? $this->access->tree()->isLeaf($unitRef) : true, $resolver->existingAncestor($unitRef)
+                );
                 if ($problem) {
                     $err($problem, $column);
                     continue;
@@ -247,7 +249,7 @@ class ImportService
         if (!$this->access->tree()->get($parentId)) {
             $v->addError('parent_unit_id', 'unit not found');
         }
-        if ($create && $user['role'] !== 'admin') {
+        if ($create && !$this->auth->isAdmin()) {
             $v->addError('create_missing_units', 'only admins can create units');
         }
         if ($create && $unitMatch === 'code') {
@@ -257,7 +259,7 @@ class ImportService
         $kpiColumns = [];
         foreach ($columns as $column => $code) {
             $i = $find("columns.{$column}", (string)$column);
-            $kpi = is_string($code) ? $this->kpis->findByCode($code) : null;
+            $kpi = is_string($code) ? $this->kpis->findByCode($this->auth->organizationId(), $code) : null;
             if (!$kpi) {
                 $v->addError("columns.{$column}", "no KPI with code '" . (is_string($code) ? $code : '?') . "'");
             } elseif ($i !== null) {
@@ -318,7 +320,7 @@ class ImportService
         $ids = [];
         foreach ($newUnits as $ref => $unit) { // parents are always planned before their children
             $parentId = is_int($unit['parent']) ? $unit['parent'] : $ids[$unit['parent']];
-            $ids[$ref] = $this->units->create($parentId, $unit['name'], null, $unit['kind']);
+            $ids[$ref] = $this->units->create($this->auth->organizationId(), $parentId, $unit['name'], null, $unit['kind']);
         }
         return $ids;
     }

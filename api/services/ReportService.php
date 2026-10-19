@@ -2,8 +2,10 @@
 
 namespace Services;
 
+use Core\Auth;
 use Core\HttpException;
 use Domain\Aggregator;
+use Domain\KpiScope;
 use Domain\Period;
 use Domain\TargetSet;
 use Repositories\KpiRepository;
@@ -11,20 +13,23 @@ use Repositories\TargetRepository;
 use Repositories\ValueRepository;
 
 /**
- * Read side: every number the frontend shows comes from here, computed by Domain\Aggregator.
+ * Read side: every number the frontend shows comes from here, computed by Domain\Aggregator
+ * over the leaf units that report each KPI (Domain\KpiScope).
  */
 class ReportService
 {
     private const MAX_PERIODS = 400;
 
+    private Auth $auth;
     private AccessService $access;
     private KpiRepository $kpis;
     private ValueRepository $values;
     private TargetRepository $targets;
     private ?array $kpiById = null;
 
-    public function __construct(AccessService $access, KpiRepository $kpis, ValueRepository $values, TargetRepository $targets)
+    public function __construct(Auth $auth, AccessService $access, KpiRepository $kpis, ValueRepository $values, TargetRepository $targets)
     {
+        $this->auth = $auth;
         $this->access = $access;
         $this->kpis = $kpis;
         $this->values = $values;
@@ -46,8 +51,10 @@ class ReportService
         }
 
         $rows = [];
+        $tree = $this->access->tree();
         foreach ($this->allKpis() as $kpi) {
-            if (!$kpi['is_active']) {
+            // A department's scorecard leaves out KPIs only other departments report
+            if (!$kpi['is_active'] || !KpiScope::concerns($tree, $kpi, $unitId)) {
                 continue;
             }
             $g = $grain === null ? $kpi['frequency'] : Period::coarser($grain, $kpi['frequency']);
@@ -101,19 +108,20 @@ class ReportService
         }
 
         $start = Period::align($date, $grain);
-        [$values, $weights] = $this->load($kpi, $tree->activeLeafIds($unitId, $kpi['applies_to_kind']), $start, Period::next($start, $grain));
+        [$values, $weights] = $this->load($kpi, KpiScope::leaves($tree, $kpi, $unitId), $start, Period::next($start, $grain));
         $aggregator = $this->aggregator($kpi);
         $periods = Period::periodsWithin($start, $grain, $kpi['frequency']);
 
+        // Units the KPI doesn't concern are left out, rather than shown as "no data"
         $rows = [];
         foreach ($tree->childIds($unitId) as $childId) {
             $child = $tree->get($childId);
-            if (!$child['is_active']) {
+            if (!$child['is_active'] || !KpiScope::concerns($tree, $kpi, $childId)) {
                 continue;
             }
             $isLeaf = $tree->isLeaf($childId);
             $result = $aggregator->compute(
-                $tree->activeLeafIds($childId, $kpi['applies_to_kind']), $periods, $values, $weights, $isLeaf ? null : $childId
+                KpiScope::leaves($tree, $kpi, $childId), $periods, $values, $weights, $isLeaf ? null : $childId
             );
             $rows[] = ['unit' => $child + ['is_leaf' => $isLeaf]] + $result;
         }
@@ -133,7 +141,7 @@ class ReportService
     private function series(array $kpi, int $unitId, array $starts, string $grain): array
     {
         $tree = $this->access->tree();
-        $leafIds = $tree->activeLeafIds($unitId, $kpi['applies_to_kind']);
+        $leafIds = KpiScope::leaves($tree, $kpi, $unitId);
         [$values, $weights] = $this->load($kpi, $leafIds, $starts[0], Period::next(end($starts), $grain));
         $aggregator = $this->aggregator($kpi);
         $scope = $tree->isLeaf($unitId) ? null : $unitId;
@@ -195,7 +203,7 @@ class ReportService
     private function allKpis(): array
     {
         if ($this->kpiById === null) {
-            $this->kpiById = array_column($this->kpis->all(), null, 'id');
+            $this->kpiById = array_column($this->kpis->all($this->auth->organizationId()), null, 'id');
         }
         return $this->kpiById;
     }

@@ -2,6 +2,7 @@
 
 namespace Services;
 
+use Core\Auth;
 use Core\HttpException;
 use Core\Validator;
 use Domain\Period;
@@ -9,6 +10,7 @@ use PDO;
 use Repositories\KpiRepository;
 use Repositories\TargetRepository;
 
+/** KPI definitions and targets of the current organisation. */
 class KpiService
 {
     private const TIME_RULES = ['sum', 'average', 'last'];
@@ -16,13 +18,15 @@ class KpiService
     private const DIRECTIONS = ['higher_is_better', 'lower_is_better', 'none'];
 
     private PDO $db;
+    private Auth $auth;
     private KpiRepository $kpis;
     private TargetRepository $targets;
     private AccessService $access;
 
-    public function __construct(PDO $db, KpiRepository $kpis, TargetRepository $targets, AccessService $access)
+    public function __construct(PDO $db, Auth $auth, KpiRepository $kpis, TargetRepository $targets, AccessService $access)
     {
         $this->db = $db;
+        $this->auth = $auth;
         $this->kpis = $kpis;
         $this->targets = $targets;
         $this->access = $access;
@@ -30,12 +34,12 @@ class KpiService
 
     public function list(bool $includeInactive): array
     {
-        return $this->kpis->all(!$includeInactive);
+        return $this->kpis->all($this->auth->organizationId(), !$includeInactive);
     }
 
     public function get(int $id): array
     {
-        $kpi = $this->kpis->find($id);
+        $kpi = $this->kpis->find($this->auth->organizationId(), $id);
         if (!$kpi) {
             throw HttpException::notFound('KPI not found');
         }
@@ -45,15 +49,64 @@ class KpiService
     public function create(array $input): array
     {
         $fields = $this->validate($input, null);
-        return $this->get($this->kpis->create($fields));
+        $scope = $this->validScope($input, true);
+        return $this->save(null, $fields, $scope);
     }
 
     public function update(int $id, array $input): array
     {
         $existing = $this->get($id);
         $fields = $this->validate($input, $existing);
-        $this->kpis->update($id, $fields);
+        $scope = $this->validScope($input, false);
+        return $this->save($id, $fields, $scope);
+    }
+
+    private function save(?int $id, array $fields, ?array $scope): array
+    {
+        $orgId = $this->auth->organizationId();
+        $this->db->beginTransaction();
+        try {
+            if ($id === null) {
+                $id = $this->kpis->create($orgId, $fields);
+            } else {
+                $this->kpis->update($orgId, $id, $fields);
+            }
+            if ($scope !== null) {
+                $this->kpis->replaceScope($id, $scope);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
         return $this->get($id);
+    }
+
+    /**
+     * `scope_unit_ids`: the units whose leaves report this KPI; empty means everyone.
+     * Returns null when an update leaves the scope unchanged.
+     */
+    private function validScope(array $input, bool $creating): ?array
+    {
+        if (!array_key_exists('scope_unit_ids', $input)) {
+            return $creating ? [] : null;
+        }
+        $ids = $input['scope_unit_ids'] ?? [];
+        $v = new Validator([]);
+        if (!is_array($ids)) {
+            $v->addError('scope_unit_ids', 'must be a list of units');
+        } else {
+            foreach ($ids as $id) {
+                if (filter_var($id, FILTER_VALIDATE_INT) === false || !$this->access->tree()->get((int)$id)) {
+                    $v->addError('scope_unit_ids', 'contains a unit that does not exist');
+                }
+            }
+        }
+        $v->check();
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        // Reporting "everywhere" is the same as listing the whole organisation
+        $tree = $this->access->tree();
+        return $tree->hasRoot() && in_array($tree->rootId(), $ids, true) ? [] : $ids;
     }
 
     public function targets(int $id): array
@@ -150,7 +203,7 @@ class KpiService
         }
 
         if (isset($fields['code'])) {
-            $clash = $this->kpis->findByCode($fields['code']);
+            $clash = $this->kpis->findByCode($this->auth->organizationId(), $fields['code']);
             if ($clash && $clash['id'] !== ($existing['id'] ?? null)) {
                 $v->addError('code', 'is already used by another KPI');
             }
@@ -162,7 +215,7 @@ class KpiService
             $v->addError('frequency', 'cannot change once the KPI has values (they are stored per period)');
         }
         if (!$creating && $merged['is_active'] === false && $existing['is_active']) {
-            $dependents = $this->kpis->activeDependents($existing['id']);
+            $dependents = $this->kpis->activeDependents($this->auth->organizationId(), $existing['id']);
             if ($dependents) {
                 $v->addError('is_active', 'is the weight for: ' . implode(', ', $dependents));
             }
@@ -181,7 +234,7 @@ class KpiService
             $v->addError('weight_kpi_id', 'is required for a weighted average');
             return;
         }
-        $weight = $this->kpis->find($kpi['weight_kpi_id']);
+        $weight = $this->kpis->find($this->auth->organizationId(), $kpi['weight_kpi_id']);
         if (!$weight) {
             $v->addError('weight_kpi_id', 'KPI not found');
         } elseif ($weight['id'] === ($kpi['id'] ?? null)) {

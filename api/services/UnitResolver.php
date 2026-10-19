@@ -64,6 +64,15 @@ final class UnitResolver
         return [$ref, $this->labelOf($ref)];
     }
 
+    /** The unit itself if it exists, otherwise the nearest existing unit above where it will be created. */
+    public function existingAncestor($ref): int
+    {
+        while (!is_int($ref)) {
+            $ref = $this->planned[$ref]['parent'];
+        }
+        return $ref;
+    }
+
     public function plannedKind(string $ref): ?string
     {
         return $this->planned[$ref]['kind'];

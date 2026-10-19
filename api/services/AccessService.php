@@ -9,8 +9,10 @@ use Repositories\MembershipRepository;
 use Repositories\UnitRepository;
 
 /**
- * Who can see and enter data for which units. Admins can do everything; members get
- * access through memberships, each covering a unit and its whole subtree.
+ * Who can see and enter data for which units of the current organisation. Organisation
+ * admins can do everything; members get access through memberships, each covering a unit
+ * and its whole subtree. The tree only ever contains the current organisation's units, so
+ * an id from another organisation is simply "not found".
  */
 class AccessService
 {
@@ -31,7 +33,7 @@ class AccessService
 
     public function tree(): UnitTree
     {
-        return $this->tree ??= new UnitTree($this->units->all());
+        return $this->tree ??= new UnitTree($this->units->all($this->auth->organizationId()));
     }
 
     /** Call after changing units so later checks in this request see the change. */
@@ -44,8 +46,7 @@ class AccessService
     /** 'admin', 'contributor', 'viewer' or null for the current user on this unit. */
     public function roleFor(int $unitId): ?string
     {
-        $user = $this->auth->requireUser();
-        if ($user['role'] === 'admin') {
+        if ($this->auth->requireOrganization()['role'] === 'admin') {
             return 'admin';
         }
         $best = null;
@@ -81,15 +82,14 @@ class AccessService
     }
 
     /**
-     * Units the user can see, each with their access role. For members, the units they
-     * were granted become the top of their tree.
+     * Units the user can see, each with their access role. For members, the units they were
+     * granted become the top of their tree.
      */
     public function visibleUnits(): array
     {
         $tree = $this->tree();
-        $user = $this->auth->requireUser();
-        $ids = $user['role'] === 'admin'
-            ? $tree->subtreeIds($tree->rootId())
+        $ids = $this->auth->isAdmin()
+            ? ($tree->hasRoot() ? $tree->subtreeIds($tree->rootId()) : [])
             : array_unique(array_merge([], ...array_map(fn($m) => $tree->subtreeIds($m['unit_id']), $this->userMemberships())));
 
         $visible = [];
@@ -113,6 +113,6 @@ class AccessService
 
     private function userMemberships(): array
     {
-        return $this->userMemberships ??= $this->memberships->forUser($this->auth->requireUser()['id']);
+        return $this->userMemberships ??= $this->memberships->forUser($this->auth->organizationId(), $this->auth->requireUser()['id']);
     }
 }

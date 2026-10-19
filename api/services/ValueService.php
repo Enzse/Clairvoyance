@@ -5,6 +5,7 @@ namespace Services;
 use Core\Auth;
 use Core\HttpException;
 use Core\Validator;
+use Domain\KpiScope;
 use Domain\Period;
 use PDO;
 use Repositories\KpiRepository;
@@ -41,7 +42,7 @@ class ValueService
             throw HttpException::badRequest('date must be YYYY-MM-DD');
         }
 
-        $kpis = array_values(array_filter($this->kpis->all(true), fn($k) => $this->appliesTo($k, $unit)));
+        $kpis = array_values(array_filter($this->kpis->all($this->auth->organizationId(), true), fn($k) => $this->appliesTo($k, $unit)));
         $periods = array_map(fn($k) => Period::align($date, $k['frequency']), $kpis);
         $stored = $this->values->forUnit($unitId, $periods);
 
@@ -92,9 +93,9 @@ class ValueService
             $note = $ev->string('note', false, 500);
             try {
                 $ev->check();
-                $kpi = $this->kpis->find($kpiId);
+                $kpi = $this->kpis->find($this->auth->organizationId(), $kpiId);
                 $unit = $this->access->requireContribute($unitId);
-                $problem = $this->entryProblem($kpi, $unit, $tree->isLeaf($unitId));
+                $problem = $this->entryProblem($kpi, $unit, $tree->isLeaf($unitId), $unitId);
                 if ($problem) {
                     throw HttpException::badRequest($problem);
                 }
@@ -125,8 +126,11 @@ class ValueService
         return $counts;
     }
 
-    /** Why a value can't be stored for this KPI and unit, or null if it can. */
-    public function entryProblem(?array $kpi, array $unit, bool $isLeaf): ?string
+    /**
+     * Why a value can't be stored for this KPI and unit, or null if it can. $scopeAnchor is the
+     * unit's id, or for a unit an import is about to create, its nearest existing ancestor.
+     */
+    public function entryProblem(?array $kpi, array $unit, bool $isLeaf, int $scopeAnchor): ?string
     {
         if (!$kpi) {
             return 'KPI not found';
@@ -140,14 +144,18 @@ class ValueService
         if (!$unit['is_active']) {
             return "{$unit['name']} is inactive";
         }
-        if (!$this->appliesTo($kpi, $unit)) {
+        if ($kpi['applies_to_kind'] !== null && $kpi['applies_to_kind'] !== $unit['kind']) {
             return "KPI {$kpi['name']} only applies to units of kind {$kpi['applies_to_kind']}";
+        }
+        if (!KpiScope::covers($this->access->tree(), $kpi, $scopeAnchor)) {
+            return "{$unit['name']} doesn't report {$kpi['name']}";
         }
         return null;
     }
 
     private function appliesTo(array $kpi, array $unit): bool
     {
-        return $kpi['applies_to_kind'] === null || $kpi['applies_to_kind'] === $unit['kind'];
+        return ($kpi['applies_to_kind'] === null || $kpi['applies_to_kind'] === $unit['kind'])
+            && KpiScope::covers($this->access->tree(), $kpi, $unit['id']);
     }
 }

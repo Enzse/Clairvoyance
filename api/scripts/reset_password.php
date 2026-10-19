@@ -33,4 +33,4 @@ for ($i = 0; $i < 12; $i++) {
 }
 
 $users->update($user['id'], ['password' => $password]);
-echo "New password for {$email} ({$user['role']}): {$password}\n";
+echo "New password for {$email}: {$password}\n";
