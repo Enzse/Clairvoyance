@@ -40,6 +40,18 @@ class PeriodTest extends TestCase
         $this->assertSame(30, count(Period::periodsWithin('2025-06-01', 'monthly', 'daily')));
     }
 
+    public function testPeriodsOnTheEntryForm(): void
+    {
+        // Weeks and days that start in the month, but not ones still to come
+        $this->assertSame(['2025-06-02', '2025-06-09'], Period::inMonth('2025-06-01', 'weekly', '2025-06-12'));
+        $this->assertSame(12, count(Period::inMonth('2025-06-01', 'daily', '2025-06-12')));
+        $this->assertSame(30, count(Period::inMonth('2025-06-01', 'daily', '2026-01-01')));
+        // Longer periods: the one the month is in
+        $this->assertSame(['2025-06-01'], Period::inMonth('2025-06-01', 'monthly', '2025-06-12'));
+        $this->assertSame(['2025-04-01'], Period::inMonth('2025-06-01', 'quarterly', '2025-06-12'));
+        $this->assertSame(['2025-01-01'], Period::inMonth('2025-06-01', 'yearly', '2025-06-12'));
+    }
+
     public function testCannotViewFinerThanFrequency(): void
     {
         $this->assertThrows(fn() => Period::periodsWithin('2025-06-01', 'weekly', 'monthly'), \InvalidArgumentException::class);

@@ -20,6 +20,12 @@ class ValueController
         return $this->values->form($request->queryInt('unit'), $request->requiredQuery('date'));
     }
 
+    /** GET /values/progress?date= : how much of the month's figures each unit has entered */
+    public function progress(Request $request): array
+    {
+        return $this->values->progress($request->requiredQuery('date'));
+    }
+
     /** PUT /values {values: [{kpi_id, unit_id, period, value, note}]} */
     public function save(Request $request): array
     {

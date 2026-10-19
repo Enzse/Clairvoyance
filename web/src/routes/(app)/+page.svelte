@@ -104,7 +104,7 @@
 								<button class="btn btn-secondary btn-sm" onclick={() => (exporting = true)}><Icon name="download" size={14} /> Export</button>
 							{/if}
 							{#if canEnter}
-								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: unitId, date: card.date })}>
+								<a class="btn btn-primary btn-sm" href={href('/enter', { unit: isLeaf ? unitId : null, date: card.date })}>
 									<Icon name="pencil" size={14} /> Add {card.kpis[0]?.period_label ?? ''} data
 								</a>
 							{/if}
