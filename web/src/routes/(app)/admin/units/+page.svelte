@@ -108,7 +108,8 @@
 </script>
 
 <svelte:head><title>Structure | Clairvoyance</title></svelte:head>
-<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && close()} />
+<!-- Escape in a dialog over the panel closes only the dialog -->
+<svelte:window onkeydown={(e) => e.key === 'Escape' && selected && !document.querySelector('dialog[open]') && close()} />
 
 <div class="transition-[padding] duration-300 {selected ? 'lg:pr-[max(0px,calc(444px-(100vw-1240px)/2))]' : ''}">
 	<div class="flex flex-wrap items-end justify-between gap-4">

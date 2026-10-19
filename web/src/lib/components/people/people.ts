@@ -34,3 +34,14 @@ export function shortDate(iso: string): string {
 	const sameYear = date.getFullYear() === new Date().getFullYear();
 	return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
+
+const RANK = { viewer: 1, contributor: 2 } as const;
+
+/**
+ * Another access in the list that already includes this one: a group above it with at least
+ * the same level. `ancestors` gives a unit's ancestors' ids.
+ */
+export function coveredBy(access: Membership, list: Membership[], ancestors: (unitId: number) => number[]): Membership | undefined {
+	const above = ancestors(access.unit_id);
+	return list.find((other) => other !== access && above.includes(other.unit_id) && RANK[other.role] >= RANK[access.role]);
+}

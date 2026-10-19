@@ -3,11 +3,12 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { scale } from 'svelte/transition';
 	import { session } from '$lib/session.svelte';
+	import type { Membership } from '$lib/types';
 	import Icon from '../Icon.svelte';
 	import InviteList from '../InviteList.svelte';
 
-	/** Inviting people by email, in a modal over the People page. */
-	let { open = $bindable(false), onCreated }: { open?: boolean; onCreated: () => void } = $props();
+	/** Inviting people by email, in a modal. `preset` starts each row with that access. */
+	let { open = $bindable(false), onCreated, preset }: { open?: boolean; onCreated: () => void; preset?: Membership } = $props();
 
 	let dialog: HTMLDialogElement;
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
@@ -35,7 +36,7 @@
 				<button class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" onclick={() => (open = false)} aria-label="Close"><Icon name="x" size={18} /></button>
 			</header>
 			<div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-				<InviteList {onCreated} />
+				<InviteList {onCreated} {preset} />
 			</div>
 			<footer class="flex justify-end border-t border-line px-6 py-4">
 				<button class="btn btn-secondary" onclick={() => (open = false)}>Done</button>

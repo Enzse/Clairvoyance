@@ -11,10 +11,12 @@
 	import IconPicker from './IconPicker.svelte';
 	import InlineEdit from '../InlineEdit.svelte';
 	import { problem, saveUnit } from './save';
+	import UnitAccess from './UnitAccess.svelte';
 
 	/**
 	 * Everything about the selected unit. Each change saves as it's made: name and kind in
-	 * place, moving, a code for spreadsheet imports, switching off, gathering others in, deleting.
+	 * place, moving, a code for spreadsheet imports, switching off, who has access, gathering
+	 * others in, deleting.
 	 */
 	let {
 		unit,
@@ -201,6 +203,8 @@
 				<span class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-line-strong transition-colors peer-checked:bg-chart peer-focus-visible:ring-2 peer-focus-visible:ring-chart after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" aria-hidden="true"></span>
 			</label>
 		{/if}
+
+		<UnitAccess {unit} />
 
 		{#if candidates.length}
 			<section class="border-t border-line pt-5">
