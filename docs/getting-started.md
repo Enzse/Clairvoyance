@@ -18,15 +18,15 @@ Open a terminal (Git Bash, or PowerShell) and run:
 cd C:\xampp\htdocs
 git clone https://github.com/Enzse/Clairvoyance.git clairvoyance-v3
 cd clairvoyance-v3
-git checkout v3-rebuild
 ```
 
 Keep the folder name `clairvoyance-v3`: the web app expects the API at
 `http://localhost/clairvoyance-v3/api`. To use another folder name, copy `web/.env.example`
 to `web/.env` and change `VITE_API_URL`.
 
-If you want your own copy on GitHub (for a thesis, for example), **fork** the repository
-first and clone your fork instead.
+The code is not open source: see [LICENSE](../LICENSE). Use it, including for a thesis, only
+with the author's written permission. With permission, you can **fork** the repository and
+clone your fork instead, to keep your own copy on GitHub.
 
 ## 2. Start Apache and MySQL
 

@@ -27,3 +27,8 @@ Locally nothing is emailed unless `MAIL_*` is set in `api/.env`. To try the emai
 [Mailpit](https://mailpit.axllent.org) (`mailpit --smtp 127.0.0.1:1025`) and set
 `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` and `MAIL_ENCRYPTION=none`. Messages appear at
 http://localhost:8025.
+
+## License
+
+All rights reserved. The code may be viewed, but using, copying or modifying it needs the
+author's written permission. See [LICENSE](LICENSE).
