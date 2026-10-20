@@ -8,7 +8,7 @@ const list = [
 	{ id: 2, parent_id: 1, name: 'North', kind: 'Region', has_values: false },
 	{ id: 3, parent_id: 2, name: 'Downtown', kind: 'Branch', has_values: false },
 	{ id: 4, parent_id: 2, name: 'Airport', kind: 'Branch', has_values: true },
-	{ id: 5, parent_id: 1, name: 'South', kind: 'Group', has_values: false },
+	{ id: 5, parent_id: 1, name: 'South', kind: 'Region', has_values: false, is_group: true },
 	{ id: 6, parent_id: 1, name: 'Harbour', kind: 'Branch', has_values: false }
 ] as Unit[];
 const units = {

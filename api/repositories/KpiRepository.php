@@ -115,4 +115,17 @@ class KpiRepository
             return $row;
         }, $rows);
     }
+
+    /** Names of the KPIs reported only by this unit: removing it would leave them reported by everyone. */
+    public function onlyScopedTo(int $organizationId, int $unitId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT k.name FROM kpis k JOIN kpi_scope_units s ON s.kpi_id = k.id
+             WHERE k.organization_id = ? AND s.unit_id = ?
+               AND (SELECT COUNT(*) FROM kpi_scope_units o WHERE o.kpi_id = k.id) = 1
+             ORDER BY k.name'
+        );
+        $stmt->execute([$organizationId, $unitId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

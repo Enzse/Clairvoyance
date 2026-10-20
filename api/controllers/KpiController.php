@@ -44,9 +44,10 @@ class KpiController
         return $this->kpis->update($params['id'], $request->body);
     }
 
+    /** Admins only: targets cover every unit, including ones a member can't see. */
     public function targets(Request $request, array $params): array
     {
-        $this->auth->requireUser();
+        $this->auth->requireAdmin();
         return $this->kpis->targets($params['id']);
     }
 

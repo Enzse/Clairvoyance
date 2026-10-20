@@ -49,6 +49,7 @@ export function isAdmin(): boolean {
 
 /** Where to go after signing in: the requested page, otherwise onboarding or the scorecard. */
 export function landingFor(me: Me, next: string | null): string {
-	if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+	// Only paths on this site: browsers read "//x" and "/\x" as another site
+	if (next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) return next;
 	return me.organization ? '/' : '/onboarding';
 }

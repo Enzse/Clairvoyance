@@ -25,7 +25,7 @@
 	const kids = $derived(units.children(unit.id));
 	const isRoot = $derived(unit.parent_id === null);
 	// A unit with units inside, or one made as a group that is still empty
-	const isGroup = $derived(kids.length > 0 || unit.kind?.toLowerCase() === 'group');
+	const isGroup = $derived(kids.length > 0 || unit.is_group);
 	const open = $derived(!tree.collapsed.has(unit.id));
 	const selected = $derived(tree.selectedId === unit.id);
 	const adding = $derived(tree.addingUnder === unit.id);
@@ -181,6 +181,7 @@
 					<QuickAdd
 						parentId={unit.id}
 						kind={tree.kindFor(unit.id)}
+						group={tree.addingGroup}
 						label="Name of the new one inside {unit.name}"
 						placeholder={tree.addingGroup
 							? 'Name of the new group, e.g. North region'

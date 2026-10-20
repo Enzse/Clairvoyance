@@ -72,11 +72,23 @@ class EntryProgressTest extends ApiTestCase
     public function test4AnEmptyGroupIsNotAskedForFigures(): void
     {
         $this->actingAs(self::$admin);
-        $west = $this->createUnit($this->rootId(), 'West', 'Group');
+        // Made as a group and given a term of its own: still not asked for figures while empty
+        $west = $this->ok('POST', '/units', [], ['parent_id' => $this->rootId(), 'name' => 'West', 'kind' => 'Region', 'is_group' => true])['id'];
         $units = array_column($this->ok('GET', '/values/progress', ['date' => '2025-06-01'])['units'], 'unit_id');
         $this->assertSame(false, in_array($west, $units, true));
         $this->assertStatus(400, $this->call('GET', '/values', ['unit' => $west, 'date' => '2025-06-01']));
         // Still empty, so it can be deleted
         $this->assertStatus(200, $this->call('DELETE', "/units/{$west}"));
+    }
+
+    public function test5AKpisOnlyUnitCannotBeDeleted(): void
+    {
+        $this->actingAs(self::$admin);
+        $east = $this->createUnit($this->rootId(), 'East', 'Store');
+        $this->createKpi(['code' => 'east_only', 'name' => 'East footfall', 'scope_unit_ids' => [$east]]);
+        // Deleting it would quietly hand the KPI to everyone
+        $response = $this->call('DELETE', "/units/{$east}");
+        $this->assertStatus(409, $response);
+        $this->assertSame(true, str_contains(json_encode($response), 'East footfall'));
     }
 }

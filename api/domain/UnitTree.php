@@ -54,7 +54,7 @@ class UnitTree
 
     /**
      * Whether the unit reports figures itself: it has nothing under it, and it isn't an empty
-     * group (kind "Group", no figures) waiting for units to be moved in.
+     * group (made as a group, no figures) waiting for units to be moved in.
      */
     public function isLeaf(int $id): bool
     {
@@ -62,7 +62,7 @@ class UnitTree
             return false;
         }
         $unit = $this->units[$id] ?? null;
-        return !($unit && $unit['parent_id'] !== null && empty($unit['has_values']) && mb_strtolower((string)$unit['kind']) === 'group');
+        return !($unit && $unit['parent_id'] !== null && empty($unit['has_values']) && !empty($unit['is_group']));
     }
 
     public function hasChildren(int $id): bool

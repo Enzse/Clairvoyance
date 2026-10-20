@@ -29,7 +29,7 @@
 	const isRoot = $derived(unit.parent_id === null);
 	const kids = $derived(units.children(unit.id));
 	const reporting = $derived(units.reporting(unit.id));
-	const isGroup = $derived(isRoot || kids.length > 0 || unit.kind?.toLowerCase() === 'group');
+	const isGroup = $derived(isRoot || kids.length > 0 || unit.is_group);
 
 	let hasCode = $state(false);
 	let code = $state('');

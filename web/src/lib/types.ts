@@ -90,6 +90,8 @@ export interface Unit {
 	icon: string | null;
 	is_active: boolean;
 	has_values: boolean;
+	/** Made as a group: holds others and doesn't report figures, even while empty */
+	is_group: boolean;
 	is_leaf?: boolean;
 	access?: Access | null;
 }

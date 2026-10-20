@@ -38,5 +38,5 @@ export function canMoveInto(movingId: number, targetId: number, units: UnitLooku
 	const target = units.get(targetId);
 	if (!moving || !target || moving.parent_id === null || movingId === targetId || moving.parent_id === targetId) return false;
 	if (target.has_values || units.path(targetId).some((u) => u.id === movingId)) return false;
-	return target.parent_id === null || units.children(targetId).length > 0 || target.kind?.toLowerCase() === 'group';
+	return target.parent_id === null || units.children(targetId).length > 0 || !!target.is_group;
 }

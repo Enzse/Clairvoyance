@@ -117,7 +117,7 @@ export const api = {
 
 	// Organisation
 	units: () => request<Unit[]>('GET', '/units'),
-	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null; icon?: string | null }) =>
+	createUnit: (body: { parent_id: number; name: string; code?: string | null; kind?: string | null; icon?: string | null; is_group?: boolean }) =>
 		request<Unit>('POST', '/units', { body }),
 	updateUnit: (id: number, body: Partial<Pick<Unit, 'name' | 'code' | 'kind' | 'icon' | 'is_active' | 'parent_id'>>) =>
 		request<Unit>('PUT', `/units/${id}`, { body }),

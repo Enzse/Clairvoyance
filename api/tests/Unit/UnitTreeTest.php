@@ -47,14 +47,14 @@ class UnitTreeTest extends TestCase
     {
         $tree = new UnitTree([
             $this->unit(1, null, 'Org'),
-            $this->unit(2, 1, 'West', 'Group'),
+            ['is_group' => true] + $this->unit(2, 1, 'West', 'Region'),
             $this->unit(3, 1, 'Downtown', 'Branch'),
-            ['has_values' => true] + $this->unit(4, 1, 'Old group', 'Group'),
+            ['is_group' => true, 'has_values' => true] + $this->unit(4, 1, 'Old group', 'Group'),
         ]);
         $this->assertSame(false, $tree->isLeaf(2));
         $this->assertSame(false, $tree->hasChildren(2));
         $this->assertSame([3, 4], $this->sorted($tree->activeLeafIds(1)));
-        // One that already holds figures keeps reporting, whatever it's called
+        // One that already holds figures keeps reporting
         $this->assertTrue($tree->isLeaf(4));
     }
 

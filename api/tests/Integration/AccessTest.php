@@ -113,6 +113,8 @@ class AccessTest extends ApiTestCase
         $this->assertStatus(403, $this->call('POST', '/kpis', [], ['code' => 'x', 'name' => 'X', 'frequency' => 'monthly', 'time_aggregation' => 'sum', 'unit_aggregation' => 'sum', 'direction' => 'none']));
         $this->assertStatus(403, $this->call('POST', '/units', [], ['parent_id' => self::$units['north'], 'name' => 'Mine']));
         $this->assertStatus(403, $this->call('PUT', '/kpis/' . self::$kpi . '/targets', [], ['targets' => []]));
+        // Targets cover units outside their access, so the raw list stays with admins
+        $this->assertStatus(403, $this->call('GET', '/kpis/' . self::$kpi . '/targets'));
         $this->assertStatus(403, $this->call('GET', '/members'));
         $this->assertStatus(403, $this->call('POST', '/invitations', [], ['email' => 'friend@example.com']));
         $this->assertStatus(403, $this->call('PUT', '/organization', [], ['name' => 'Mine now']));

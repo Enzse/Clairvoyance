@@ -12,6 +12,7 @@
 	let {
 		parentId,
 		kind,
+		group = false,
 		label,
 		placeholder,
 		onAdded,
@@ -19,6 +20,8 @@
 	}: {
 		parentId: number;
 		kind: string | null;
+		/** Adding a group: it holds others and never reports figures itself */
+		group?: boolean;
 		label: string;
 		placeholder: string;
 		onAdded: (ids: number[]) => void;
@@ -42,7 +45,7 @@
 		error = '';
 		const ids: number[] = [];
 		try {
-			for (const n of fresh) ids.push((await api.createUnit({ parent_id: parentId, name: n, kind })).id);
+			for (const n of fresh) ids.push((await api.createUnit({ parent_id: parentId, name: n, kind, is_group: group })).id);
 			name = '';
 		} catch (e) {
 			error = problem(e, 'Could not add');

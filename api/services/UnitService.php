@@ -5,6 +5,7 @@ namespace Services;
 use Core\HttpException;
 use Core\Validator;
 use Core\Auth;
+use Repositories\KpiRepository;
 use Repositories\OrganizationRepository;
 use Repositories\UnitRepository;
 
@@ -22,11 +23,13 @@ class UnitService
     private UnitRepository $units;
     private OrganizationRepository $organizations;
     private AccessService $access;
+    private KpiRepository $kpis;
 
-    public function __construct(Auth $auth, UnitRepository $units, OrganizationRepository $organizations, AccessService $access)
+    public function __construct(Auth $auth, UnitRepository $units, OrganizationRepository $organizations, AccessService $access, KpiRepository $kpis)
     {
         $this->units = $units;
         $this->access = $access;
+        $this->kpis = $kpis;
         $this->auth = $auth;
         $this->organizations = $organizations;
     }
@@ -39,6 +42,7 @@ class UnitService
         $code = $v->string('code', false, 64, self::CODE_PATTERN, 'may only use letters, digits, _ . and -');
         $kind = $v->string('kind', false, 64);
         $icon = $v->string('icon', false, 32, self::ICON_PATTERN, 'is not an icon name');
+        $isGroup = $v->bool('is_group', false) ?? false;
         $v->check();
 
         $tree = $this->access->tree();
@@ -53,7 +57,7 @@ class UnitService
         $this->checkCode($v, $code, null);
         $v->check();
 
-        $id = $this->units->create($this->auth->organizationId(), $parentId, $name, $code, $kind, $icon);
+        $id = $this->units->create($this->auth->organizationId(), $parentId, $name, $code, $kind, $icon, $isGroup);
         return $this->access->refreshTree()->get($id);
     }
 
@@ -124,6 +128,12 @@ class UnitService
         }
         if ($unit['has_values']) {
             throw HttpException::conflict('This has figures; deactivate it instead, so they stay in the history');
+        }
+        // A KPI limited to only this unit would quietly become everyone's
+        $only = $this->kpis->onlyScopedTo($this->auth->organizationId(), $id);
+        if ($only) {
+            $one = count($only) === 1;
+            throw HttpException::conflict(implode(', ', $only) . ($one ? ' is' : ' are') . " reported only by {$unit['name']}; change who reports " . ($one ? 'it' : 'them') . ' first');
         }
         $this->units->delete($this->auth->organizationId(), $id);
         $this->access->refreshTree();
