@@ -42,12 +42,17 @@ export function niceScale(values: number[], { count = 4, includeZero = false } =
 
 /**
  * Tick label formatter precise enough that neighbouring ticks never read the same:
- * compact (8.4K) only when the step is a whole number of thousands.
+ * compact (8.4K, 4.5M) with as many decimals as the step needs in the compact unit.
  */
 export function tickFormatter(scale: Scale): (v: number) => string {
 	const step = scale.ticks.length > 1 ? scale.ticks[1] - scale.ticks[0] : 1;
 	if (Math.abs(scale.max) >= 1000 && step >= 1000) {
-		return (v) => v.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: step % 1000 === 0 ? 0 : 1 });
+		// The unit compact notation will use: thousands, millions, billions...
+		const unit = 10 ** (3 * Math.floor(Math.log10(Math.abs(scale.max)) / 3));
+		// Decimals the step has in that unit: 0.5M needs one, 2.5K one, 2K none
+		let digits = 0;
+		while (digits < 2 && Math.abs(Math.round((step / unit) * 10 ** digits) - (step / unit) * 10 ** digits) > 1e-9) digits++;
+		return (v) => v.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: digits });
 	}
 	const decimals = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
 	return (v) => v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

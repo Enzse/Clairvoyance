@@ -47,6 +47,11 @@ describe('tickFormatter', () => {
 		expect(scale.ticks.map(tickFormatter(scale))).toEqual(['0', '1K', '2K', '3K', '4K']);
 	});
 
+	it('keeps the decimal of half-million steps', () => {
+		const scale = niceScale([4_300_000, 6_700_000]);
+		expect(scale.ticks.map(tickFormatter(scale))).toEqual(['4M', '4.5M', '5M', '5.5M', '6M', '6.5M', '7M']);
+	});
+
 	it('shows decimals for small steps', () => {
 		const scale = niceScale([94.9, 97.5]);
 		expect(tickFormatter(scale)(95)).toBe('95.0');

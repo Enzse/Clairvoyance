@@ -15,10 +15,15 @@
 	let width = $state(720);
 	const height = 260;
 	const axisBand = 28;
-	const margin = { top: 16, right: 76, bottom: 0, left: 52 };
+	// The right margin fits the latest value's label (₱5,823,600 needs more than 1,234)
+	const endLabel = $derived.by(() => {
+		const last = periods.findLast((p) => p.value !== null);
+		return last ? formatValue(kpi, last.value) : '';
+	});
+	const margin = $derived({ top: 16, right: Math.max(76, Math.ceil(endLabel.length * 8.5) + 18), bottom: 0, left: 52 });
 
 	const plotW = $derived(Math.max(width - margin.left - margin.right, 40));
-	const plotH = height - margin.top - margin.bottom;
+	const plotH = $derived(height - margin.top - margin.bottom);
 
 	const scale = $derived(
 		niceScale(periods.flatMap((p) => [p.value, p.target]).filter((v): v is number => v !== null))

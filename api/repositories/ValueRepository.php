@@ -58,7 +58,7 @@ class ValueRepository
         }
         $in = implode(',', array_fill(0, count($periodStarts), '?'));
         $stmt = $this->db->prepare(
-            "SELECT v.kpi_id, v.period_start, v.value, v.note, v.updated_at, u.email AS updated_by
+            "SELECT v.kpi_id, v.period_start, v.value, v.note, v.updated_at, COALESCE(u.name, u.email) AS updated_by
              FROM kpi_values v LEFT JOIN users u ON u.id = v.updated_by
              WHERE v.unit_id = ? AND v.period_start IN ({$in})"
         );
