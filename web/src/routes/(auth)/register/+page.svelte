@@ -12,6 +12,7 @@
 	let email = $state(page.url.searchParams.get('email') ?? '');
 	let password = $state('');
 	let confirm = $state('');
+	let agreed = $state(false);
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 
@@ -22,11 +23,11 @@
 	// The (auth) layout moves on to onboarding (or the invitation) once signed in
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (password !== confirm) return;
+		if (password !== confirm || !agreed) return;
 		busy = true;
 		error = null;
 		try {
-			setMe(await api.register({ name: name || undefined, email, password }));
+			setMe(await api.register({ name: name || undefined, email, password, accept_terms: agreed }));
 		} catch (e) {
 			error = e instanceof ApiError ? e : new ApiError(0, 'Could not create the account');
 		} finally {
@@ -62,8 +63,16 @@
 		<label class="field-label" for="confirm-password">Confirm password</label>
 		<PasswordInput id="confirm-password" bind:value={confirm} autocomplete="new-password" error={mismatch ? "The passwords don't match" : ''} />
 	</div>
+	<!-- The documents open in a new tab, so what's typed here isn't lost -->
+	<label class="flex items-start gap-2.5 text-sm text-ink-2">
+		<input type="checkbox" class="mt-0.5 size-4 shrink-0 accent-[var(--accent)]" bind:checked={agreed} />
+		<span>
+			I agree to the <a class="font-medium text-accent hover:underline" href="/terms" target="_blank">Terms of Service</a>
+			and <a class="font-medium text-accent hover:underline" href="/privacy" target="_blank">Privacy Policy</a>.
+		</span>
+	</label>
 	<FormAlert message={error && !error.field('email') && !error.field('password') ? error.message : ''} />
-	<button class="btn btn-primary w-full" disabled={busy || !password || password !== confirm}>{busy ? 'Creating your account…' : 'Create account'}</button>
+	<button class="btn btn-primary w-full" disabled={busy || !password || password !== confirm || !agreed}>{busy ? 'Creating your account…' : 'Create account'}</button>
 </form>
 
 <AuthFooter>

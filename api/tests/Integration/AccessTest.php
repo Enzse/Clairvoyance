@@ -36,7 +36,7 @@ class AccessTest extends ApiTestCase
     public function testSignUpAloneGivesNoOrganisation(): void
     {
         $this->actingAs(null);
-        $me = $this->ok('POST', '/auth/register', [], ['email' => 'loner@example.com', 'password' => self::PASSWORD, 'role' => 'admin']);
+        $me = $this->ok('POST', '/auth/register', [], ['email' => 'loner@example.com', 'password' => self::PASSWORD, 'accept_terms' => true, 'role' => 'admin']);
         $this->assertNull($me['organization']);
         $this->assertSame([], $me['organizations']);
         $result = $this->call('GET', '/units');
@@ -56,7 +56,20 @@ class AccessTest extends ApiTestCase
         $this->actingAs(null);
         $result = $this->call('POST', '/auth/register', [], ['email' => 'not-an-email', 'password' => 'short']);
         $this->assertStatus(400, $result);
-        $this->assertSame(['email', 'password'], array_keys($result[1]['details']));
+        $this->assertSame(['accept_terms', 'email', 'password'], array_keys($result[1]['details']));
+    }
+
+    public function testSignUpRecordsAgreeingToTheTerms(): void
+    {
+        $this->actingAs(null);
+        $declined = ['email' => 'careful@example.com', 'password' => self::PASSWORD, 'accept_terms' => false];
+        $this->assertStatus(400, $this->call('POST', '/auth/register', [], $declined));
+        $this->ok('POST', '/auth/register', [], ['accept_terms' => true] + $declined);
+        $stmt = self::$db->prepare('SELECT terms_version, terms_accepted_at FROM users WHERE email = ?');
+        $stmt->execute(['careful@example.com']);
+        $row = $stmt->fetch();
+        $this->assertSame(\Services\AccountService::TERMS_VERSION, $row['terms_version']);
+        $this->assertSame(true, $row['terms_accepted_at'] !== null);
     }
 
     public function testLogin(): void

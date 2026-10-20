@@ -15,6 +15,8 @@ use Repositories\UserRepository;
 class AccountService
 {
     public const MIN_PASSWORD = 8;
+    /** The date the Terms and Privacy Policy were last changed (web: routes/terms, routes/privacy) */
+    public const TERMS_VERSION = '2026-10-20';
 
     private PDO $db;
     private Auth $auth;
@@ -44,6 +46,9 @@ class AccountService
         $email = $v->string('email', true);
         $password = $v->secret('password', true);
         $name = $v->string('name', false, 255);
+        if (!$v->bool('accept_terms')) {
+            $v->addError('accept_terms', 'must be agreed to before creating an account');
+        }
         if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $v->addError('email', 'is not a valid email address');
         }
@@ -55,7 +60,7 @@ class AccountService
         }
         $v->check();
 
-        $user = $this->users->find($this->users->create(mb_strtolower($email), $password, $name));
+        $user = $this->users->find($this->users->create(mb_strtolower($email), $password, $name, self::TERMS_VERSION));
         $this->auth->login($user);
         $this->verification->sendVerification($user);
         return $this->me();

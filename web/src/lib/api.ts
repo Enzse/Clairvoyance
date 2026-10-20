@@ -83,7 +83,7 @@ export const api = {
 	// Session and account
 	me: () => request<Me>('GET', '/auth/me'),
 	login: (email: string, password: string) => request<Me>('POST', '/auth/login', { body: { email, password } }),
-	register: (body: { email: string; password: string; name?: string }) => request<Me>('POST', '/auth/register', { body }),
+	register: (body: { email: string; password: string; name?: string; accept_terms: boolean }) => request<Me>('POST', '/auth/register', { body }),
 	logout: () => request<[]>('POST', '/auth/logout'),
 	updateAccount: (body: { name?: string | null; current_password?: string; new_password?: string }) =>
 		request<User>('PUT', '/auth/me', { body }),

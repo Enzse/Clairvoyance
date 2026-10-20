@@ -82,7 +82,7 @@ abstract class ApiTestCase extends TestCase
      */
     protected function registerAndLogin(string $email, ?string $organization = 'Test Org'): int
     {
-        $user = $this->ok('POST', '/auth/register', [], ['email' => $email, 'password' => self::PASSWORD]);
+        $user = $this->ok('POST', '/auth/register', [], ['email' => $email, 'password' => self::PASSWORD, 'accept_terms' => true]);
         $this->actingAs($user['id']);
         if ($organization !== null) {
             $this->ok('POST', '/organizations', [], ['name' => $organization]);

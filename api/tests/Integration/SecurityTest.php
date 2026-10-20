@@ -47,12 +47,13 @@ class SecurityTest extends ApiTestCase
     public function test4OneAddressCanOnlyRegisterSoManyAccounts(): void
     {
         $this->clientIp = '203.0.113.7';
+        $signUp = fn($n) => ['email' => "bulk{$n}@example.com", 'password' => self::PASSWORD, 'accept_terms' => true];
         for ($i = 1; $i <= 10; $i++) {
-            $this->ok('POST', '/auth/register', [], ['email' => "bulk{$i}@example.com", 'password' => self::PASSWORD]);
+            $this->ok('POST', '/auth/register', [], $signUp($i));
         }
-        $this->assertStatus(429, $this->call('POST', '/auth/register', [], ['email' => 'bulk11@example.com', 'password' => self::PASSWORD]));
+        $this->assertStatus(429, $this->call('POST', '/auth/register', [], $signUp(11)));
         $this->clientIp = '203.0.113.8';
-        $this->ok('POST', '/auth/register', [], ['email' => 'bulk11@example.com', 'password' => self::PASSWORD]);
+        $this->ok('POST', '/auth/register', [], $signUp(11));
     }
 
     public function test5ChangingYourPasswordSignsOutOtherSessions(): void

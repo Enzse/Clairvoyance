@@ -389,7 +389,7 @@ as coarse as the KPI's frequency.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/auth/register`, `/auth/login`, `/auth/logout` | Session-cookie auth |
+| POST | `/auth/register`, `/auth/login`, `/auth/logout` | Session-cookie auth. Register needs `accept_terms: true`; the Terms version is recorded |
 | GET/PUT | `/auth/me` | Current user (with `email_verified`, `email_delivery`), their organisations, the selected one and unit memberships / change name or password (needs `current_password`) |
 | DELETE | `/auth/me` | Delete your account `{password}` |
 | POST | `/auth/verify-email`, `/auth/verify-email/resend` | Confirm an address `{token}` (works signed out) / send a new link |

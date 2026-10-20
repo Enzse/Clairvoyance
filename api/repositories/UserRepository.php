@@ -50,10 +50,11 @@ class UserRepository
         return $hash && password_verify($password, $hash);
     }
 
-    public function create(string $email, string $password, ?string $name): int
+    /** $termsVersion: the Terms the person agreed to while signing up */
+    public function create(string $email, string $password, ?string $name, string $termsVersion): int
     {
-        $stmt = $this->db->prepare('INSERT INTO users (email, name, password) VALUES (?, ?, ?)');
-        $stmt->execute([$email, $name, password_hash($password, PASSWORD_DEFAULT)]);
+        $stmt = $this->db->prepare('INSERT INTO users (email, name, password, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$email, $name, password_hash($password, PASSWORD_DEFAULT), date('Y-m-d H:i:s'), $termsVersion]);
         return (int)$this->db->lastInsertId();
     }
 
