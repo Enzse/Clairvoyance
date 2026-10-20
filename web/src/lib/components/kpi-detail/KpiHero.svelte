@@ -124,10 +124,11 @@
 
 	{#snippet reports()}
 		<span class="flex items-center gap-3">
-			<ProgressRing value={current.reported} total={Math.max(current.expected, 1)} from={0} size={40} />
-			<span>
+			<ProgressRing value={current.reported} total={Math.max(current.expected, 1)} from={0} size={40} bare />
+			<span class="min-w-0">
 				<span class="block text-sm text-ink-2">Reports in</span>
-				<span class="block text-sm font-medium">{current.reported === current.expected ? 'Everyone' : `${current.expected - current.reported} still to come`}</span>
+				<span class="num mt-1 block text-lg font-semibold">{current.reported} of {current.expected}</span>
+				<span class="block text-xs text-muted">{current.reported === current.expected ? 'Everyone has reported' : `${current.expected - current.reported} still to come`}</span>
 			</span>
 		</span>
 	{/snippet}

@@ -4,8 +4,17 @@
 	import { scale } from 'svelte/transition';
 	import Icon from './Icon.svelte';
 
-	/** A ring that fills to value/total, animating from `from` (e.g. the last visit) on arrival. */
-	let { value, total, from = value, size = 48 }: { value: number; total: number; from?: number; size?: number } = $props();
+	/**
+	 * A ring that fills to value/total, animating from `from` (e.g. the last visit) on arrival.
+	 * `bare` leaves out the count inside, for when it's written next to the ring.
+	 */
+	let {
+		value,
+		total,
+		from = value,
+		size = 48,
+		bare = false
+	}: { value: number; total: number; from?: number; size?: number; bare?: boolean } = $props();
 
 	const shown = new Tween(from, { duration: 900, easing: cubicOut });
 	$effect(() => {
@@ -37,7 +46,8 @@
 		<span class="absolute text-good" aria-hidden="true" in:scale={{ start: 0.3, delay: prefersReducedMotion.current ? 0 : 600, duration: 350 }}>
 			<Icon name="check" size={Math.round(size / 2.4)} stroke={3} />
 		</span>
-	{:else}
-		<span class="absolute text-sm font-semibold num" aria-hidden="true">{Math.round(shown.current)}/{total}</span>
+	{:else if !bare}
+		<!-- Longer counts get smaller type so they stay inside the ring -->
+		<span class="absolute font-semibold num {`${value}/${total}`.length > 4 ? 'text-[10px]' : 'text-sm'}" aria-hidden="true">{Math.round(shown.current)}/{total}</span>
 	{/if}
 </span>
