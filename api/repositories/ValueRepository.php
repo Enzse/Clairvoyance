@@ -111,20 +111,25 @@ class ValueRepository
     }
 
     /**
-     * Changes to one KPI in these units, newest first, optionally for one period.
+     * Changes to one KPI in these units, newest first, optionally for one period and only those
+     * older than the change with id $before.
      * @return array<array> with who made each change (name or email) and the import's file name
      */
-    public function changes(int $kpiId, array $unitIds, ?string $periodStart, int $limit = 50): array
+    public function changes(int $kpiId, array $unitIds, ?string $periodStart, ?int $before = null, int $limit = 50): array
     {
         if (!$unitIds) {
             return [];
         }
         $in = implode(',', array_fill(0, count($unitIds), '?'));
         $params = [$kpiId, ...array_values($unitIds)];
-        $period = '';
+        $filters = '';
         if ($periodStart !== null) {
-            $period = ' AND c.period_start = ?';
+            $filters .= ' AND c.period_start = ?';
             $params[] = $periodStart;
+        }
+        if ($before !== null) {
+            $filters .= ' AND c.id < ?';
+            $params[] = $before;
         }
         $stmt = $this->db->prepare(
             "SELECT c.id, c.unit_id, un.name AS unit_name, c.period_start, c.old_value, c.new_value, c.old_note, c.new_note,
@@ -133,7 +138,7 @@ class ValueRepository
              JOIN units un ON un.id = c.unit_id
              LEFT JOIN users u ON u.id = c.changed_by
              LEFT JOIN imports i ON i.id = c.import_id
-             WHERE c.kpi_id = ? AND c.unit_id IN ({$in}){$period}
+             WHERE c.kpi_id = ? AND c.unit_id IN ({$in}){$filters}
              ORDER BY c.id DESC LIMIT " . max(1, min(200, $limit))
         );
         $stmt->execute($params);

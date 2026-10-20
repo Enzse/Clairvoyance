@@ -424,7 +424,7 @@ as coarse as the KPI's frequency.
 | GET | `/scorecard?unit=[&date=][&grain=]` | Every KPI: value, target, status, coverage, previous period, change, 12-period sparkline. Without `grain`, each KPI is shown at its own frequency. |
 | GET | `/kpis/{id}/series?unit=&grain=[&from=][&to=]` | Value, target, status and coverage per period, and the change into the last period; defaults to the 12 periods ending at the latest data |
 | GET | `/kpis/{id}/breakdown?unit=&grain=[&date=]` | The unit's direct children, each with value, target, status, coverage |
-| GET | `/kpis/{id}/history?unit=[&date=]` | The latest 50 changes to the KPI's figures in the unit's subtree, optionally for one period |
+| GET | `/kpis/{id}/history?unit=[&date=][&before=]` | `{changes, more}`: changes to the KPI's figures in the unit's subtree, newest first, 20 at a time (`before` = the last id shown), optionally for one period |
 | GET | `/exports/values?unit=&from=&to=` | Every figure in the unit's subtree with a period start in the range, plus the units and KPIs to label them |
 
 On the report endpoints a missing `date` (or `to`) means the latest period with data for that

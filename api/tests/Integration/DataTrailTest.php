@@ -40,7 +40,7 @@ class DataTrailTest extends ApiTestCase
 
     private function history(int $unit, ?string $date = null): array
     {
-        return $this->ok('GET', '/kpis/' . self::$kpi['id'] . '/history', ['unit' => $unit, 'date' => $date]);
+        return $this->ok('GET', '/kpis/' . self::$kpi['id'] . '/history', ['unit' => $unit, 'date' => $date])['changes'];
     }
 
     public function test1EveryChangeIsRecordedWithWhoMadeIt(): void
@@ -83,6 +83,24 @@ class DataTrailTest extends ApiTestCase
         $july = $this->history(self::$north, '2025-07-20');
         $this->assertSame(1, count($july));
         $this->assertSame('2025-07-01', $july[0]['period_start']);
+    }
+
+    public function test3bHistoryComesAPageAtATime(): void
+    {
+        $this->actingAs(self::$admin);
+        for ($i = 1; $i <= 21; $i++) {
+            $this->save(self::$b, $i, '2025-08-01');
+        }
+        $path = '/kpis/' . self::$kpi['id'] . '/history';
+        $first = $this->ok('GET', $path, ['unit' => self::$b, 'date' => '2025-08-01']);
+        $this->assertSame(20, count($first['changes']));
+        $this->assertSame(true, $first['more']);
+        $this->assertSame(21.0, (float)$first['changes'][0]['new_value']);
+        // The next page starts after the last one shown
+        $next = $this->ok('GET', $path, ['unit' => self::$b, 'date' => '2025-08-01', 'before' => end($first['changes'])['id']]);
+        $this->assertSame(1, count($next['changes']));
+        $this->assertSame(false, $next['more']);
+        $this->assertSame(1.0, (float)$next['changes'][0]['new_value']);
     }
 
     public function test4HistoryFollowsAccess(): void

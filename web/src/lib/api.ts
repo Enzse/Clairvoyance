@@ -137,8 +137,9 @@ export const api = {
 		request<Series>('GET', `/kpis/${kpiId}/series`, { query: { unit, grain, to, from } }),
 	breakdown: (kpiId: number, unit: number, grain: Frequency, date?: string | null) =>
 		request<Breakdown>('GET', `/kpis/${kpiId}/breakdown`, { query: { unit, grain, date } }),
-	history: (kpiId: number, unit: number, date?: string | null) =>
-		request<ValueChange[]>('GET', `/kpis/${kpiId}/history`, { query: { unit, date } }),
+	/** A page of changes, newest first; `before` is the id of the last one already shown */
+	history: (kpiId: number, unit: number, before?: number | null) =>
+		request<{ changes: ValueChange[]; more: boolean }>('GET', `/kpis/${kpiId}/history`, { query: { unit, before } }),
 	exportValues: (unit: number, from: string, to: string) => request<ExportData>('GET', '/exports/values', { query: { unit, from, to } }),
 
 	// Data entry

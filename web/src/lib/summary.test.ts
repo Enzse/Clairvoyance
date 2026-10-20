@@ -9,7 +9,8 @@ const change = (value: number, partial = false): Change => ({
 	direction: null,
 	basis: partial ? 'like_for_like' : 'all',
 	units_compared: partial ? 1 : null,
-	units_total: partial ? 2 : null
+	units_total: partial ? 2 : null,
+	left_out: partial ? ['Airport'] : []
 });
 const aug = { period_label: 'Aug 2026', value: 790000 };
 

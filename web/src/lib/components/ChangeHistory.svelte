@@ -11,22 +11,53 @@
 	/** Who changed this KPI's figures in the unit and the units inside it, newest first. */
 	let { kpi, unitId, showUnit, class: className = 'mt-6' }: { kpi: Kpi; unitId: number; showUnit: boolean; class?: string } = $props();
 
-	const SHOWN = 8;
+	const FIRST = 8;
+	const STEP = 20;
 	let changes = $state<ValueChange[] | null>(null);
+	let more = $state(false);
+	let shown = $state(FIRST);
 	let error = $state('');
-	let all = $state(false);
+	let loadingMore = $state(false);
+	let request = 0;
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 
+	const failed = (e: unknown) => (e instanceof ApiError ? e.message : 'Could not load the history');
+
 	$effect(() => {
+		const seq = ++request;
 		changes = null;
-		all = false;
+		shown = FIRST;
+		error = '';
 		api.history(kpi.id, unitId).then(
-			(found) => (changes = found),
-			(e) => (error = e instanceof ApiError ? e.message : 'Could not load the history')
+			(page) => {
+				if (seq !== request) return;
+				changes = page.changes;
+				more = page.more;
+			},
+			(e) => seq === request && (error = failed(e))
 		);
 	});
 
-	const visible = $derived(changes ? (all ? changes : changes.slice(0, SHOWN)) : []);
+	/** Shows the next few, fetching older ones from the server once the loaded ones run out. */
+	async function showMore() {
+		if (!changes) return;
+		shown += STEP;
+		if (shown <= changes.length || !more) return;
+		const seq = request;
+		loadingMore = true;
+		try {
+			const page = await api.history(kpi.id, unitId, changes.at(-1)?.id);
+			if (seq !== request) return;
+			changes = [...changes, ...page.changes];
+			more = page.more;
+		} catch (e) {
+			if (seq === request) error = failed(e);
+		} finally {
+			loadingMore = false;
+		}
+	}
+
+	const visible = $derived(changes ? changes.slice(0, shown) : []);
 	const exact = (at: string) => new Date(at.replace(' ', 'T')).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 </script>
 
@@ -38,7 +69,7 @@
 			<p class="text-sm text-ink-2">Every figure entered, corrected or deleted, and who did it.</p>
 		</div>
 	</div>
-	{#if error}
+	{#if error && !changes}
 		<p class="mt-4 text-sm text-bad-ink">{error}</p>
 	{:else if changes && !changes.length}
 		<p class="mt-4 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm text-ink-2">No figures have been entered yet.</p>
@@ -72,8 +103,11 @@
 				</li>
 			{/each}
 		</ol>
-		{#if changes.length > SHOWN && !all}
-			<button class="btn btn-ghost btn-sm mt-3 -ml-2.5" onclick={() => (all = true)}>Show all {changes.length}</button>
+		{#if error}<p class="mt-3 text-sm text-bad-ink">{error}</p>{/if}
+		{#if changes.length > shown || more}
+			<button class="btn btn-ghost btn-sm mt-3 -ml-2.5" onclick={showMore} disabled={loadingMore}>
+				{loadingMore ? 'Loading…' : 'Show older changes'}
+			</button>
 		{/if}
 	{:else}
 		<p class="mt-4 text-sm text-ink-2" aria-live="polite">Loading…</p>

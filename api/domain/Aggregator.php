@@ -78,6 +78,22 @@ final class Aggregator
         ));
     }
 
+    /**
+     * Leaf units still missing figures for some of the periods.
+     * @return array<int, int> unitId => how many of the periods it has reported
+     */
+    public static function incompleteUnits(array $leafIds, array $periods, array $values): array
+    {
+        $out = [];
+        foreach ($leafIds as $unitId) {
+            $reported = count(array_filter($periods, fn($p) => isset($values[$unitId][$p])));
+            if ($reported < count($periods)) {
+                $out[$unitId] = $reported;
+            }
+        }
+        return $out;
+    }
+
     private function target(array $cells, array $weights, array $periods, ?int $scopeUnitId): ?float
     {
         if (!$cells) {

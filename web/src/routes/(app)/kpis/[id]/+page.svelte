@@ -101,7 +101,7 @@
 		{:else if series && kpi && current}
 			<div class="transition-opacity duration-150 {loading ? 'opacity-55' : ''}" aria-busy={loading}>
 				<section class="panel -mt-5 p-5 sm:p-7" aria-labelledby="trend-heading">
-					<KpiHero {kpi} where={unit?.name ?? ''} {current} {previous} change={series.change} bind:view />
+					<KpiHero {kpi} where={unit?.name ?? ''} {current} {previous} change={series.change} missing={series.missing} bind:view />
 
 					<div class="mt-6">
 						{#if view === 'chart'}

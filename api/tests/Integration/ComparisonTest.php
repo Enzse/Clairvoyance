@@ -54,6 +54,7 @@ class ComparisonTest extends ApiTestCase
         $this->assertSame(300.0, (float)$row['value'], 'the total still shows what has been reported');
         $this->assertSame('like_for_like', $row['change']['basis']);
         $this->assertSame([2, 3], [$row['change']['units_compared'], $row['change']['units_total']]);
+        $this->assertSame(['Store C'], $row['change']['left_out']);
         // A and B: 300 in August, 300 in September. Comparing totals would say -300.
         $this->assertSame(0.0, (float)$row['change']['value']);
         $this->assertSame('flat', $row['change']['direction']);
@@ -80,6 +81,9 @@ class ComparisonTest extends ApiTestCase
         $series = $this->ok('GET', '/kpis/' . self::$rate['id'] . '/series', ['unit' => self::$root, 'grain' => 'monthly', 'to' => '2025-09-01']);
         $this->assertSame('like_for_like', $series['change']['basis']);
         $this->assertSame(10.0, (float)$series['change']['value']);
+        // ...and who still owes September
+        $missing = array_map(fn($m) => [$m['name'], $m['reported'], $m['expected']], $series['missing']);
+        $this->assertSame([['Store B', 0, 1], ['Store C', 0, 1]], $missing);
     }
 
     public function test5NoChangeWhenNoUnitCanBeCompared(): void

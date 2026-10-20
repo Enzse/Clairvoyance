@@ -92,7 +92,26 @@ class ReportService
         $starts = $this->range(Period::align($from, $grain), Period::align($to, $grain), $grain);
 
         $periods = $this->series($kpi, $unitId, $starts, $grain);
-        return ['kpi' => $kpi, 'unit' => $unit, 'grain' => $grain, 'periods' => $periods, 'change' => $this->comparison($kpi, $unitId, $periods, $grain)];
+        return [
+            'kpi' => $kpi, 'unit' => $unit, 'grain' => $grain, 'periods' => $periods,
+            'change' => $this->comparison($kpi, $unitId, $periods, $grain),
+            'missing' => $this->missing($kpi, $unitId, end($starts), $grain),
+        ];
+    }
+
+    /** Who still owes figures for the period, and how many of its weeks or days each has in. */
+    private function missing(array $kpi, int $unitId, string $start, string $grain): array
+    {
+        $tree = $this->access->tree();
+        $leafIds = KpiScope::leaves($tree, $kpi, $unitId);
+        [$values] = $this->load($kpi, $leafIds, $start, Period::next($start, $grain));
+        $periods = Period::periodsWithin($start, $grain, $kpi['frequency']);
+        $rows = [];
+        foreach (Aggregator::incompleteUnits($leafIds, $periods, $values) as $id => $reported) {
+            $rows[] = ['unit_id' => $id, 'name' => $tree->get($id)['name'], 'reported' => $reported, 'expected' => count($periods)];
+        }
+        usort($rows, fn($a, $b) => strcmp($a['name'], $b['name']));
+        return $rows;
     }
 
     /** One KPI at one period (default: the latest with data) for each unit directly under $unitId. */
@@ -184,10 +203,11 @@ class ReportService
             return null;
         }
         if ($now['reported'] === $now['expected'] && $before['reported'] === $before['expected']) {
-            return $this->change($kpi, $now['value'], $before['value']) + ['basis' => 'all', 'units_compared' => null, 'units_total' => null];
+            return $this->change($kpi, $now['value'], $before['value']) + ['basis' => 'all', 'units_compared' => null, 'units_total' => null, 'left_out' => []];
         }
 
-        $leafIds = KpiScope::leaves($this->access->tree(), $kpi, $unitId);
+        $tree = $this->access->tree();
+        $leafIds = KpiScope::leaves($tree, $kpi, $unitId);
         [$values, $weights] = $this->load($kpi, $leafIds, $before['period_start'], Period::next($now['period_start'], $grain));
         $periodsBefore = Period::periodsWithin($before['period_start'], $grain, $kpi['frequency']);
         $periodsNow = Period::periodsWithin($now['period_start'], $grain, $kpi['frequency']);
@@ -202,7 +222,12 @@ class ReportService
         $then = $aggregator->compute($comparable, $periodsBefore, $values, $weights)['value'];
         $latest = $aggregator->compute($comparable, $periodsNow, $values, $weights)['value'];
         $change = $this->change($kpi, $latest, $then);
-        return $change === null ? null : $change + ['basis' => 'like_for_like', 'units_compared' => count($comparable), 'units_total' => count($leafIds)];
+        // Named, so "4 of 5" can say which one wasn't counted
+        $leftOut = array_map(fn($id) => $tree->get($id)['name'], array_values(array_diff($leafIds, $comparable)));
+        sort($leftOut);
+        return $change === null ? null : $change + [
+            'basis' => 'like_for_like', 'units_compared' => count($comparable), 'units_total' => count($leafIds), 'left_out' => $leftOut,
+        ];
     }
 
     /** Difference between two values and whether it moved in the good direction. */

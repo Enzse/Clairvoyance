@@ -24,7 +24,7 @@
 	</span>
 	<span
 		class="block text-xs text-muted"
-		title={partial ? `Compares only the ${change.units_compared} of ${change.units_total} ${term.many} that reported both periods` : undefined}
+		title={partial ? `Compares only the ${change.units_compared} of ${change.units_total} ${term.many} that reported both periods (not counted: ${change.left_out.join(', ')})` : undefined}
 	>
 		vs {row.previous.period_label}{#if partial}, {change.units_compared} of {change.units_total} {term.many}{:else if change.direction === 'better' || change.direction === 'worse'}, {change.direction}{/if}
 	</span>

@@ -151,6 +151,8 @@ export interface Change {
 	basis: 'all' | 'like_for_like';
 	units_compared: number | null;
 	units_total: number | null;
+	/** Like-for-like only: the units not counted, by name */
+	left_out: string[];
 }
 
 export interface Scorecard {
@@ -166,6 +168,8 @@ export interface Series {
 	periods: PeriodResult[];
 	/** From the second-to-last to the last period */
 	change: Change | null;
+	/** Who still owes figures for the last period; `reported` of `expected` weeks, days etc. */
+	missing: { unit_id: number; name: string; reported: number; expected: number }[];
 }
 
 export interface Breakdown {

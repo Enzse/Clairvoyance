@@ -18,6 +18,8 @@ use Repositories\ValueRepository;
  */
 class ValueService
 {
+    private const HISTORY_PAGE = 20;
+
     private PDO $db;
     private Auth $auth;
     private AccessService $access;
@@ -178,9 +180,10 @@ class ValueService
 
     /**
      * Who changed this KPI's figures in the unit (and the units inside it), newest first.
-     * With a date, only changes to the period containing it.
+     * With a date, only changes to the period containing it. A page at a time: `before` is the
+     * id of the last change already shown.
      */
-    public function history(int $kpiId, int $unitId, ?string $date): array
+    public function history(int $kpiId, int $unitId, ?string $date, ?int $before = null): array
     {
         $this->access->requireView($unitId);
         $kpi = $this->kpis->find($this->auth->organizationId(), $kpiId);
@@ -191,8 +194,15 @@ class ValueService
             throw HttpException::badRequest('date must be YYYY-MM-DD');
         }
         $period = $date === null ? null : Period::align($date, $kpi['frequency']);
-        $changes = $this->values->changes($kpiId, $this->access->tree()->subtreeIds($unitId), $period);
-        return array_map(fn($c) => $c + ['period_label' => Period::label($c['period_start'], $kpi['frequency'])], $changes);
+        // One extra tells whether there's another page
+        $changes = $this->values->changes($kpiId, $this->access->tree()->subtreeIds($unitId), $period, $before, self::HISTORY_PAGE + 1);
+        return [
+            'changes' => array_map(
+                fn($c) => $c + ['period_label' => Period::label($c['period_start'], $kpi['frequency'])],
+                array_slice($changes, 0, self::HISTORY_PAGE)
+            ),
+            'more' => count($changes) > self::HISTORY_PAGE,
+        ];
     }
 
     /**
