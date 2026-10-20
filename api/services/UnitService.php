@@ -119,7 +119,7 @@ class UnitService
         if ($unit['parent_id'] === null) {
             throw HttpException::conflict('The organisation root cannot be deleted');
         }
-        if (!$tree->isLeaf($id)) {
+        if ($tree->hasChildren($id)) {
             throw HttpException::conflict("Delete or move what's under it first");
         }
         if ($unit['has_values']) {

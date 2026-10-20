@@ -43,6 +43,21 @@ class UnitTreeTest extends TestCase
         $this->assertSame(false, $this->tree->isLeaf(4)); // inactive children still count
     }
 
+    public function testAnEmptyGroupDoesNotReport(): void
+    {
+        $tree = new UnitTree([
+            $this->unit(1, null, 'Org'),
+            $this->unit(2, 1, 'West', 'Group'),
+            $this->unit(3, 1, 'Downtown', 'Branch'),
+            ['has_values' => true] + $this->unit(4, 1, 'Old group', 'Group'),
+        ]);
+        $this->assertSame(false, $tree->isLeaf(2));
+        $this->assertSame(false, $tree->hasChildren(2));
+        $this->assertSame([3, 4], $this->sorted($tree->activeLeafIds(1)));
+        // One that already holds figures keeps reporting, whatever it's called
+        $this->assertTrue($tree->isLeaf(4));
+    }
+
     public function testSubtreeAndAncestry(): void
     {
         $this->assertSame([2, 3, 5, 6, 8], $this->sorted($this->tree->subtreeIds(2)));

@@ -4,7 +4,8 @@ namespace Domain;
 
 /**
  * The organisation tree, built from UnitRepository::all(). A leaf is a unit with no
- * children at all (inactive children still count), and only leaves hold values.
+ * children at all (inactive children still count), other than an empty group, and only
+ * leaves hold values.
  */
 class UnitTree
 {
@@ -51,9 +52,22 @@ class UnitTree
         return $this->children[$id] ?? [];
     }
 
+    /**
+     * Whether the unit reports figures itself: it has nothing under it, and it isn't an empty
+     * group (kind "Group", no figures) waiting for units to be moved in.
+     */
     public function isLeaf(int $id): bool
     {
-        return empty($this->children[$id]);
+        if (!empty($this->children[$id])) {
+            return false;
+        }
+        $unit = $this->units[$id] ?? null;
+        return !($unit && $unit['parent_id'] !== null && empty($unit['has_values']) && mb_strtolower((string)$unit['kind']) === 'group');
+    }
+
+    public function hasChildren(int $id): bool
+    {
+        return !empty($this->children[$id]);
     }
 
     /** @return int[] the unit and everything below it */

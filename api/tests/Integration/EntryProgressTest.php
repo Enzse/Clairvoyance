@@ -68,4 +68,15 @@ class EntryProgressTest extends ApiTestCase
         $this->assertSame([self::$a], array_column($units, 'unit_id'));
         $this->assertStatus(400, $this->call('GET', '/values/progress', ['date' => 'June']));
     }
+
+    public function test4AnEmptyGroupIsNotAskedForFigures(): void
+    {
+        $this->actingAs(self::$admin);
+        $west = $this->createUnit($this->rootId(), 'West', 'Group');
+        $units = array_column($this->ok('GET', '/values/progress', ['date' => '2025-06-01'])['units'], 'unit_id');
+        $this->assertSame(false, in_array($west, $units, true));
+        $this->assertStatus(400, $this->call('GET', '/values', ['unit' => $west, 'date' => '2025-06-01']));
+        // Still empty, so it can be deleted
+        $this->assertStatus(200, $this->call('DELETE', "/units/{$west}"));
+    }
 }
