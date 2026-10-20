@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { splitNames } from '$lib/names';
 	import { units } from '$lib/units.svelte';
 	import Icon from '../Icon.svelte';
 	import { problem } from './save';
 
 	/**
-	 * Adds units inside a parent: type a name, press Enter, keep typing. Pasting several lines
-	 * adds one per line.
+	 * Adds units inside a parent: type a name, press Enter, keep typing. Several names at once,
+	 * pasted as lines or typed with commas between them, add one each.
 	 */
 	let {
 		parentId,
@@ -33,8 +34,9 @@
 		input?.focus();
 	});
 
-	async function add(names: string[]) {
-		const fresh = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+	/** Adds every name in the text: one, or a list separated by lines or commas. */
+	async function add(text: string) {
+		const fresh = splitNames(text);
 		if (!fresh.length) return;
 		busy = true;
 		error = '';
@@ -57,7 +59,7 @@
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			add([name]);
+			add(name);
 		} else if (event.key === 'Escape') {
 			onClose();
 		}
@@ -65,9 +67,9 @@
 
 	function onpaste(event: ClipboardEvent) {
 		const text = event.clipboardData?.getData('text') ?? '';
-		if (text.includes('\n')) {
+		if (/[\n,;\t]/.test(text)) {
 			event.preventDefault();
-			add(text.split(/\r?\n/));
+			add(text);
 		}
 	}
 </script>
@@ -86,7 +88,7 @@
 			{onpaste}
 		/>
 		{#if name.trim()}
-			<button class="btn btn-primary btn-sm" disabled={busy} onclick={() => add([name])}>{busy ? 'Adding…' : 'Add'}</button>
+			<button class="btn btn-primary btn-sm" disabled={busy} onclick={() => add(name)}>{busy ? 'Adding…' : 'Add'}</button>
 		{/if}
 		<button class="rounded p-1 text-muted hover:text-ink" aria-label="Stop adding" onclick={onClose}><Icon name="x" size={14} /></button>
 	</div>

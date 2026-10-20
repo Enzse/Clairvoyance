@@ -4,6 +4,7 @@
 	import { fly, slide } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import { plural, pluralize } from '$lib/format';
+	import { splitNames } from '$lib/names';
 	import { setMe } from '$lib/session.svelte';
 	import { units } from '$lib/units.svelte';
 	import FormAlert from '../auth/FormAlert.svelte';
@@ -45,7 +46,7 @@
 		}
 	});
 
-	const names = $derived([...new Set(text.split('\n').map((n) => n.trim()).filter(Boolean))]);
+	const names = $derived(splitNames(text));
 	const fresh = $derived(names.filter((n) => !existing.some((u) => u.name.toLowerCase() === n.toLowerCase())));
 	const word = $derived(kind.trim().toLowerCase() || 'team');
 
@@ -80,7 +81,7 @@
 		{#if shape !== 'single'}
 			<div class="mt-7 grid gap-5 sm:grid-cols-[minmax(0,1fr)_180px]" transition:slide={{ duration: 200 }}>
 				<div>
-					<label class="field-label" for="unit-names">Their names, one per line</label>
+					<label class="field-label" for="unit-names">Their names, one per line or separated by commas</label>
 					<textarea id="unit-names" class="input font-sans" rows="6" placeholder={chosen.example} bind:value={text}></textarea>
 					<p class="field-hint">You can paste a list from a spreadsheet.</p>
 				</div>
