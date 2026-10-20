@@ -24,7 +24,8 @@
 
 	const kids = $derived(units.children(unit.id));
 	const isRoot = $derived(unit.parent_id === null);
-	const isGroup = $derived(kids.length > 0);
+	// A unit with units inside, or one made as a group that is still empty
+	const isGroup = $derived(kids.length > 0 || unit.kind?.toLowerCase() === 'group');
 	const open = $derived(!tree.collapsed.has(unit.id));
 	const selected = $derived(tree.selectedId === unit.id);
 	const adding = $derived(tree.addingUnder === unit.id);
@@ -44,13 +45,13 @@
 	<div
 		role="treeitem"
 		aria-selected={selected}
-		aria-expanded={isGroup ? open : undefined}
+		aria-expanded={kids.length ? open : undefined}
 		tabindex="-1"
 		class="group flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors
 			{selected ? 'bg-accent-wash ring-1 ring-chart/40' : 'hover:bg-surface-2'} {isFresh ? 'animate-[flash_1.6s_ease-out]' : ''}"
 		onclick={() => tree.select(unit.id)}
 	>
-		{#if isGroup}
+		{#if kids.length}
 			<Tooltip text={open ? 'Collapse' : 'Expand'}>
 				<button class="rounded p-1 text-muted hover:text-ink" onclick={(e) => { e.stopPropagation(); tree.toggle(unit.id); }} aria-label="{open ? 'Collapse' : 'Expand'} {unit.name}">
 					<Icon name="chevron-down" size={14} class="transition-transform {open ? '' : '-rotate-90'}" />
@@ -76,6 +77,8 @@
 					{isRoot ? '' : '·'}
 					{#if !unit.is_active}
 						switched off
+					{:else if isGroup && !kids.length}
+						empty, move units in
 					{:else if isGroup}
 						adds up {plural(reporting.length, wordFor(reporting, false), wordFor(reporting))}
 					{:else if isRoot}

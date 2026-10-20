@@ -43,7 +43,8 @@
 		confirming = false;
 		hasCode = !!unit.code;
 		code = unit.code ?? '';
-		gathering = gatherFirst;
+		// Straight after making a group, or whenever a group is still empty
+		gathering = gatherFirst || (isGroup && !isRoot && kids.length === 0);
 		picked = [];
 	});
 
@@ -119,9 +120,9 @@
 
 <div class="flex h-full flex-col">
 	<header class="flex items-start gap-3 border-b border-line px-5 py-4">
-		<IconPicker {unit} isGroup={kids.length > 0} size="lg" />
+		<IconPicker {unit} {isGroup} size="lg" />
 		<div class="min-w-0 flex-1">
-			<p class="text-xs font-semibold tracking-wide text-muted uppercase">{isRoot ? 'Organisation' : kids.length ? 'Group of units' : 'Unit'}</p>
+			<p class="text-xs font-semibold tracking-wide text-muted uppercase">{isRoot ? 'Organisation' : isGroup ? 'Group of units' : 'Unit'}</p>
 			<h2 class="text-lg font-semibold tracking-[-0.01em]">
 				<InlineEdit value={unit.name} label="Name" tip="Rename" onSave={(name) => saveUnit(unit, { name })} inputClass="w-full" />
 			</h2>
@@ -130,6 +131,8 @@
 					Your organisation{reporting.length ? ` · ${plural(reporting.length, wordFor(reporting, false), wordFor(reporting))}` : ''}
 				{:else if kids.length}
 					Adds up {plural(reporting.length, wordFor(reporting, false), wordFor(reporting))}
+				{:else if isGroup}
+					Empty for now: move units in
 				{:else}
 					{unit.has_values ? 'Reports its own figures' : 'No figures yet'}
 				{/if}
@@ -143,6 +146,33 @@
 	</header>
 
 	<div class="flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-5 py-5">
+		<!-- A group's first job is having units in it, so moving them in comes first -->
+		{#if candidates.length}
+			<section class="rounded-xl bg-accent-wash/50 p-3.5 ring-1 ring-chart/20">
+				{#if !gathering}
+					<button class="btn btn-secondary btn-sm" onclick={() => (gathering = true)}><Icon name="move" size={14} /> Move others into {unit.name}</button>
+				{:else}
+					<div transition:slide={{ duration: 200 }}>
+						<p class="text-sm font-medium">Move into {unit.name}</p>
+						<ul class="mt-2 max-h-64 space-y-0.5 overflow-y-auto rounded-lg p-1 ring-1 ring-line">
+							{#each candidates as u (u.id)}
+								<li>
+									<label class="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface-2">
+										<input type="checkbox" class="size-4 accent-[var(--accent)]" bind:group={picked} value={u.id} />
+										<span class="min-w-0 truncate text-sm">{u.name}</span>
+										<span class="ml-auto shrink-0 truncate text-xs text-muted">{where(u)}</span>
+									</label>
+								</li>
+							{/each}
+						</ul>
+						<div class="mt-3 flex gap-2">
+							<button class="btn btn-primary btn-sm" disabled={busy || !picked.length} onclick={gather}>{picked.length ? `Move ${picked.length} here` : 'Pick some first'}</button>
+							<button class="btn btn-ghost btn-sm" onclick={() => { gathering = false; picked = []; }}>Cancel</button>
+						</div>
+					</div>
+				{/if}
+			</section>
+		{/if}
 		<dl class="space-y-4">
 			{#if !isRoot}
 				<div class="flex items-center justify-between gap-4">
@@ -210,32 +240,6 @@
 
 		<UnitAccess {unit} onOpen={onSelect} />
 
-		{#if candidates.length}
-			<section class="border-t border-line pt-5">
-				{#if !gathering}
-					<button class="btn btn-secondary btn-sm" onclick={() => (gathering = true)}><Icon name="move" size={14} /> Move others into {unit.name}</button>
-				{:else}
-					<div transition:slide={{ duration: 200 }}>
-						<p class="text-sm font-medium">Move into {unit.name}</p>
-						<ul class="mt-2 max-h-64 space-y-0.5 overflow-y-auto rounded-lg p-1 ring-1 ring-line">
-							{#each candidates as u (u.id)}
-								<li>
-									<label class="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface-2">
-										<input type="checkbox" class="size-4 accent-[var(--accent)]" bind:group={picked} value={u.id} />
-										<span class="min-w-0 truncate text-sm">{u.name}</span>
-										<span class="ml-auto shrink-0 truncate text-xs text-muted">{where(u)}</span>
-									</label>
-								</li>
-							{/each}
-						</ul>
-						<div class="mt-3 flex gap-2">
-							<button class="btn btn-primary btn-sm" disabled={busy || !picked.length} onclick={gather}>{picked.length ? `Move ${picked.length} here` : 'Pick some first'}</button>
-							<button class="btn btn-ghost btn-sm" onclick={() => { gathering = false; picked = []; }}>Cancel</button>
-						</div>
-					</div>
-				{/if}
-			</section>
-		{/if}
 	</div>
 
 	{#if !isRoot}

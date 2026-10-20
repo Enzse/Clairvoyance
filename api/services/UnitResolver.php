@@ -53,6 +53,15 @@ final class UnitResolver
             if ($matches) {
                 return [$matches[0], $this->label($matches[0])];
             }
+            // Say why nothing matched: the name belongs to a group, or to nothing at all
+            foreach ($this->tree->subtreeIds($this->parentId) as $id) {
+                if (mb_strtolower($this->tree->get($id)['name']) === mb_strtolower($names[0])) {
+                    throw new \DomainException($this->label($id) . ' has ' . Words::plural($this->noun) . ' inside it; figures go on those instead');
+                }
+            }
+            if (!$this->create) {
+                throw new \DomainException("No {$this->noun} is called '{$names[0]}' in " . $this->label($this->parentId) . ' (check the spelling, or turn on adding new ones)');
+            }
             [$ref] = $this->child($this->parentId, $names[0], $kinds[0]);
         } else {
             $ref = $this->parentId;

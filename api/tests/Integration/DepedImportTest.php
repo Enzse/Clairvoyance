@@ -176,6 +176,20 @@ class DepedImportTest extends ApiTestCase
         $this->assertSame(1, $result['values_updated']);
     }
 
+    public function test9MatchingByNameLooksInsideGroupsAndExplainsMisses(): void
+    {
+        $this->actingAs(self::$adminId);
+        $csv = "School_Name,Report_Date,Total_Students\nManila Science High School,2025-06-30,1300\nManila,2025-06-30,5\nNowhere High,2025-06-30,5\n";
+        $mapping = ['unit_columns' => ['School_Name'], 'unit_match' => 'name', 'unit_kinds' => ['School'], 'create_missing_units' => false, 'columns' => ['Total_Students' => 'total_students']] + $this->mapping();
+        $preview = $this->ok('POST', '/imports/preview', [], ['mapping' => json_encode($mapping)], $this->upload($this->csvFile($csv)));
+
+        // The school sits two groups down and is still found by its name
+        $this->assertSame(2, $preview['error_count']);
+        $messages = array_column($preview['errors'], 'message');
+        $this->assertTrue(str_contains($messages[0], 'Manila has') && str_contains($messages[0], 'inside it'), $messages[0]);
+        $this->assertTrue(str_contains($messages[1], "is called 'Nowhere High'"), $messages[1]);
+    }
+
     private function unitId(string $name): int
     {
         $stmt = self::$db->prepare('SELECT id FROM units WHERE name = ?');
