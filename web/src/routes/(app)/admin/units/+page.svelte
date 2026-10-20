@@ -8,11 +8,13 @@
 	import StructureNode from '$lib/components/structure/StructureNode.svelte';
 	import StructureTour from '$lib/components/structure/StructureTour.svelte';
 	import { markTourSeen, tourSeen } from '$lib/components/Tour.svelte';
-	import type { Tree } from '$lib/components/structure/tree';
+	import { canMoveInto, type Tree } from '$lib/components/structure/tree';
+	import { problem, saveUnit } from '$lib/components/structure/save';
 	import UnitPanel from '$lib/components/structure/UnitPanel.svelte';
 	import { plural } from '$lib/format';
 	import { members } from '$lib/members.svelte';
 	import { term } from '$lib/terms.svelte';
+	import { toast } from '$lib/toast.svelte';
 	import { units } from '$lib/units.svelte';
 
 	/**
@@ -27,6 +29,7 @@
 	let addingGroup = $state(false);
 	let fresh = $state(new Set<number>());
 	let gatherNext = $state(false);
+	let draggingId = $state<number | null>(null);
 
 	const selected = $derived(selectedId === null ? undefined : units.get(selectedId));
 	const reporting = $derived(root ? units.reporting(root.id) : []);
@@ -102,8 +105,34 @@
 		// New ones take the kind of what's already there, otherwise the organisation's word
 		kindFor: (parentId) => (addingGroup ? 'Group' : (units.children(parentId).find((u) => u.kind)?.kind ?? term.One)),
 		assigned: (id) => members.assignedTo(id),
-		get showAccess() { return members.anyAssigned; }
+		get showAccess() { return members.anyAssigned; },
+		get draggingId() { return draggingId; },
+		startDrag: (id) => (draggingId = id),
+		endDrag: () => (draggingId = null),
+		canDrop: (targetId) => draggingId !== null && canMoveInto(draggingId, targetId, units),
+		drop: (targetId) => {
+			if (draggingId !== null && canMoveInto(draggingId, targetId, units)) moveInto(draggingId, targetId);
+			draggingId = null;
+		}
 	};
+
+	/** Drag and drop: moves a unit into a group (the panel's "Inside" does the same). */
+	async function moveInto(id: number, targetId: number) {
+		const moving = units.get(id);
+		const target = units.get(targetId);
+		if (!moving || !target) return;
+		try {
+			await saveUnit(moving, { parent_id: targetId });
+			toast(`Moved ${moving.name} into ${target.name}`);
+			const next = new Set(collapsed);
+			next.delete(targetId);
+			collapsed = next;
+			fresh = new Set([id]);
+			setTimeout(() => (fresh = new Set()), 1800);
+		} catch (e) {
+			toast(problem(e, 'Could not move'), 'error');
+		}
+	}
 
 	onMount(() => members.load());
 

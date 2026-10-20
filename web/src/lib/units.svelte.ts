@@ -73,9 +73,9 @@ class UnitStore {
 		return unit ? [unit, ...this.children(id).flatMap((c) => this.subtree(c.id))] : [];
 	}
 
-	/** The units that report figures inside this one (the bottom of its tree). */
+	/** The units that report figures inside this one (the bottom of its tree, not empty groups). */
 	reporting(id: number): Unit[] {
-		return this.subtree(id).filter((u) => u.parent_id !== null && this.children(u.id).length === 0);
+		return this.subtree(id).filter((u) => u.parent_id !== null && this.children(u.id).length === 0 && u.kind?.toLowerCase() !== 'group');
 	}
 
 	/** Active leaf units the user can enter data for. */

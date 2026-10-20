@@ -27,7 +27,7 @@
 		},
 		{
 			title: 'Group them as you grow',
-			body: `"New group" makes a group, like a region, then lets you move ${term.many} into it. Open any unit's details to choose who can see it or enter its data, move it, give it a code for spreadsheet imports, or switch it off.`,
+			body: `"New group" makes a group, like a region, then lets you move ${term.many} into it; you can also drag any unit onto a group. Open any unit's details to choose who can see it or enter its data, move it, give it a code for spreadsheet imports, or switch it off.`,
 			art: groupArt
 		}
 	]);

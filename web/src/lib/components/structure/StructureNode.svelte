@@ -38,6 +38,41 @@
 	);
 	const isFresh = $derived(tree.fresh.has(unit.id));
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
+
+	// Drag and drop: a row can be dragged onto a group (or the organisation) to move it there
+	const dragging = $derived(tree.draggingId === unit.id);
+	let over = $state(false);
+	let openTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function ondragstart(event: DragEvent) {
+		event.dataTransfer?.setData('text/plain', unit.name);
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+		tree.startDrag(unit.id);
+	}
+
+	function ondragover(event: DragEvent) {
+		if (!tree.canDrop(unit.id)) return;
+		event.preventDefault();
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+		if (!over) {
+			over = true;
+			// Hovering over a closed group opens it, so a unit can go deeper
+			if (kids.length && !open) openTimer = setTimeout(() => tree.toggle(unit.id), 700);
+		}
+	}
+
+	function leave(event: DragEvent) {
+		if ((event.currentTarget as Element).contains(event.relatedTarget as Node | null)) return;
+		over = false;
+		clearTimeout(openTimer);
+	}
+
+	function ondrop(event: DragEvent) {
+		event.preventDefault();
+		over = false;
+		clearTimeout(openTimer);
+		tree.drop(unit.id);
+	}
 </script>
 
 <li role="none" in:fly={{ y: isFresh ? -6 * move : 0, duration: isFresh ? 300 : 0, easing: cubicOut }}>
@@ -47,10 +82,20 @@
 		aria-selected={selected}
 		aria-expanded={kids.length ? open : undefined}
 		tabindex="-1"
-		class="group flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors
-			{selected ? 'bg-accent-wash ring-1 ring-chart/40' : 'hover:bg-surface-2'} {isFresh ? 'animate-[flash_1.6s_ease-out]' : ''}"
+		class="group relative flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors
+			{over ? 'bg-accent-wash ring-2 ring-chart' : selected ? 'bg-accent-wash ring-1 ring-chart/40' : 'hover:bg-surface-2'}
+			{isFresh ? 'animate-[flash_1.6s_ease-out]' : ''} {dragging ? 'opacity-40' : ''}"
+		draggable={!isRoot}
+		{ondragstart}
+		ondragend={() => tree.endDrag()}
+		{ondragover}
+		ondragleave={leave}
+		{ondrop}
 		onclick={() => tree.select(unit.id)}
 	>
+		{#if over}
+			<span class="pointer-events-none absolute -top-2.5 right-3 rounded-full bg-chart px-2 py-0.5 text-[11px] font-medium text-white shadow-sm">Move here</span>
+		{/if}
 		{#if kids.length}
 			<Tooltip text={open ? 'Collapse' : 'Expand'}>
 				<button class="rounded p-1 text-muted hover:text-ink" onclick={(e) => { e.stopPropagation(); tree.toggle(unit.id); }} aria-label="{open ? 'Collapse' : 'Expand'} {unit.name}">
