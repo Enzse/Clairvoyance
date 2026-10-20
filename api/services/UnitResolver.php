@@ -59,8 +59,16 @@ final class UnitResolver
                     throw new \DomainException($this->label($id) . ' has ' . Words::plural($this->noun) . ' inside it; figures go on those instead');
                 }
             }
+            // The same name apart from punctuation, spaces or capitals: most likely a typo on one side
+            $loose = fn(string $text) => preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($text));
+            foreach ($this->tree->subtreeIds($this->parentId) as $id) {
+                $other = $this->tree->get($id)['name'];
+                if ($this->tree->isLeaf($id) && $loose($other) === $loose($names[0])) {
+                    throw new \DomainException("No {$this->noun} is called '{$names[0]}'. Did you mean '{$other}'? Fix the name in the file or in Structure");
+                }
+            }
             if (!$this->create) {
-                throw new \DomainException("No {$this->noun} is called '{$names[0]}' in " . $this->label($this->parentId) . ' (check the spelling, or turn on adding new ones)');
+                throw new UnknownUnitException("No {$this->noun} is called '{$names[0]}' in " . $this->label($this->parentId) . ' (check the spelling, or turn on adding new ones)');
             }
             [$ref] = $this->child($this->parentId, $names[0], $kinds[0]);
         } else {
@@ -123,7 +131,7 @@ final class UnitResolver
         }
         $path = $this->labelOf($parentRef) . ' > ' . $name;
         if (!$this->create) {
-            throw new \DomainException("There's no {$this->noun} {$path} (turn on adding new ones to create it)");
+            throw new UnknownUnitException("There's no {$this->noun} {$path} (turn on adding new ones to create it)");
         }
         $ref = 'new:' . (count($this->planned) + 1);
         $this->planned[$ref] = ['parent' => $parentRef, 'name' => $name, 'kind' => $kind, 'label' => $path];

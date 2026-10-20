@@ -96,6 +96,20 @@ export class ImportUpload {
 		if (this.unitColumns.length > 1) this.unitMatch = 'path';
 	}
 
+	/** Columns that could name a unit: words rather than figures or dates (plus any already chosen). */
+	get nameColumns(): string[] {
+		return this.headers.filter((h) => {
+			if (this.unitColumns.includes(h)) return true;
+			const profile = profileColumn(this.column(h));
+			return h !== this.dateColumn && !profile.numeric && !profile.dateLike;
+		});
+	}
+
+	/** Columns of figures that aren't matched to a KPI, so they would be left out. */
+	get unmatchedFigures(): string[] {
+		return this.otherColumns.filter((h) => !this.kpiFor[h] && profileColumn(this.column(h)).numeric);
+	}
+
 	get otherColumns(): string[] {
 		return this.headers.filter((h) => !this.unitColumns.includes(h) && h !== this.dateColumn);
 	}

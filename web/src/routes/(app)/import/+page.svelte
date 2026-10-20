@@ -80,6 +80,12 @@
 		}
 	}
 
+	/** Turns on adding the units the file names that don't exist yet, and checks again. */
+	function addMissing() {
+		upload.createMissing = true;
+		check();
+	}
+
 	function restart() {
 		step = 0;
 		upload.file = null;
@@ -131,7 +137,15 @@
 				{:else if step === 1}
 					<ImportColumns {upload} {kpis} {isAdmin} {busy} {serverError} onCheck={check} onRestart={restart} />
 				{:else if step === 2 && preview}
-					<ImportCheck {preview} bind:skipInvalid {busy} {serverError} onBack={() => (step = 1)} onImport={commit} />
+					<ImportCheck
+						{preview}
+						bind:skipInvalid
+						{busy}
+						{serverError}
+						onBack={() => (step = 1)}
+						onImport={commit}
+						onAddMissing={isAdmin && upload.unitMatch !== 'code' && !upload.createMissing ? addMissing : undefined}
+					/>
 				{:else if step === 3 && result}
 					<div class="flex flex-col items-center py-8 text-center">
 						<span class="grid size-16 place-items-center rounded-full bg-good-wash text-good-ink" in:scale={{ start: 0.4, duration: 400, delay: 150 * move, easing: cubicOut }}>

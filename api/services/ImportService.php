@@ -73,6 +73,8 @@ class ImportService
             'new_units' => array_values(array_map(fn($u) => $u['label'], $plan['new_units'])),
             'errors' => array_slice($plan['errors'], 0, self::MAX_ERRORS),
             'error_count' => count($plan['errors']),
+            // Different names in the file that match no unit; adding missing units would create them
+            'unknown_units' => count($plan['unknown_units']),
             'sample' => array_map(fn($e) => [
                 'row' => $e['row'],
                 'unit' => $e['unit_label'],
@@ -141,7 +143,7 @@ class ImportService
         [$headers, $rows] = CsvReader::read($path, self::MAX_ROWS);
         $m = $this->validateMapping($mapping, $headers, $user);
 
-        $plan = ['rows_total' => count($rows), 'entries' => [], 'errors' => [], 'new_units' => [], 'empty_cells' => 0];
+        $plan = ['rows_total' => count($rows), 'entries' => [], 'errors' => [], 'new_units' => [], 'empty_cells' => 0, 'unknown_units' => []];
         $resolver = new UnitResolver($this->access->tree(), $m['parent_unit_id'], $m['create_missing_units'], $this->auth->organization()['unit_label']);
         $seen = [];
         $finalUnits = [];   // unit ref => first row using it for values
@@ -163,6 +165,9 @@ class ImportService
                 [$unitRef, $unitLabel] = $resolver->resolve($m['unit_match'], $names, $m['unit_kinds']);
             } catch (\DomainException $e) {
                 $err($e->getMessage(), implode(' > ', $m['unit_columns']));
+                if ($e instanceof UnknownUnitException) {
+                    $plan['unknown_units'][mb_strtolower(implode(' > ', $names))] = true;
+                }
                 continue;
             }
             if (is_int($unitRef)) {

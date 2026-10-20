@@ -236,6 +236,8 @@ export interface ImportPreview {
 	new_units: string[];
 	errors: ImportIssue[];
 	error_count: number;
+	/** Different names in the file that match no unit (adding missing units would create them) */
+	unknown_units: number;
 	sample: { row: number; unit: string; kpi: string; period_label: string; value: number }[];
 }
 

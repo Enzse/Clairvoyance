@@ -188,6 +188,16 @@ class DepedImportTest extends ApiTestCase
         $messages = array_column($preview['errors'], 'message');
         $this->assertTrue(str_contains($messages[0], 'Manila has') && str_contains($messages[0], 'inside it'), $messages[0]);
         $this->assertTrue(str_contains($messages[1], "is called 'Nowhere High'"), $messages[1]);
+        // Only the name that matches nothing could be added as a new school
+        $this->assertSame(1, $preview['unknown_units']);
+
+        // A near miss names the unit it probably meant, and isn't offered for adding
+        $csv = "School_Name,Report_Date,Total_Students
+manila science high-school,2025-06-30,1300
+";
+        $near = $this->ok('POST', '/imports/preview', [], ['mapping' => json_encode($mapping)], $this->upload($this->csvFile($csv)));
+        $this->assertTrue(str_contains($near['errors'][0]['message'], "Did you mean 'Manila Science High School'?"), $near['errors'][0]['message']);
+        $this->assertSame(0, $near['unknown_units']);
     }
 
     private function unitId(string $name): int

@@ -4,6 +4,7 @@
 	import { fly, slide } from 'svelte/transition';
 	import { ApiError } from '$lib/api';
 	import { plural } from '$lib/format';
+	import { describeRows, groupIssues } from '$lib/issues';
 	import { term } from '$lib/terms.svelte';
 	import type { ImportPreview } from '$lib/types';
 	import FormAlert from '../auth/FormAlert.svelte';
@@ -16,8 +17,20 @@
 		busy,
 		serverError,
 		onBack,
-		onImport
-	}: { preview: ImportPreview; skipInvalid: boolean; busy: boolean; serverError: ApiError | null; onBack: () => void; onImport: () => void } = $props();
+		onImport,
+		onAddMissing
+	}: {
+		preview: ImportPreview;
+		skipInvalid: boolean;
+		busy: boolean;
+		serverError: ApiError | null;
+		onBack: () => void;
+		onImport: () => void;
+		/** Given when the person may add the units the file names but that don't exist yet */
+		onAddMissing?: () => void;
+	} = $props();
+
+	const groups = $derived(groupIssues(preview.errors));
 
 	const move = $derived(prefersReducedMotion.current ? 0 : 1);
 	const changes = $derived(preview.will_create + preview.will_update);
@@ -61,19 +74,25 @@
 
 {#if preview.errors.length}
 	<h3 class="mt-7 font-semibold">Problems</h3>
-	<div class="mt-2 max-h-80 overflow-auto rounded-xl ring-1 ring-line">
-		<table class="w-full text-left text-sm">
-			<thead class="sticky top-0 bg-surface-2 text-ink-2"><tr><th class="px-4 py-2 font-medium">Row</th><th class="px-4 py-2 font-medium">Column</th><th class="px-4 py-2 font-medium">Problem</th></tr></thead>
-			<tbody>
-				{#each preview.errors as issue, i (i)}
-					<tr class="border-t border-line"><td class="num px-4 py-2">{issue.row}</td><td class="px-4 py-2 text-ink-2">{issue.column ?? ''}</td><td class="px-4 py-2">{issue.message}</td></tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-	{#if preview.error_count > preview.errors.length}<p class="mt-2 text-sm text-ink-2">Showing the first {preview.errors.length}.</p>{/if}
+	<ul class="mt-2 max-h-80 divide-y divide-line overflow-auto rounded-xl ring-1 ring-line">
+		{#each groups as group (group.column + group.message)}
+			<li class="px-4 py-2.5 text-sm">
+				<p>{group.message}</p>
+				<p class="mt-0.5 text-xs text-muted">{group.column ? `${group.column} column, ` : ''}{describeRows(group.rows)}</p>
+			</li>
+		{/each}
+	</ul>
+	{#if preview.error_count > preview.errors.length}<p class="mt-2 text-sm text-ink-2">These are the first {preview.errors.length} of {preview.error_count} problems.</p>{/if}
+	{#if preview.unknown_units && onAddMissing}
+		<div class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-accent-wash/60 px-3.5 py-2.5 ring-1 ring-chart/20" transition:slide={{ duration: 160 }}>
+			<p class="min-w-0 flex-1 text-sm">
+				{plural(preview.unknown_units, 'name')} in the file {preview.unknown_units === 1 ? "doesn't" : "don't"} match any {term.one}. If they're new, add them; if not, check the spelling in the file.
+			</p>
+			<button class="btn btn-secondary btn-sm" disabled={busy} onclick={onAddMissing}>Add {preview.unknown_units === 1 ? 'it' : 'them'} and check again</button>
+		</div>
+	{/if}
 	<label class="mt-4 flex items-center gap-2.5 rounded-lg bg-surface-2 px-3.5 py-2.5 ring-1 ring-line" transition:slide={{ duration: 160 }}>
-		<input type="checkbox" class="size-4 accent-[var(--accent)]" bind:checked={skipInvalid} /> Import everything else and skip these rows
+		<input type="checkbox" class="size-4 accent-[var(--accent)]" bind:checked={skipInvalid} /> Import everything else and skip the rows with problems
 	</label>
 {/if}
 
