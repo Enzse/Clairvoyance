@@ -197,6 +197,7 @@ class KpiService
             'weight_kpi_id' => $v->int('weight_kpi_id', false, 1),
             'direction' => $v->enum('direction', self::DIRECTIONS, $req('direction')),
             'tolerance_pct' => $v->number('tolerance_pct', $v->has('tolerance_pct'), 0, 1000),
+            'missing_is_zero' => $v->bool('missing_is_zero', $v->has('missing_is_zero')),
             'applies_to_kind' => $v->string('applies_to_kind', false, 64),
             'decimals' => $v->int('decimals', $v->has('decimals'), 0, 6),
             'prefix' => $v->string('prefix', false, 10),
@@ -240,8 +241,10 @@ class KpiService
         }
         $v->check();
 
-        if (isset($fields['is_active'])) {
-            $fields['is_active'] = (int)$fields['is_active'];
+        foreach (['is_active', 'missing_is_zero'] as $flag) {
+            if (isset($fields[$flag])) {
+                $fields[$flag] = (int)$fields[$flag];
+            }
         }
         return $fields;
     }

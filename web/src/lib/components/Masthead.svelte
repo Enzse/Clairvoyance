@@ -12,6 +12,7 @@
 		unitId,
 		periodStart,
 		grain,
+		finest = 'monthly',
 		unitHref,
 		periodHref,
 		title,
@@ -20,6 +21,8 @@
 		unitId: number;
 		periodStart: string | null;
 		grain: Frequency;
+		/** The most often any KPI here is reported: Day and Week are offered only when it's that often */
+		finest?: Frequency;
 		unitHref: (unit: number) => string;
 		periodHref: (date: string, grain: Frequency) => string;
 		title: Snippet;
@@ -32,7 +35,7 @@
 		<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-navy-2 pt-5">
 			<UnitSwitcher {unitId} hrefFor={unitHref} />
 			{#if periodStart}
-				<PeriodControls {periodStart} {grain} hrefFor={periodHref} />
+				<PeriodControls {periodStart} {grain} {finest} hrefFor={periodHref} />
 			{/if}
 		</div>
 		<h1 class="mt-6 text-2xl font-semibold tracking-[-0.025em] text-balance">{@render title()}</h1>

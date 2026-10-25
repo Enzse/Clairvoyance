@@ -1,20 +1,25 @@
 <script lang="ts">
-	import { align, GRAIN_NAMES, label, shift, today } from '$lib/period';
+	import { align, FREQUENCIES, GRAIN_NAMES, label, shift, today } from '$lib/period';
 	import type { Frequency } from '$lib/types';
 	import Icon from './Icon.svelte';
 
-	/** ‹ Jun 2025 › plus a Month / Quarter / Year switch. All links, so every view is shareable. */
+	/**
+	 * ‹ Jun 2025 › plus a Day / Week / Month / Quarter / Year switch. Day and Week only appear
+	 * when something is reported that often. All links, so every view is shareable.
+	 */
 	let {
 		periodStart,
 		grain,
+		finest = 'monthly',
 		hrefFor
 	}: {
 		periodStart: string;
 		grain: Frequency;
+		finest?: Frequency;
 		hrefFor: (date: string, grain: Frequency) => string;
 	} = $props();
 
-	const GRAINS: Frequency[] = ['monthly', 'quarterly', 'yearly'];
+	const GRAINS = $derived(FREQUENCIES.slice(Math.min(...[finest, grain, 'monthly' as const].map((g) => FREQUENCIES.indexOf(g)))));
 
 	const start = $derived(align(periodStart, grain));
 	const previous = $derived(shift(start, grain, -1));

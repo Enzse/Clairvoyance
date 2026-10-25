@@ -1,3 +1,4 @@
+import { FREQUENCIES } from './period';
 import type { Frequency } from './types';
 
 type Params = Record<string, string | number | null | undefined>;
@@ -19,8 +20,6 @@ export interface ReportContext {
 	grain: Frequency;
 }
 
-const GRAINS: Frequency[] = ['monthly', 'quarterly', 'yearly'];
-
 export function readContext(url: URL): ReportContext {
 	const unit = Number(url.searchParams.get('unit'));
 	const date = url.searchParams.get('date');
@@ -28,7 +27,7 @@ export function readContext(url: URL): ReportContext {
 	return {
 		unit: Number.isInteger(unit) && unit > 0 ? unit : null,
 		date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
-		grain: GRAINS.includes(grain) ? grain : 'monthly'
+		grain: FREQUENCIES.includes(grain) ? grain : 'monthly'
 	};
 }
 

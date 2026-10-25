@@ -24,6 +24,7 @@
 	const example = $derived(rollupExample(form.time_aggregation, form.unit_aggregation));
 	const show = (n: number) => formatValue({ prefix: form.prefix, suffix: form.suffix, decimals: Number.isInteger(n) ? 0 : 1 }, n);
 	const periods = $derived(form.frequency === 'monthly' ? ['Jan', 'Feb', 'Mar'] : ['1st', '2nd', '3rd']);
+	const noun = $derived(GRAIN_NAMES[form.frequency].noun.toLowerCase());
 </script>
 
 <div class="space-y-6">
@@ -61,6 +62,16 @@
 			</label>
 		{/if}
 	</div>
+
+	<label class="flex items-start gap-2.5">
+		<input type="checkbox" class="mt-0.5 size-4 shrink-0 accent-[var(--accent)]" bind:checked={form.missing_is_zero} />
+		<span>
+			<span class="text-sm font-medium">A {noun} with no figure counts as 0</span>
+			<span class="block text-sm text-ink-2">
+				For things that only happen when they're entered, like sales or complaints. Leave it off when a missing figure just hasn't come in yet, like a satisfaction score.
+			</span>
+		</span>
+	</label>
 
 	<section class="rounded-xl bg-surface-2 p-4 ring-1 ring-line" aria-label="Worked example">
 		<p class="text-xs font-semibold tracking-wide text-muted uppercase">For example</p>

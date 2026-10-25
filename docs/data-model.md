@@ -26,7 +26,11 @@ Everything is keyed on **KPI × unit × period**.
   one PHP module with unit tests. Charts, the scorecard and exports call the same endpoints.
 - **Roll-ups are computed from the leaf units**, never as averages of averages.
 - **Missing data is visible.** Every aggregate says how many units reported out of how many
-  were expected.
+  were expected. Only days and weeks that have started are expected, and a status built on
+  incomplete figures reads "so far".
+- **Missing figures are left out, unless the KPI says they're 0.** By default a period without
+  a figure hasn't come in yet and is left out of the value and the target alike. A KPI with
+  `missing_is_zero` (sales, complaints) counts each started period without a figure as 0.
 
 ## Concepts
 
@@ -213,6 +217,7 @@ CREATE TABLE kpis (
   weight_kpi_id     INT NULL,                     -- required iff weighted_average; same frequency
   direction         ENUM('higher_is_better','lower_is_better','none') NOT NULL,
   tolerance_pct     DECIMAL(6,2) NOT NULL DEFAULT 10.00,
+  missing_is_zero   TINYINT(1) NOT NULL DEFAULT 0,    -- a started period with no figure counts as 0
   applies_to_kind   VARCHAR(64) NULL,             -- NULL = every leaf unit; else only units of this kind
   decimals          TINYINT NOT NULL DEFAULT 0,
   prefix            VARCHAR(10) NOT NULL DEFAULT '',

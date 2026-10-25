@@ -21,6 +21,25 @@ export function periodName(row: Pick<EntryRow, 'kpi' | 'period_start' | 'period_
 	return row.period_label;
 }
 
+/**
+ * Which day or week a daily or weekly KPI opens on: the one containing today, otherwise (a past
+ * month) the first without a figure, otherwise the last.
+ */
+export function focusIndex(rows: Pick<EntryRow, 'period_start' | 'value'>[], current: string): number {
+	const now = rows.findIndex((r) => r.period_start === current);
+	if (now >= 0) return now;
+	const empty = rows.findIndex((r) => r.value === null);
+	return empty >= 0 ? empty : rows.length - 1;
+}
+
+/** "Today", "Yesterday", "This week", or the period's own name. */
+export function focusName(row: Pick<EntryRow, 'kpi' | 'period_start' | 'period_label'>, current: string, previous: string): string {
+	const weekly = row.kpi.frequency === 'weekly';
+	if (row.period_start === current) return weekly ? 'This week' : 'Today';
+	if (row.period_start === previous) return weekly ? 'Last week' : 'Yesterday';
+	return weekly ? periodName(row) : `${periodName(row)} ${MONTHS[Number(row.period_start.slice(5, 7)) - 1]}`;
+}
+
 /** The form's rows grouped by KPI, keeping the server's order. */
 export function byKpi(rows: EntryRow[]): { kpi: Kpi; rows: EntryRow[] }[] {
 	const groups: { kpi: Kpi; rows: EntryRow[] }[] = [];

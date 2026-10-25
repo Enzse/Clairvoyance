@@ -13,7 +13,8 @@
 	import StatusMatrix from '$lib/components/StatusMatrix.svelte';
 	import { formatValue } from '$lib/format';
 	import { contextParams, href, readContext } from '$lib/nav';
-	import { align, label, today } from '$lib/period';
+	import { align, FREQUENCIES, label, today } from '$lib/period';
+	import { soFar } from '$lib/status';
 	import { summarize } from '$lib/summary';
 	import type { Frequency, Result, Scorecard } from '$lib/types';
 	import { session } from '$lib/session.svelte';
@@ -59,6 +60,8 @@
 		}
 	}
 
+	// Day and Week are offered when some KPI here is reported that often
+	const finest = $derived(FREQUENCIES.find((f) => card?.kpis.some((r) => r.kpi.frequency === f)) ?? 'monthly');
 	const unitHref = (id: number) => href('/', contextParams({ unit: id, date: ctx.date, grain: ctx.grain }));
 	const periodHref = (date: string, grain: Frequency) => href('/', contextParams({ unit: unitId, date, grain }));
 	const kpiHref = (kpiId: number, unit = unitId) => href(`/kpis/${kpiId}`, contextParams({ unit, date: card?.date, grain: ctx.grain }));
@@ -84,7 +87,7 @@
 		</EmptyState>
 	</main>
 {:else}
-	<Masthead {unitId} periodStart={card?.date ?? null} grain={ctx.grain} {unitHref} {periodHref}>
+	<Masthead {unitId} periodStart={card?.date ?? null} grain={ctx.grain} {finest} {unitHref} {periodHref}>
 		{#snippet title()}{unit?.name}{/snippet}
 		{#if card}
 			<p>{summarize(card.kpis)}</p>
@@ -156,7 +159,7 @@
 												{#if row.kpi.direction === 'none'}
 													<span class="text-sm text-muted">Tracked only</span>
 												{:else}
-													<StatusBadge status={row.value === null ? null : row.status} empty={row.value === null ? 'No data' : 'No target'} />
+													<StatusBadge status={row.value === null ? null : row.status} empty={row.value === null ? 'No data' : 'No target'} soFar={soFar(row.kpi, row)} />
 												{/if}
 											</td>
 											<td class="px-3 py-3.5 text-right text-lg font-semibold whitespace-nowrap">{formatValue(row.kpi, row.value)}</td>

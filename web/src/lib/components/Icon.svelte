@@ -6,6 +6,7 @@
 		'chevron-left': ['m15 18-6-6 6-6'],
 		'chevron-right': ['m9 18 6-6-6-6'],
 		'chevron-down': ['m6 9 6 6 6-6'],
+		'chevron-up': ['m18 15-6-6-6 6'],
 		'arrow-up': ['M12 19V5', 'm5 12 7-7 7 7'],
 		'arrow-down': ['M12 5v14', 'm19 12-7 7-7-7'],
 		plus: ['M12 5v14', 'M5 12h14'],

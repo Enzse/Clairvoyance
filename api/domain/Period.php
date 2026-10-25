@@ -102,6 +102,16 @@ final class Period
     }
 
     /**
+     * The periods inside a viewed period that have started by $today. Days and weeks still to
+     * come aren't missing yet, so they aren't counted as expected.
+     * @return string[]
+     */
+    public static function elapsedWithin(string $grainStart, string $grain, string $frequency, string $today): array
+    {
+        return array_values(array_filter(self::periodsWithin($grainStart, $grain, $frequency), fn($p) => $p <= $today));
+    }
+
+    /**
      * The periods a KPI is reported for in a month, as shown on the data-entry form: each week
      * or day that starts in the month (up to $today), otherwise the one period containing it.
      * @return string[]

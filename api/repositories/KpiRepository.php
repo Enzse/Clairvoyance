@@ -12,7 +12,7 @@ class KpiRepository
 {
     public const FIELDS = [
         'code', 'name', 'description', 'frequency', 'time_aggregation', 'unit_aggregation', 'weight_kpi_id',
-        'direction', 'tolerance_pct', 'applies_to_kind', 'decimals', 'prefix', 'suffix', 'is_active',
+        'direction', 'tolerance_pct', 'missing_is_zero', 'applies_to_kind', 'decimals', 'prefix', 'suffix', 'is_active',
     ];
 
     private PDO $db;
@@ -111,6 +111,7 @@ class KpiRepository
             $row['tolerance_pct'] = (float)$row['tolerance_pct'];
             $row['decimals'] = (int)$row['decimals'];
             $row['is_active'] = (bool)$row['is_active'];
+            $row['missing_is_zero'] = (bool)$row['missing_is_zero'];
             $row['scope_unit_ids'] = $scopes[$row['id']] ?? [];
             return $row;
         }, $rows);

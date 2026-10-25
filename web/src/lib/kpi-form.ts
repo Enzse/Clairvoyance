@@ -12,6 +12,7 @@ export interface KpiForm {
 	weight_kpi_id: number | null;
 	direction: Kpi['direction'];
 	tolerance_pct: number;
+	missing_is_zero: boolean;
 	applies_to_kind: string;
 	scope_unit_ids: number[];
 	decimals: number;
@@ -28,7 +29,7 @@ export const ALWAYS = '2000-01-01';
 export function blankForm(): KpiForm {
 	return {
 		name: '', code: '', description: '', frequency: 'monthly', time_aggregation: 'sum', unit_aggregation: 'sum',
-		weight_kpi_id: null, direction: 'higher_is_better', tolerance_pct: 10, applies_to_kind: '', scope_unit_ids: [],
+		weight_kpi_id: null, direction: 'higher_is_better', tolerance_pct: 10, missing_is_zero: false, applies_to_kind: '', scope_unit_ids: [],
 		decimals: 0, prefix: '', suffix: '', is_active: true
 	};
 }
@@ -37,7 +38,7 @@ export function formFromKpi(kpi: Kpi): KpiForm {
 	return {
 		name: kpi.name, code: kpi.code, description: kpi.description ?? '', frequency: kpi.frequency,
 		time_aggregation: kpi.time_aggregation, unit_aggregation: kpi.unit_aggregation, weight_kpi_id: kpi.weight_kpi_id,
-		direction: kpi.direction, tolerance_pct: kpi.tolerance_pct, applies_to_kind: kpi.applies_to_kind ?? '',
+		direction: kpi.direction, tolerance_pct: kpi.tolerance_pct, missing_is_zero: kpi.missing_is_zero, applies_to_kind: kpi.applies_to_kind ?? '',
 		scope_unit_ids: [...kpi.scope_unit_ids], decimals: kpi.decimals, prefix: kpi.prefix, suffix: kpi.suffix, is_active: kpi.is_active
 	};
 }

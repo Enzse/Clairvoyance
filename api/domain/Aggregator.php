@@ -40,6 +40,16 @@ final class Aggregator
      */
     public function compute(array $leafIds, array $periods, array $values, array $weights = [], ?int $scopeUnitId = null): array
     {
+        if (!$periods) {
+            // Nothing has started yet (a period still to come)
+            return ['value' => null, 'target' => null, 'status' => null, 'reported' => 0, 'expected' => 0];
+        }
+        $reportedCount = 0;
+        foreach ($leafIds as $unitId) {
+            $reportedCount += count(array_filter($periods, fn($p) => isset($values[$unitId][$p])));
+        }
+        $values = $this->withZeros($leafIds, $periods, $values);
+
         $cells = [];      // [unitId => periods with a value]
         $perUnit = [];    // [unitId => value combined over time]
         foreach ($leafIds as $unitId) {
@@ -49,7 +59,6 @@ final class Aggregator
                 $perUnit[$unitId] = $this->overTime($this->kpi['time_aggregation'], $values[$unitId], $reported);
             }
         }
-        $reportedCount = array_sum(array_map('count', $cells));
 
         $value = $perUnit ? $this->acrossUnits($perUnit, $weights, $periods) : null;
 
@@ -92,6 +101,23 @@ final class Aggregator
             }
         }
         return $out;
+    }
+
+    /**
+     * For a KPI where a period with no figure means none happened (sales, complaints), the
+     * missing periods count as 0; otherwise they're left out. "reported" still counts real figures.
+     */
+    private function withZeros(array $leafIds, array $periods, array $values): array
+    {
+        if (empty($this->kpi['missing_is_zero'])) {
+            return $values;
+        }
+        foreach ($leafIds as $unitId) {
+            foreach ($periods as $p) {
+                $values[$unitId][$p] ??= 0.0;
+            }
+        }
+        return $values;
     }
 
     private function target(array $cells, array $weights, array $periods, ?int $scopeUnitId): ?float

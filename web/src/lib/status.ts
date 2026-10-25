@@ -1,4 +1,4 @@
-import type { Status } from './types';
+import type { Kpi, Result, Status } from './types';
 
 /**
  * Status always shows as icon shape + label, never colour alone: check = on target,
@@ -9,3 +9,11 @@ export const STATUS: Record<Status, { label: string; icon: 'check' | 'half' | 'd
 	amber: { label: 'Close', icon: 'half', tone: 'warn' },
 	red: { label: 'Behind', icon: 'down', tone: 'bad' }
 };
+
+/**
+ * Whether a status can still change because figures are missing. Not for a KPI that counts a
+ * missing figure as 0: its status already includes them.
+ */
+export function soFar(kpi: Pick<Kpi, 'missing_is_zero'>, r: Pick<Result, 'value' | 'reported' | 'expected'>): boolean {
+	return r.value !== null && r.reported < r.expected && !kpi.missing_is_zero;
+}

@@ -44,7 +44,7 @@ class ReportService
     public function scorecard(int $unitId, ?string $date, ?string $grain, int $history = 12): array
     {
         $unit = $this->access->requireView($unitId);
-        $date ??= $this->latestDate($unitId);
+        $date ??= $this->defaultDate($unitId, $grain);
         $this->checkDate($date);
         if ($grain !== null && !Period::isValidFrequency($grain)) {
             throw HttpException::badRequest('grain must be one of: ' . implode(', ', Period::FREQUENCIES));
@@ -85,7 +85,7 @@ class ReportService
         $unit = $this->access->requireView($unitId);
         $kpi = $this->kpi($kpiId);
         $this->checkGrain($kpi, $grain);
-        $to ??= $this->latestDate($unitId);
+        $to ??= $this->defaultDate($unitId, $grain);
         $this->checkDate($to);
         $from ??= Period::shift(Period::align($to, $grain), $grain, -11);
         $this->checkDate($from);
@@ -105,7 +105,7 @@ class ReportService
         $tree = $this->access->tree();
         $leafIds = KpiScope::leaves($tree, $kpi, $unitId);
         [$values] = $this->load($kpi, $leafIds, $start, Period::next($start, $grain));
-        $periods = Period::periodsWithin($start, $grain, $kpi['frequency']);
+        $periods = $this->periods($start, $grain, $kpi);
         $rows = [];
         foreach (Aggregator::incompleteUnits($leafIds, $periods, $values) as $id => $reported) {
             $rows[] = ['unit_id' => $id, 'name' => $tree->get($id)['name'], 'reported' => $reported, 'expected' => count($periods)];
@@ -120,7 +120,7 @@ class ReportService
         $unit = $this->access->requireView($unitId);
         $kpi = $this->kpi($kpiId);
         $this->checkGrain($kpi, $grain);
-        $date ??= $this->latestDate($unitId);
+        $date ??= $this->defaultDate($unitId, $grain);
         $this->checkDate($date);
         $tree = $this->access->tree();
         if ($tree->isLeaf($unitId)) {
@@ -130,7 +130,7 @@ class ReportService
         $start = Period::align($date, $grain);
         [$values, $weights] = $this->load($kpi, KpiScope::leaves($tree, $kpi, $unitId), $start, Period::next($start, $grain));
         $aggregator = $this->aggregator($kpi);
-        $periods = Period::periodsWithin($start, $grain, $kpi['frequency']);
+        $periods = $this->periods($start, $grain, $kpi);
 
         // Units the KPI doesn't concern are left out, rather than shown as "no data"
         $rows = [];
@@ -169,7 +169,7 @@ class ReportService
         return array_map(fn(string $start) => [
             'period_start' => $start,
             'period_label' => Period::label($start, $grain),
-        ] + $aggregator->compute($leafIds, Period::periodsWithin($start, $grain, $kpi['frequency']), $values, $weights, $scope), $starts);
+        ] + $aggregator->compute($leafIds, $this->periods($start, $grain, $kpi), $values, $weights, $scope), $starts);
     }
 
     /** @return array{0: array, 1: array} the KPI's values and its weight KPI's values */
@@ -202,15 +202,17 @@ class ReportService
         if ($before['value'] === null || $now['value'] === null) {
             return null;
         }
-        if ($now['reported'] === $now['expected'] && $before['reported'] === $before['expected']) {
+        // Complete periods, or a KPI where a missing figure counts as 0: compare the totals
+        $complete = $now['reported'] === $now['expected'] && $before['reported'] === $before['expected'];
+        if ($complete || !empty($kpi['missing_is_zero'])) {
             return $this->change($kpi, $now['value'], $before['value']) + ['basis' => 'all', 'units_compared' => null, 'units_total' => null, 'left_out' => []];
         }
 
         $tree = $this->access->tree();
         $leafIds = KpiScope::leaves($tree, $kpi, $unitId);
         [$values, $weights] = $this->load($kpi, $leafIds, $before['period_start'], Period::next($now['period_start'], $grain));
-        $periodsBefore = Period::periodsWithin($before['period_start'], $grain, $kpi['frequency']);
-        $periodsNow = Period::periodsWithin($now['period_start'], $grain, $kpi['frequency']);
+        $periodsBefore = $this->periods($before['period_start'], $grain, $kpi);
+        $periodsNow = $this->periods($now['period_start'], $grain, $kpi);
         $comparable = array_values(array_intersect(
             Aggregator::completeUnits($leafIds, $periodsBefore, $values),
             Aggregator::completeUnits($leafIds, $periodsNow, $values)
@@ -287,11 +289,23 @@ class ReportService
         }
     }
 
-    /** The latest period with any value under the unit, or today if there is none. */
-    private function latestDate(int $unitId): string
+    /** The KPI's own periods in a viewed period that have started: future days aren't missing. */
+    private function periods(string $start, string $grain, array $kpi): array
     {
+        return Period::elapsedWithin($start, $grain, $kpi['frequency'], date('Y-m-d'));
+    }
+
+    /**
+     * Where a scorecard opens when no date is given: today for days and weeks (an empty today
+     * should look empty), otherwise the latest period with any figure under the unit.
+     */
+    private function defaultDate(int $unitId, ?string $grain): string
+    {
+        if ($grain === 'daily' || $grain === 'weekly') {
+            return date('Y-m-d');
+        }
         $leaves = $this->access->tree()->activeLeafIds($unitId);
-        return $this->values->latestPeriod($leaves) ?? gmdate('Y-m-d');
+        return $this->values->latestPeriod($leaves) ?? date('Y-m-d');
     }
 
     private function checkDate(string $date): void

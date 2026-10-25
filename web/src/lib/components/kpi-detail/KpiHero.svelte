@@ -4,6 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { formatDelta, formatValue } from '$lib/format';
 	import { GRAIN_NAMES } from '$lib/period';
+	import { soFar } from '$lib/status';
 	import { term } from '$lib/terms.svelte';
 	import type { Change, Kpi, PeriodResult, Series } from '$lib/types';
 	import HoverCard from '../HoverCard.svelte';
@@ -59,7 +60,7 @@
 				{current.value === null ? '–' : formatValue(kpi, shown.current)}
 			</p>
 			{#if kpi.direction !== 'none'}
-				<div class="mt-2.5"><StatusBadge status={current.value === null ? null : current.status} empty={current.value === null ? 'No data' : 'No target'} /></div>
+				<div class="mt-2.5"><StatusBadge status={current.value === null ? null : current.status} empty={current.value === null ? 'No data' : 'No target'} soFar={soFar(kpi, current)} /></div>
 			{/if}
 		</div>
 	</div>

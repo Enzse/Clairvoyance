@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byKpi, nextToDo, parseFigure, periodName, progressState } from './entry';
+import { byKpi, focusIndex, focusName, nextToDo, parseFigure, periodName, progressState } from './entry';
 import type { EntryRow, Kpi } from './types';
 
 const kpi = (id: number, frequency: Kpi['frequency']) => ({ id, frequency }) as Kpi;
@@ -19,6 +19,24 @@ describe('periodName', () => {
 		expect(periodName(row(kpi(1, 'weekly'), '2025-06-02'))).toBe('Week of 2 Jun');
 		expect(periodName(row(kpi(1, 'daily'), '2025-06-02'))).toBe('Mon 2');
 		expect(periodName(row(kpi(1, 'monthly'), '2025-06-01', 'Jun 2025'))).toBe('Jun 2025');
+	});
+});
+
+describe('focus', () => {
+	const days = (values: (number | null)[]) => values.map((value, i) => ({ period_start: `2026-10-0${i + 1}`, value }));
+
+	it('opens on today, else the first empty day, else the last', () => {
+		expect(focusIndex(days([1, null, 3]), '2026-10-03')).toBe(2);
+		expect(focusIndex(days([1, null, null]), '2026-11-02')).toBe(1);
+		expect(focusIndex(days([1, 2, 3]), '2026-11-02')).toBe(2);
+	});
+
+	it('names today, yesterday and this week', () => {
+		const daily = kpi(1, 'daily');
+		expect(focusName(row(daily, '2026-10-25'), '2026-10-25', '2026-10-24')).toBe('Today');
+		expect(focusName(row(daily, '2026-10-24'), '2026-10-25', '2026-10-24')).toBe('Yesterday');
+		expect(focusName(row(daily, '2026-10-20'), '2026-10-25', '2026-10-24')).toBe('Tue 20 Oct');
+		expect(focusName(row(kpi(2, 'weekly'), '2026-10-19'), '2026-10-19', '2026-10-12')).toBe('This week');
 	});
 });
 

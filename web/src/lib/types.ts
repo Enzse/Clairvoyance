@@ -107,6 +107,8 @@ export interface Kpi {
 	weight_kpi_id: number | null;
 	direction: 'higher_is_better' | 'lower_is_better' | 'none';
 	tolerance_pct: number;
+	/** A period with no figure counts as 0 instead of being left out */
+	missing_is_zero: boolean;
 	applies_to_kind: string | null;
 	/** Units whose reporting units report this KPI; empty means everyone */
 	scope_unit_ids: number[];

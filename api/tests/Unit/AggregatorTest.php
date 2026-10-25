@@ -209,6 +209,28 @@ class AggregatorTest extends TestCase
         $this->assertSame([], Aggregator::completeUnits([1, 2], [], $values));
     }
 
+    public function testMissingDaysAreLeftOutUnlessTheyCountAsZero(): void
+    {
+        // A daily KPI, target 1 a day; only the first of three days has a figure
+        $days = ['2026-10-23', '2026-10-24', '2026-10-25'];
+        $values = [1 => ['2026-10-23' => 1]];
+        $kpi = ['time_aggregation' => 'sum', 'unit_aggregation' => 'sum', 'direction' => 'higher_is_better', 'tolerance_pct' => 0];
+        $targets = new TargetSet([$this->target(null, '2026-01-01', 1)]);
+
+        $leftOut = (new Aggregator($kpi, null, $targets))->compute([1], $days, $values);
+        $this->assertSame([1.0, 1.0, 'green', 1, 3], [$leftOut['value'], $leftOut['target'], $leftOut['status'], $leftOut['reported'], $leftOut['expected']]);
+
+        // Counting the empty days as 0: 1 against 3, behind; still 1 real figure reported
+        $zeros = (new Aggregator($kpi + ['missing_is_zero' => true], null, $targets))->compute([1], $days, $values);
+        $this->assertSame([1.0, 3.0, 'red', 1, 3], [$zeros['value'], $zeros['target'], $zeros['status'], $zeros['reported'], $zeros['expected']]);
+    }
+
+    public function testAPeriodStillToComeExpectsNothing(): void
+    {
+        $result = $this->absencesKpi([])->compute(self::SCHOOLS, [], $this->absences);
+        $this->assertSame([null, 0, 0], [$result['value'], $result['reported'], $result['expected']]);
+    }
+
     private function target(?int $unitId, string $from, float $value): array
     {
         return ['unit_id' => $unitId, 'effective_from' => $from, 'value' => $value];

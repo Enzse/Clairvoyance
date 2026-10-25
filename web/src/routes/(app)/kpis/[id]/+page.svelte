@@ -87,7 +87,7 @@
 <svelte:head><title>{kpi?.name ?? 'KPI'} | Clairvoyance</title></svelte:head>
 
 {#if unitId !== null}
-	<Masthead {unitId} periodStart={current?.period_start ?? null} {grain} {unitHref} {periodHref}>
+	<Masthead {unitId} periodStart={current?.period_start ?? null} {grain} finest={kpi?.frequency} {unitHref} {periodHref}>
 		{#snippet title()}{kpi?.name ?? ''}{/snippet}
 		{#if series}<p>{reading()}</p>{/if}
 	</Masthead>
