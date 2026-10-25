@@ -13,3 +13,6 @@ api/storage/
 
 # Built release (scripts/release.sh)
 release/
+
+# Portfolio screenshots, kept locally
+docs/screenshots/
